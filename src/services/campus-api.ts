@@ -175,8 +175,3 @@ export async function getActivityAnnouncements(token: string, activityId: string
   const payload = await apiRequest(`/activities/${encodeURIComponent(activityId)}/announcements`, { token, signal });
   return parseList(payload, isAnnouncement, 'ประกาศ');
 }
-
-/** ประกาศของทุกกิจกรรมที่ฉันลงทะเบียนไว้ */
-export async function getMyAnnouncements(token: string, signal?: AbortSignal): Promise<Announcement[]> {
-  return parseList(await apiRequest('/announcements', { token, signal }), isAnnouncement, 'ประกาศ');
-}

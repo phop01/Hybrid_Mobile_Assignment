@@ -11,6 +11,7 @@ import { ActivitiesProvider } from '@/state/activities-context';
 import { FavoritesProvider } from '@/state/favorites-context';
 import { InboxProvider } from '@/state/inbox-context';
 import { MyRegistrationsProvider } from '@/state/my-registrations-context';
+import { isActivitiesStaff } from '@/lib/tickets';
 import { consumePostLoginRedirect, SessionProvider, useSession } from '@/state/session-context';
 import { TicketsProvider } from '@/state/tickets-context';
 
@@ -66,6 +67,8 @@ function RootNavigator() {
   if (!ready) return null;
   const isAuthenticated = session.status === 'authenticated';
   const isOrganizer = isAuthenticated && session.user.role === 'organizer';
+  // สร้าง/จัดการกิจกรรม: เฉพาะเจ้าหน้าที่งานกิจกรรม (server ตอบ 403 กับเจ้าหน้าที่อาคาร)
+  const isActivityOrganizer = isAuthenticated && isActivitiesStaff(session.user);
 
   return (
     <Stack
@@ -98,10 +101,14 @@ function RootNavigator() {
         <Stack.Screen name="tickets/[id]/done" options={{ title: 'แจ้งว่าเสร็จแล้ว' }} />
       </Stack.Protected>
 
-      {/* ฝั่งผู้จัดกิจกรรม: เข้าได้เฉพาะบัญชี role = organizer (server ตรวจซ้ำทุก request) */}
-      <Stack.Protected guard={isOrganizer}>
+      {/* ฝั่งผู้จัดกิจกรรม: เฉพาะเจ้าหน้าที่งานกิจกรรม (server ตรวจซ้ำทุก request) */}
+      <Stack.Protected guard={isActivityOrganizer}>
         <Stack.Screen name="organizer/new" options={{ title: 'สร้างกิจกรรม' }} />
         <Stack.Screen name="organizer/[id]" options={{ title: 'ผู้เข้าร่วมและหลักฐาน' }} />
+      </Stack.Protected>
+
+      {/* ส่งประกาศทั่ววิทยาเขต: เจ้าหน้าที่ทุกหน่วยงาน */}
+      <Stack.Protected guard={isOrganizer}>
         <Stack.Screen name="broadcast/new" options={{ title: 'ส่งประกาศ' }} />
       </Stack.Protected>
 

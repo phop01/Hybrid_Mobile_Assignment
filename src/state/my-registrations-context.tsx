@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
 import { ApiError } from '@/services/api-client';
@@ -56,18 +56,32 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
   const [offlineSince, setOfflineSince] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [queuedIds, setQueuedIds] = useState<string[]>([]);
+  // รายการล่าสุดเสมอ: ผลของ request ที่เพิ่งเสร็จต้องต่อจากข้อมูลปัจจุบัน ไม่ใช่ค่าตอนกดปุ่ม
+  // (ระหว่างรอ poll/refresh อาจอัปเดตรายการไปแล้ว)
+  const registrationsRef = useRef<Registration[]>([]);
+
+  const show = useCallback((list: Registration[]) => {
+    registrationsRef.current = list;
+    setRegistrations(list);
+  }, []);
 
   // ผลตรวจหลักฐาน/ประกาศจากผู้จัด server ส่งเข้ากล่องแจ้งเตือนแล้ว (state/inbox-context) ที่นี่แค่เก็บข้อมูล
   const apply = useCallback(
     (list: Registration[]) => {
-      setRegistrations(list);
+      show(list);
       if (userId) saveRegistrationsCache(userId, list).catch(() => undefined);
       // เจ้าหน้าที่ยกเลิกกิจกรรม/ไม่รับการลงทะเบียน → ไม่ต้องเตือนก่อนกิจกรรมแล้ว
       for (const r of list) {
         if (r.status === 'cancelled' || r.status === 'rejected') cancelReminder(r.id).catch(() => undefined);
       }
     },
-    [userId],
+    [show, userId],
+  );
+
+  /** แทนรายการเดียวด้วยผลจาก server */
+  const replaceOne = useCallback(
+    (updated: Registration) => apply(registrationsRef.current.map((r) => (r.id === updated.id ? updated : r))),
+    [apply],
   );
 
   /** ส่งเช็กอินที่ค้างในคิวออฟไลน์ */
@@ -79,8 +93,8 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
         await api.submitCheckIn(token, item.registrationId, item);
         await removeQueuedCheckIn(item.registrationId);
       } catch (e) {
-        if (e instanceof ApiError && e.isNetwork) break; // ยังออฟไลน์ ลองใหม่รอบหน้า
-        // server ปฏิเสธ (เช่น อยู่นอกพื้นที่) → เอาออกจากคิว ผู้ใช้จะเห็นว่ายังไม่ได้เช็กอินและทำใหม่ได้
+        if (e instanceof ApiError && e.isRetryable) break; // ยังออฟไลน์/server ล่มชั่วคราว ลองใหม่รอบหน้า
+        // server ปฏิเสธ (เช่น ถูกยกเลิกไปแล้ว) → เอาออกจากคิว ผู้ใช้จะเห็นว่ายังไม่ได้เช็กอินและทำใหม่ได้
         await removeQueuedCheckIn(item.registrationId);
         setError(e instanceof Error ? `เช็กอินที่รอส่งถูกปฏิเสธ: ${e.message}` : 'เช็กอินที่รอส่งถูกปฏิเสธ');
       }
@@ -101,7 +115,7 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
       if (e instanceof ApiError && e.isNetwork) {
         const cache = await loadRegistrationsCache(userId);
         if (cache) {
-          setRegistrations(cache.registrations);
+          show(cache.registrations);
           setOfflineSince(cache.updatedAt);
         }
         setError(cache ? null : e.message);
@@ -111,14 +125,14 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [apply, flushQueue, token, userId]);
+  }, [apply, flushQueue, show, token, userId]);
 
   // เข้าระบบแล้ว → แสดงข้อมูลในเครื่องก่อน แล้วค่อยโหลดจาก server
   useEffect(() => {
     if (!token || !userId) return;
     loadRegistrationsCache(userId)
       .then((cache) => {
-        if (cache) setRegistrations(cache.registrations);
+        if (cache) show(cache.registrations);
       })
       .catch(() => undefined)
       .finally(() => refresh());
@@ -152,10 +166,10 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
     async (activityId: string, form: RegistrationForm, idempotencyKey: string) => {
       if (!token) throw new Error('กรุณาเข้าสู่ระบบ');
       const registration = await api.registerForActivity(token, activityId, form, idempotencyKey);
-      apply([registration, ...registrations.filter((r) => r.id !== registration.id)]);
+      apply([registration, ...registrationsRef.current.filter((r) => r.id !== registration.id)]);
       return registration;
     },
-    [apply, registrations, token],
+    [apply, token],
   );
 
   const cancel = useCallback(
@@ -163,9 +177,9 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
       if (!token) throw new Error('กรุณาเข้าสู่ระบบ');
       const updated = await api.cancelRegistration(token, id);
       await cancelReminder(id); // ยกเลิกแล้วต้องไม่เตือนอีก
-      apply(registrations.map((r) => (r.id === id ? updated : r)));
+      replaceOne(updated);
     },
-    [apply, registrations, token],
+    [replaceOne, token],
   );
 
   const checkIn = useCallback(
@@ -174,7 +188,7 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
       try {
         const updated = await api.submitCheckIn(token, item.registrationId, item);
         await cancelReminder(item.registrationId);
-        apply(registrations.map((r) => (r.id === updated.id ? updated : r)));
+        replaceOne(updated);
         return { kind: 'sent', registration: updated };
       } catch (e) {
         if (!(e instanceof ApiError && e.isNetwork)) throw e;
@@ -184,16 +198,16 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
         return { kind: 'queued' };
       }
     },
-    [apply, registrations, token],
+    [replaceOne, token],
   );
 
   const addPhoto = useCallback(
     async (registrationId: string, photoBase64: string) => {
       if (!token) throw new Error('กรุณาเข้าสู่ระบบ');
       const updated = await api.addEvidencePhoto(token, registrationId, photoBase64);
-      apply(registrations.map((r) => (r.id === updated.id ? updated : r)));
+      replaceOne(updated);
     },
-    [apply, registrations, token],
+    [replaceOne, token],
   );
 
   const value: MyRegistrationsValue = {

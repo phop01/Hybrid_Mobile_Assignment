@@ -3,7 +3,7 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
-import { formatDistance, formatUpdatedAt } from '@/lib/format';
+import { formatUpdatedAt } from '@/lib/format';
 import { categoryInfo, KIND_INFO, statusLabel, statusTone, type StatusTone } from '@/lib/tickets';
 import type { Ticket, TicketKind, TicketStatus } from '@/types/models';
 
@@ -42,15 +42,13 @@ export function KindBadge({ kind }: { kind: TicketKind }) {
 type Props = {
   ticket: Ticket;
   onOpen: (id: string) => void;
-  /** ระยะจากผู้ใช้ (ถ้ารู้ตำแหน่ง) */
-  distance?: number | null;
 };
 
 /**
  * การ์ดเรื่องแจ้งซ่อม ใช้ทั้งหน้าแรก รายการ และแผนที่
  * memo: รายการยาวไม่ต้องวาดการ์ดใหม่ทุกครั้งที่ poll ได้ข้อมูลชุดเดิม
  */
-export const TicketCard = memo(function TicketCard({ ticket, onOpen, distance }: Props) {
+export const TicketCard = memo(function TicketCard({ ticket, onOpen }: Props) {
   const kind = KIND_INFO[ticket.kind];
   const category = categoryInfo(ticket.kind, ticket.category);
   const label = `${kind.label} ${category.label}: ${ticket.title}, ที่ ${ticket.location.name}, ${statusLabel(ticket)}${
@@ -76,7 +74,6 @@ export const TicketCard = memo(function TicketCard({ ticket, onOpen, distance }:
         </Text>
         <Text style={styles.place} numberOfLines={1}>
           <Ionicons name="location-outline" size={13} color={Colors.textMuted} /> {ticket.location.name}
-          {distance !== undefined && distance !== null ? ` · ห่าง ${formatDistance(distance)}` : ''}
         </Text>
         <View style={styles.row}>
           <TicketStatusBadge kind={ticket.kind} status={ticket.status} />

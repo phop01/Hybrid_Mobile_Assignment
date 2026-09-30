@@ -4,11 +4,11 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { AnnouncementComposer, AnnouncementList } from '@/components/announcements';
 import { StatusBadge } from '@/components/status-badge';
-import { Banner, Button, Card, Chip, InfoRow, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
+import { Banner, Button, Card, Chip, ChipBar, InfoRow, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { firstParam } from '@/hooks/use-activity';
 import { useNow } from '@/hooks/use-now';
@@ -27,6 +27,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'checked_in', label: 'เข้าร่วมแล้ว' },
   { key: 'registered', label: 'ยังไม่ส่งหลักฐาน' },
   { key: 'rejected', label: 'ไม่รับ' },
+  { key: 'cancelled', label: 'ยกเลิก' },
 ];
 const REJECT_REASONS = ['ไม่พบตัวคุณในรูป', 'รูปไม่เกี่ยวกับกิจกรรมนี้', 'ไม่พบชื่อในใบเซ็นชื่อ', 'รูปไม่ชัด'];
 const REGISTRATION_REJECT_REASONS = ['คุณสมบัติไม่ตรงกับกิจกรรม', 'ข้อมูลลงทะเบียนไม่ถูกต้อง', 'ที่นั่งสำหรับกลุ่มนี้เต็มแล้ว'];
@@ -105,11 +106,7 @@ export default function OrganizerActivityScreen() {
       ) : null}
 
       <SectionTitle>รายชื่อผู้ลงทะเบียน</SectionTitle>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        {FILTERS.map((f) => (
-          <Chip key={f.key} label={`${f.label} (${counts[f.key]})`} selected={filter === f.key} onPress={() => setFilter(f.key)} />
-        ))}
-      </ScrollView>
+      <ChipBar options={FILTERS.map((f) => ({ key: f.key, label: `${f.label} (${counts[f.key]})` }))} value={filter} onChange={setFilter} />
       {loading && attendees.length === 0 ? (
         <StateView kind="loading" message="กำลังโหลดรายชื่อ…" />
       ) : visible.length === 0 ? (
@@ -337,7 +334,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: Colors.text, lineHeight: 28 },
   name: { fontSize: 16, fontWeight: '700', color: Colors.text },
   muted: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
-  chips: { gap: Spacing.sm, paddingVertical: 2 },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   personBlock: { gap: Spacing.sm, paddingVertical: Spacing.sm },
   person: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },

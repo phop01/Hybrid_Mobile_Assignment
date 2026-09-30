@@ -133,7 +133,7 @@ export async function presentInboxItem(item: InboxItem): Promise<void> {
 
 const APPOINTMENT_KEY = 'nktoday/appointment-reminders/v1';
 /** เตือนก่อนเวลานัด 1 ชั่วโมง: ผู้แจ้งมีเวลาไปเปิดห้อง/รอช่าง */
-export const APPOINTMENT_LEAD_MS = 60 * 60 * 1000;
+const APPOINTMENT_LEAD_MS = 60 * 60 * 1000;
 
 type AppointmentMap = Record<string, ScheduledReminder>;
 

@@ -51,7 +51,7 @@ export default function RegisterScreen() {
       <StateView
         kind="empty"
         icon="checkmark-circle-outline"
-        title="คุณลงทะเบียนกิจกรรมนี้แล้ว"
+        title={existing.status === 'rejected' ? 'การลงทะเบียนของคุณไม่ได้รับอนุมัติ' : 'คุณลงทะเบียนกิจกรรมนี้แล้ว'}
         actionLabel="ดูการลงทะเบียน"
         onAction={() => router.replace({ pathname: '/registrations/[id]', params: { id: existing.id } })}
       />
