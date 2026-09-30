@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 
 import { Colors, MaxContentWidth, MinTouch, Radius, Spacing } from '@/constants/theme';
+import { formatUpdatedAt } from '@/lib/format';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -145,6 +146,38 @@ export function Banner({ tone, children, icon }: { tone: Tone; children: ReactNo
   );
 }
 
+/** ป้ายออฟไลน์: บอกว่ากำลังดูข้อมูลในเครื่องที่อัปเดตล่าสุดเมื่อไร */
+export function OfflineBanner({ since, note }: { since: string | null; note?: string }) {
+  if (!since) return null;
+  return (
+    <Banner tone="warning">
+      ออฟไลน์ · ข้อมูลล่าสุดเมื่อ {formatUpdatedAt(since)}
+      {note ? ` ${note}` : ''}
+    </Banner>
+  );
+}
+
+type ChipOption<K extends string> = { key: K; label: string; color?: string };
+
+/** แถบตัวกรองแบบชิปเลื่อนแนวนอน เลือกได้ทีละอัน */
+export function ChipBar<K extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly ChipOption<K>[];
+  value: K;
+  onChange: (key: K) => void;
+}) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipBar}>
+      {options.map((o) => (
+        <Chip key={o.key} label={o.label} color={o.color} selected={value === o.key} onPress={() => onChange(o.key)} />
+      ))}
+    </ScrollView>
+  );
+}
+
 type StateViewProps =
   | { kind: 'loading'; message?: string }
   | { kind: 'empty' | 'error'; title: string; message?: string; actionLabel?: string; onAction?: () => void; icon?: IconName };
@@ -239,6 +272,7 @@ const styles = StyleSheet.create({
   },
   fieldError: { color: Colors.danger, fontSize: 13 },
   fieldHint: { color: Colors.textMuted, fontSize: 13 },
+  chipBar: { gap: Spacing.sm, paddingVertical: 2 },
   banner: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, alignItems: 'flex-start' },
   bannerText: { flex: 1, fontSize: 14, lineHeight: 20 },
   state: { alignItems: 'center', justifyContent: 'center', padding: Spacing.xxl, gap: Spacing.sm },

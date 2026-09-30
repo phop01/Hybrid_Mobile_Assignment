@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LoginPrompt } from '@/components/login-prompt';
 import { Banner, Button, StateView, type IconName } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
 import { formatUpdatedAt } from '@/lib/format';
 import { targetFor } from '@/lib/inbox';
 import { enableWebNotifications, supportsNotifications, webNotificationStatus } from '@/services/reminders';
@@ -103,7 +104,7 @@ function PushCard() {
 export default function InboxScreen() {
   const session = useAuthenticatedSession();
   const { items, markAllRead, refresh } = useInbox();
-  const [refreshing, setRefreshing] = useState(false);
+  const refreshControl = useRefreshControl(refresh);
 
   useFocusEffect(
     useCallback(() => {
@@ -122,12 +123,6 @@ export default function InboxScreen() {
     );
   }
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
-  };
-
   const open = (item: InboxItem) => {
     const target = targetFor(item.kind, item.targetId);
     if (target) router.push(target as never);
@@ -139,7 +134,7 @@ export default function InboxScreen() {
       keyExtractor={(item) => item.id}
       style={{ backgroundColor: Colors.background }}
       contentContainerStyle={styles.list}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      refreshControl={refreshControl}
       ListHeaderComponent={
         supportsNotifications ? <PushCard /> : <WebNotificationCard />
       }

@@ -6,7 +6,7 @@ import { useMemo, useReducer, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CheckInCamera } from '@/components/check-in-camera';
-import { PhotoField, prepareCaptured } from '@/components/photo-field';
+import { PhotoField } from '@/components/photo-field';
 import { PickMap } from '@/components/pick-map';
 import { TicketCard } from '@/components/ticket-card';
 import { Banner, Button, Card, Chip, Screen, SectionTitle, TextField } from '@/components/ui';
@@ -23,6 +23,7 @@ import {
 import { categoryInfo, findDuplicates, KIND_INFO, REPAIR_ORDER } from '@/lib/tickets';
 import { ApiError } from '@/services/api-client';
 import { getCurrentCoordinates } from '@/services/location';
+import { preparePhotoForUpload } from '@/services/photo';
 import { useAuthenticatedSession } from '@/state/session-context';
 import { useTickets } from '@/state/tickets-context';
 
@@ -125,7 +126,7 @@ export default function NewTicketScreen() {
         onCapture={async (uri) => {
           setCameraOpen(false);
           try {
-            dispatch({ type: 'setPhoto', photo: await prepareCaptured(uri) });
+            dispatch({ type: 'setPhoto', photo: await preparePhotoForUpload(uri) });
             setErrors((e) => ({ ...e, photo: undefined }));
           } catch (e) {
             setMessage(e instanceof Error ? e.message : 'ประมวลผลรูปไม่สำเร็จ');

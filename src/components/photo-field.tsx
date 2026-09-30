@@ -70,11 +70,6 @@ export function PhotoField({
   );
 }
 
-/** ใช้หลังกล้องถ่ายเสร็จ: ย่อรูปก่อนเก็บเข้าฟอร์ม */
-export async function prepareCaptured(uri: string): Promise<PreparedPhoto> {
-  return preparePhotoForUpload(uri);
-}
-
 const styles = StyleSheet.create({
   wrap: { gap: Spacing.sm },
   // จอกว้าง (แท็บเล็ต/เว็บ) ไม่ให้รูปสูงจนดันปุ่มหลุดจอ

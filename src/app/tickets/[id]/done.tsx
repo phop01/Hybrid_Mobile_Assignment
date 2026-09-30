@@ -6,12 +6,13 @@ import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text } from 'react-native';
 
 import { CheckInCamera } from '@/components/check-in-camera';
-import { PhotoField, prepareCaptured, type PreparedPhoto } from '@/components/photo-field';
+import { PhotoField, type PreparedPhoto } from '@/components/photo-field';
 import { Banner, Button, Card, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
 import { Colors } from '@/constants/theme';
 import { formatDistance } from '@/lib/format';
 import { distanceMeters } from '@/lib/geo';
 import { getCoordinatesIfPermitted } from '@/services/location';
+import { preparePhotoForUpload } from '@/services/photo';
 import { useAuthenticatedSession } from '@/state/session-context';
 import { useTickets } from '@/state/tickets-context';
 
@@ -75,7 +76,7 @@ export default function TicketDoneScreen() {
         onCapture={async (uri) => {
           setCameraOpen(false);
           try {
-            setPhoto(await prepareCaptured(uri));
+            setPhoto(await preparePhotoForUpload(uri));
           } catch (e) {
             setError(e instanceof Error ? e.message : 'ประมวลผลรูปไม่สำเร็จ');
           }
