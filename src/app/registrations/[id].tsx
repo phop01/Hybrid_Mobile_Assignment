@@ -1,0 +1,109 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+
+import { EvidenceCard } from '@/components/evidence-card';
+import { ReminderControl } from '@/components/reminder-control';
+import { NavigateButtons } from '@/components/navigate-buttons';
+import { StatusBadge } from '@/components/status-badge';
+import { Banner, Button, Card, InfoRow, Screen, SectionTitle, StateView } from '@/components/ui';
+import { Colors, Spacing } from '@/constants/theme';
+import { firstParam } from '@/hooks/use-activity';
+import { useNow } from '@/hooks/use-now';
+import { formatDateRange } from '@/lib/format';
+import { confirmAction } from '@/lib/platform-actions';
+import { useActivities } from '@/state/activities-context';
+import { useMyRegistrations } from '@/state/my-registrations-context';
+
+export default function RegistrationDetailScreen() {
+  const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);
+  const { findById, loading, refresh, cancel, queuedIds } = useMyRegistrations();
+  const { getById, status: activitiesStatus } = useActivities();
+  const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const now = useNow();
+
+  const registration = id ? findById(id) : undefined;
+  const activity = registration ? getById(registration.activityId) : undefined;
+
+  if (!registration || !activity) {
+    if (loading || activitiesStatus === 'loading') return <StateView kind="loading" />;
+    return (
+      <StateView
+        kind="empty"
+        icon="help-circle-outline"
+        title="ไม่พบการลงทะเบียนนี้"
+        message="อาจถูกยกเลิกไปแล้ว หรือเป็นของบัญชีอื่น"
+        actionLabel="ไปหน้าของฉัน"
+        onAction={() => router.replace('/my')}
+      />
+    );
+  }
+
+  const queued = queuedIds.includes(registration.id);
+  const ended = now > new Date(activity.endsAt).getTime();
+
+  const onCancel = async () => {
+    const ok = await confirmAction('ยกเลิกการลงทะเบียน', `ยกเลิก “${activity.title}” ใช่ไหม? ที่นั่งจะว่างให้คนอื่น`, 'ยกเลิกการลงทะเบียน');
+    if (!ok) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      await cancel(registration.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'ยกเลิกไม่สำเร็จ');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <Screen refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Colors.primary} />}>
+      <View style={{ gap: Spacing.sm }}>
+        <StatusBadge status={queued && registration.status === 'registered' ? 'queued' : registration.status} />
+        <Text style={styles.title} accessibilityRole="header">
+          {activity.title}
+        </Text>
+      </View>
+
+      <Card>
+        <InfoRow icon="time-outline">{formatDateRange(activity.startsAt, activity.endsAt)}</InfoRow>
+        <InfoRow icon="location-outline">{activity.location.name}</InfoRow>
+        <NavigateButtons place={activity.location} />
+      </Card>
+
+      <EvidenceCard registration={registration} activity={activity} />
+
+      {registration.status === 'registered' && !queued && !ended ? (
+        <Card>
+          <SectionTitle>แจ้งเตือน</SectionTitle>
+          <ReminderControl registrationId={registration.id} activity={activity} now={now} />
+        </Card>
+      ) : null}
+
+      <Card>
+        <SectionTitle>ข้อมูลที่ลงทะเบียน</SectionTitle>
+        <InfoRow icon="person-outline">
+          {registration.form.fullName} ({registration.form.studentId})
+        </InfoRow>
+        <InfoRow icon="school-outline">{registration.form.faculty}</InfoRow>
+        <InfoRow icon="call-outline">{registration.form.phone}</InfoRow>
+        {registration.form.dietary ? <InfoRow icon="restaurant-outline">{registration.form.dietary}</InfoRow> : null}
+      </Card>
+
+      {error ? <Banner tone="danger">{error}</Banner> : null}
+      {registration.status === 'registered' && !queued && !ended ? (
+        <Button title="ยกเลิกการลงทะเบียน" icon="close-circle-outline" variant="danger" loading={cancelling} onPress={onCancel} />
+      ) : null}
+      <Button
+        title="ดูรายละเอียดกิจกรรม"
+        variant="ghost"
+        onPress={() => router.push({ pathname: '/activities/[id]', params: { id: activity.id } })}
+      />
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  title: { fontSize: 22, fontWeight: '800', color: Colors.text, lineHeight: 30 },
+});

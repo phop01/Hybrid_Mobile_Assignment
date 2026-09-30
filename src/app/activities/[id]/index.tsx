@@ -1,0 +1,198 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'expo-image';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { ActivityMap } from '@/components/activity-map';
+import { AnnouncementList } from '@/components/announcements';
+import { NavigateButtons } from '@/components/navigate-buttons';
+import { StatusBadge } from '@/components/status-badge';
+import { Banner, Button, Card, InfoRow, Screen, SectionTitle, StateView } from '@/components/ui';
+import { Colors, Radius, Spacing } from '@/constants/theme';
+import { firstParam, useActivity } from '@/hooks/use-activity';
+import { useActivityAnnouncements } from '@/hooks/use-organizer';
+import { CATEGORIES } from '@/lib/categories';
+import { checkInOpensAt } from '@/lib/check-in-rules';
+import { isEnded, seatsLeft } from '@/lib/filter-activities';
+import { formatDateRange, formatTime } from '@/lib/format';
+import { toAbsoluteUrl } from '@/services/api-config';
+import { useFavorites } from '@/state/favorites-context';
+import { useMyRegistrations } from '@/state/my-registrations-context';
+import { useAuthenticatedSession } from '@/state/session-context';
+
+export default function ActivityDetailScreen() {
+  const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);
+  const [reloadKey, setReloadKey] = useState(0);
+  const state = useActivity(id, reloadKey);
+  const session = useAuthenticatedSession();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const { findActiveForActivity } = useMyRegistrations();
+  const announcements = useActivityAnnouncements(id);
+
+  if (state.status === 'loading') return <StateView kind="loading" message="กำลังโหลดรายละเอียด…" />;
+  if (state.status === 'not_found') {
+    // ID จากลิงก์หรือแจ้งเตือนอาจเป็นของกิจกรรมที่ถูกลบไปแล้ว
+    return (
+      <StateView
+        kind="empty"
+        icon="help-circle-outline"
+        title="ไม่พบกิจกรรมนี้"
+        message="กิจกรรมอาจถูกยกเลิกหรือลิงก์ไม่ถูกต้อง"
+        actionLabel="ไปหน้ารายการกิจกรรม"
+        onAction={() => router.replace('/activities')}
+      />
+    );
+  }
+  if (state.status === 'error') {
+    return <StateView kind="error" title="โหลดไม่สำเร็จ" message={state.message} actionLabel="ลองใหม่" onAction={() => setReloadKey((k) => k + 1)} />;
+  }
+
+  const { activity, stale } = state;
+  const category = CATEGORIES[activity.category];
+  const registration = findActiveForActivity(activity.id);
+  const ended = isEnded(activity);
+  const left = seatsLeft(activity);
+  const favorite = isFavorite(activity.id);
+
+  const goRegister = () => {
+    const target = `/activities/${activity.id}/register`;
+    // ยังไม่ login → ไป login ก่อน แล้วกลับมาที่ฟอร์มลงทะเบียนต่อ
+    if (!session) router.push({ pathname: '/login', params: { next: target } });
+    else router.push({ pathname: '/activities/[id]/register', params: { id: activity.id } });
+  };
+
+  let action;
+  if (session?.user.role === 'organizer') {
+    // บัญชีผู้จัดไม่ลงทะเบียนเข้าร่วม แต่จัดการกิจกรรมของตัวเองได้
+    action =
+      activity.organizerId === session.user.id ? (
+        <Button
+          title="จัดการกิจกรรมนี้ (ผู้เข้าร่วม / ตรวจหลักฐาน)"
+          icon="clipboard-outline"
+          onPress={() => router.push({ pathname: '/organizer/[id]', params: { id: activity.id } })}
+        />
+      ) : (
+        <Banner tone="info">บัญชีผู้จัดกิจกรรมดูรายละเอียดได้ แต่ลงทะเบียนเข้าร่วมไม่ได้</Banner>
+      );
+  } else if (registration) {
+    action = (
+      <View style={{ gap: Spacing.sm }}>
+        <StatusBadge status={registration.status} />
+        <Button
+          title="ดูการลงทะเบียน / เช็กอิน"
+          icon="ticket-outline"
+          onPress={() => router.push({ pathname: '/registrations/[id]', params: { id: registration.id } })}
+        />
+      </View>
+    );
+  } else if (ended) {
+    action = <Button title="กิจกรรมจบแล้ว" disabled onPress={() => undefined} />;
+  } else if (left === 0) {
+    action = (
+      <View style={{ gap: Spacing.sm }}>
+        <Button title="เต็มแล้ว" disabled onPress={() => undefined} />
+        <Text style={styles.muted}>กด ☆ บันทึกไว้ แล้วกลับมาดูอีกครั้ง อาจมีคนยกเลิก</Text>
+      </View>
+    );
+  } else {
+    action = <Button title={session ? 'ลงทะเบียน' : 'เข้าสู่ระบบเพื่อลงทะเบียน'} icon="create-outline" onPress={goRegister} />;
+  }
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Ionicons
+              name={favorite ? 'star' : 'star-outline'}
+              size={24}
+              color={favorite ? Colors.star : Colors.textMuted}
+              onPress={() => toggleFavorite(activity.id)}
+              accessibilityLabel={favorite ? 'นำออกจากที่บันทึกไว้' : 'บันทึกไว้ดูทีหลัง'}
+              accessibilityRole="button"
+              style={{ padding: 8 }}
+            />
+          ),
+        }}
+      />
+      <Screen>
+        {stale ? <Banner tone="warning">ออฟไลน์ · แสดงข้อมูลที่เก็บไว้ ที่นั่งคงเหลืออาจไม่ตรงกับปัจจุบัน</Banner> : null}
+
+        {activity.imageUrl ? (
+          <Image
+            source={{ uri: toAbsoluteUrl(activity.imageUrl) }}
+            style={styles.cover}
+            contentFit="cover"
+            accessibilityLabel={`รูปปกกิจกรรม ${activity.title}`}
+          />
+        ) : null}
+
+        <View style={{ gap: Spacing.sm }}>
+          <View style={[styles.category, { backgroundColor: category.soft }]}>
+            <Ionicons name={category.icon} size={14} color={category.color} />
+            <Text style={[styles.categoryText, { color: category.color }]}>{category.label}</Text>
+          </View>
+          <Text style={styles.title} accessibilityRole="header">
+            {activity.title}
+          </Text>
+        </View>
+
+        <Card>
+          <InfoRow icon="time-outline">{formatDateRange(activity.startsAt, activity.endsAt)}</InfoRow>
+          <InfoRow icon="location-outline">{activity.location.name}</InfoRow>
+          <InfoRow icon="hourglass-outline">
+            ได้ {activity.hours} ชั่วโมงกิจกรรม · จัดโดย {activity.organizerName}
+          </InfoRow>
+          <InfoRow icon="people-outline">
+            {ended ? 'กิจกรรมจบแล้ว' : `ลงทะเบียนแล้ว ${activity.registeredCount}/${activity.capacity} คน · เหลือ ${left} ที่`}
+          </InfoRow>
+          <InfoRow icon={activity.checkInMethod === 'paper' ? 'document-text-outline' : 'phone-portrait-outline'}>
+            {activity.checkInMethod === 'paper'
+              ? 'ผู้จัดใช้ใบเซ็นชื่อ: เซ็นชื่อแล้วถ่ายรูปใบเซ็นชื่อเป็นหลักฐาน รอผู้จัดตรวจก่อนนับ'
+              : 'เช็กอินในแอป: อยู่ในพื้นที่จัดงานแล้วถ่ายรูปสดยืนยัน นับทันที'}
+          </InfoRow>
+          <InfoRow icon="alarm-outline">เปิดเช็กอิน {formatTime(checkInOpensAt(activity).toISOString())} (ก่อนเริ่ม 30 นาที)</InfoRow>
+        </Card>
+
+        {action}
+
+        {announcements.data.length > 0 ? (
+          <Card>
+            <SectionTitle>ประกาศจากผู้จัด</SectionTitle>
+            <AnnouncementList items={announcements.data} />
+          </Card>
+        ) : null}
+
+        <Card>
+          <SectionTitle>รายละเอียด</SectionTitle>
+          <Text style={styles.body}>{activity.description}</Text>
+        </Card>
+
+        <Card>
+          <SectionTitle>สถานที่และพื้นที่เช็กอิน</SectionTitle>
+          <ActivityMap venue={activity.location} title={activity.title} />
+          <Text style={styles.muted}>วงกลมคือพื้นที่ที่เช็กอินได้ (รัศมี {activity.location.radiusM} ม.)</Text>
+          <NavigateButtons place={activity.location} />
+        </Card>
+      </Screen>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  category: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.pill,
+  },
+  categoryText: { fontSize: 13, fontWeight: '700' },
+  cover: { width: '100%', aspectRatio: 16 / 9, borderRadius: Radius.lg, backgroundColor: Colors.border },
+  title: { fontSize: 24, fontWeight: '800', color: Colors.text, lineHeight: 32 },
+  body: { fontSize: 15, color: Colors.text, lineHeight: 24 },
+  muted: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
+});
