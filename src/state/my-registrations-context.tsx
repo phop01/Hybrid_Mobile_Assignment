@@ -62,6 +62,10 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
     (list: Registration[]) => {
       setRegistrations(list);
       if (userId) saveRegistrationsCache(userId, list).catch(() => undefined);
+      // เจ้าหน้าที่ยกเลิกกิจกรรม/ไม่รับการลงทะเบียน → ไม่ต้องเตือนก่อนกิจกรรมแล้ว
+      for (const r of list) {
+        if (r.status === 'cancelled' || r.status === 'rejected') cancelReminder(r.id).catch(() => undefined);
+      }
     },
     [userId],
   );

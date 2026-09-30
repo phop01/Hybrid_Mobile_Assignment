@@ -139,11 +139,13 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
   return (
     <Card>
       <SectionTitle>หลักฐานการเข้าร่วม</SectionTitle>
-      <Text style={styles.muted}>
-        {isPaper
-          ? 'เซ็นชื่อกับเจ้าหน้าที่ แล้วถ่ายรูปใบเซ็นชื่อ (หรือบรรยากาศงาน) ส่งเป็นหลักฐาน'
-          : 'ถ่ายรูปตัวเองที่งานส่งเป็นหลักฐานการเข้าร่วม'}
-      </Text>
+      {canSubmit ? (
+        <Text style={styles.muted}>
+          {isPaper
+            ? 'เซ็นชื่อกับเจ้าหน้าที่ แล้วถ่ายรูปใบเซ็นชื่อ (หรือบรรยากาศงาน) ส่งเป็นหลักฐาน เจ้าหน้าที่จะตรวจแล้วนับชั่วโมง'
+            : 'ถ่ายรูปตัวเองที่งานส่งเป็นหลักฐาน เจ้าหน้าที่จะตรวจแล้วนับชั่วโมง'}
+        </Text>
+      ) : null}
 
       {registration.reviewNote && registration.status === 'registered' ? (
         <Banner tone="danger" icon="close-circle">
@@ -161,7 +163,14 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
         </Banner>
       ) : null}
       {registration.status === 'checked_in' ? <Banner tone="success">เข้าร่วมแล้ว นับในโปรไฟล์ของคุณแล้ว</Banner> : null}
-      {registration.status === 'cancelled' ? <Banner tone="info">การลงทะเบียนนี้ถูกยกเลิกแล้ว</Banner> : null}
+      {registration.status === 'cancelled' ? (
+        <Banner tone="info">{registration.reviewNote ?? 'การลงทะเบียนนี้ถูกยกเลิกแล้ว'}</Banner>
+      ) : null}
+      {registration.status === 'rejected' ? (
+        <Banner tone="danger" icon="ban">
+          เจ้าหน้าที่ไม่รับการลงทะเบียนนี้: {registration.reviewNote}
+        </Banner>
+      ) : null}
 
       {canSubmit ? (
         <>

@@ -1,4 +1,5 @@
 import { availableReminderLeads, canCheckIn, checkInOpensAt, customLeadProblem, formatLead } from '@/lib/check-in-rules';
+import { isEnded } from '@/lib/filter-activities';
 import { distanceMeters } from '@/lib/geo';
 import { parseExifTakenAt } from '@/lib/photo-time';
 
@@ -34,6 +35,20 @@ describe('canCheckIn', () => {
 
   it('does not allow cancelled registrations', () => {
     expect(canCheckIn(makeRegistration({ status: 'cancelled' }))).toMatchObject({ ok: false, reason: 'not_registered' });
+  });
+
+  it('does not allow registrations the staff rejected', () => {
+    expect(canCheckIn(makeRegistration({ status: 'rejected' }))).toEqual({
+      ok: false,
+      reason: 'not_registered',
+      message: 'การลงทะเบียนนี้ไม่ได้รับอนุมัติ',
+    });
+  });
+
+  it('treats a cancelled activity as ended even before its end time', () => {
+    const future = makeActivity({ endsAt: new Date(NOW + 5 * 3600e3).toISOString() });
+    expect(isEnded(future, NOW)).toBe(false);
+    expect(isEnded({ ...future, cancelledAt: new Date(NOW).toISOString(), cancelReason: 'ฝนตก' }, NOW)).toBe(true);
   });
 });
 

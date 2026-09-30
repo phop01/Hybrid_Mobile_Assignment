@@ -41,7 +41,10 @@ export const ActivityCard = memo(function ActivityCard({
 
   let seatLabel = `เหลือ ${left} ที่`;
   let seatColor: string = Colors.textMuted;
-  if (ended) {
+  if (activity.cancelledAt) {
+    seatLabel = 'ยกเลิกแล้ว';
+    seatColor = Colors.danger;
+  } else if (ended) {
     seatLabel = 'จบแล้ว';
   } else if (left === 0) {
     seatLabel = 'เต็มแล้ว';

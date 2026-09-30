@@ -86,6 +86,15 @@ export default function ActivityDetailScreen() {
         />
       </View>
     );
+  } else if (activity.cancelledAt) {
+    action = (
+      <View style={{ gap: Spacing.sm }}>
+        <Banner tone="danger" icon="close-circle">
+          กิจกรรมนี้ถูกยกเลิก: {activity.cancelReason}
+        </Banner>
+        <Button title="กิจกรรมถูกยกเลิก" disabled onPress={() => undefined} />
+      </View>
+    );
   } else if (ended) {
     action = <Button title="กิจกรรมจบแล้ว" disabled onPress={() => undefined} />;
   } else if (left === 0) {
