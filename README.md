@@ -4,6 +4,7 @@
 โปรเจกต์ Final รายวิชา Hybrid Mobile Application Programming · React Native + Expo SDK 57 + TypeScript + Expo Router
 
 ผู้พัฒนา: นายปภพ สุระทิพย์ (663450176-7)
+พัฒนาต่อจากงานของผมเอง: [Hybrid_Mobile_Assignment11](https://github.com/phop01/Hybrid_Mobile_Assignment11) (แอปเช็กอินกิจกรรม) เพิ่มแจ้งซ่อม ประกาศ แจ้งเตือนระหว่างบทบาท และแผนที่วิทยาเขต
 
 ## แอปนี้ช่วยอะไร
 
