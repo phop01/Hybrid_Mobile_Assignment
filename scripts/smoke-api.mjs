@@ -240,5 +240,18 @@ if (existsSync(dbFile)) {
   check('db.json stores no raw tokens', !raw.includes(s1) && !raw.includes(staff) && !raw.includes('"token"'));
 }
 
+// ปุ่ม "ล้างข้อมูลสาธิต": ต้อง login · ล้างทุก session · บัญชีตัวอย่างยัง login ได้และไม่มีการลงทะเบียนค้าง
+r = await call('POST', '/demo/reset', null);
+check('demo reset requires login 401', r.status === 401, String(r.status));
+r = await call('POST', '/demo/reset', s1);
+check('demo reset 204', r.status === 204, String(r.status));
+r = await call('GET', '/me', s1);
+check('sessions cleared after reset 401', r.status === 401, String(r.status));
+const fresh = await login('6609876543', 'campus1234');
+r = await call('GET', '/registrations', fresh);
+check('seed account logs in with no registrations after reset', r.status === 200 && (r.body.items ?? r.body).length === 0, JSON.stringify(r.body).slice(0, 200));
+r = await call('GET', '/activities', fresh);
+check('seed activities rebuilt after reset', r.status === 200 && (r.body.items ?? r.body).length > 0);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
