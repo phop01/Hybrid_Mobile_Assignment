@@ -53,7 +53,7 @@ export function loadReminderMap(): Promise<ReminderMap> {
 async function ensureChannel(): Promise<void> {
   if (!Notifications || Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: 'แจ้งเตือน NK Today',
+    name: 'แจ้งเตือน KKUNK Today',
     importance: Notifications.AndroidImportance.HIGH,
   });
 }
@@ -86,7 +86,7 @@ export async function scheduleCheckInReminder(registrationId: string, activity: 
   // บอกเวลาที่เหลือจริงตามที่ผู้ใช้ตั้ง เช่น "อีก 2 ชม. 30 นาที ถึงเวลากิจกรรม" · เตือนระหว่างงาน = ชวนไปเช็กอิน
   const leadMinutes = Math.round((new Date(activity.startsAt).getTime() - date.getTime()) / 60000);
   const title =
-    leadMinutes > 0 ? `อีก ${formatLead(leadMinutes)} ถึงเวลากิจกรรม: ${activity.title}` : `กิจกรรมเริ่มแล้ว ส่งหลักฐานการเข้าร่วม: ${activity.title}`;
+    leadMinutes > 0 ? `อีก ${formatLead(leadMinutes)} ถึงเวลากิจกรรม: ${activity.title}` : `ถึงเวลาเช็กอิน: ${activity.title}`;
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: { title, body: `ที่ ${activity.location.name} · แตะเพื่อดูรายละเอียดและเช็กอิน`, data },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CHANNEL_ID },

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { InboxToast } from '@/components/inbox-toast';
+import { PhoneFrame } from '@/components/phone-frame';
 import { Colors } from '@/constants/theme';
 import { useNotificationRouting } from '@/hooks/use-notification-routing';
 import { ActivitiesProvider } from '@/state/activities-context';
@@ -28,8 +29,11 @@ export default function RootLayout() {
             <MyRegistrationsProvider>
               <TicketsProvider>
                 <StatusBar style="dark" />
-                <RootNavigator />
-                <InboxToast />
+                {/* เว็บจอกว้าง: แสดงเป็นกรอบมือถือ · มือถือ: ไม่มีผล */}
+                <PhoneFrame>
+                  <RootNavigator />
+                  <InboxToast />
+                </PhoneFrame>
               </TicketsProvider>
             </MyRegistrationsProvider>
           </FavoritesProvider>

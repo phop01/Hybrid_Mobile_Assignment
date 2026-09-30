@@ -20,7 +20,7 @@ const isStr = (v: unknown): v is string => typeof v === 'string';
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
 const CATEGORIES = ['academic', 'volunteer', 'sport', 'culture'];
-const STATUSES = ['registered', 'pending_review', 'checked_in', 'cancelled'];
+const STATUSES = ['registered', 'pending_review', 'checked_in', 'cancelled', 'rejected'];
 
 export function isActivity(v: unknown): v is Activity {
   if (!isObj(v) || !isObj(v.location)) return false;
@@ -46,7 +46,9 @@ export function isActivity(v: unknown): v is Activity {
     isNum(v.hours) &&
     isStr(v.organizerId) &&
     isStr(v.organizerName) &&
-    (v.imageUrl === undefined || v.imageUrl === null || isStr(v.imageUrl))
+    (v.imageUrl === undefined || v.imageUrl === null || isStr(v.imageUrl)) &&
+    (v.cancelledAt === undefined || v.cancelledAt === null || isStr(v.cancelledAt)) &&
+    (v.cancelReason === undefined || v.cancelReason === null || isStr(v.cancelReason))
   );
 }
 

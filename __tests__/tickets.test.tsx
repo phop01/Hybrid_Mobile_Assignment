@@ -1,4 +1,4 @@
-// ทดสอบกฎของแจ้งซ่อม / กล่องแจ้งเตือน (ส่วนที่เพิ่มใน NK Today)
+// ทดสอบกฎของแจ้งซ่อม / กล่องแจ้งเตือน (ส่วนที่เพิ่มใน KKUNK Today)
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { appointmentFrom } from '@/components/appointment-picker';
@@ -119,6 +119,13 @@ describe('ticket form (useReducer)', () => {
       location: { name: 'ห้อง 101', latitude: 17.8, longitude: 102.7 },
       photoBase64: 'abc',
     });
+  });
+
+  it('expands a bare room code into the building name', () => {
+    const name = toTicketInput(filled({ placeName: 'NK6301' }))?.location.name ?? '';
+    expect(name).toMatch(/^อาคาร.* ชั้น 3 ห้อง NK6301$/);
+    // มีข้อความอื่นปนมา = ผู้ใช้เขียนเอง ไม่แก้ให้
+    expect(toTicketInput(filled({ placeName: 'หน้าห้อง NK6301' }))?.location.name).toBe('หน้าห้อง NK6301');
   });
 });
 

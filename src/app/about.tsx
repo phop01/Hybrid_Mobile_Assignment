@@ -9,7 +9,7 @@ export default function AboutScreen() {
   return (
     <Screen>
       <Text style={styles.intro}>
-        NK Today รวมกิจกรรม จิตอาสา แจ้งซ่อม และประกาศของ มข. วิทยาเขตหนองคาย ไว้ในแอปเดียว
+        KKUNK Today รวมกิจกรรม จิตอาสา แจ้งซ่อม และประกาศของ มข. วิทยาเขตหนองคาย ไว้ในแอปเดียว
         ด้านล่างคือเนื้อหาแต่ละสัปดาห์ที่นำมาใช้
       </Text>
       {WEEKS.map((w) => (

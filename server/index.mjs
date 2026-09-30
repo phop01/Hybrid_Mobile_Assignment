@@ -1,4 +1,4 @@
-// NK Today API server
+// KKUNK Today API server
 // ใช้ Node.js ล้วน (node:http) ไม่ต้องติดตั้ง package เพิ่ม เพื่อให้ clone แล้วรันได้ทันที
 //
 // เหตุผลที่ต้องมี server กลาง:
@@ -202,8 +202,15 @@ function distanceMeters(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/** การลงทะเบียนที่ยังนับที่นั่ง (ไม่นับที่ยกเลิก/ไม่ได้รับอนุมัติ) */
 function activeRegistrations(activityId) {
-  return db.registrations.filter((r) => r.activityId === activityId && r.status !== 'cancelled');
+  return db.registrations.filter((r) => r.activityId === activityId && r.status !== 'cancelled' && r.status !== 'rejected');
+}
+
+/** เหตุผลจากเจ้าหน้าที่ 3–200 ตัวอักษร (ไม่ครบ → null) */
+function reasonText(value) {
+  const note = typeof value === 'string' ? value.trim() : '';
+  return note.length >= 3 && note.length <= 200 ? note : null;
 }
 
 function publicActivity(activity) {
@@ -581,14 +588,16 @@ async function handle(req, res) {
   if (method === 'GET' && parts[0] === 'activities' && parts[2] === 'attendees' && parts.length === 3) {
     const organizer = requireStaff(requireUser(req), 'activities');
     const activity = findOwnActivity(organizer, parts[1]);
-    const list = activeRegistrations(activity.id)
+    // ส่งทุกสถานะ (รวมไม่รับ/ยกเลิก) ให้ผู้จัดกรองดูเองได้ ต่างจาก activeRegistrations ที่ใช้นับที่นั่ง
+    const list = db.registrations
+      .filter((r) => r.activityId === activity.id)
       .sort((a, b) => a.registeredAt.localeCompare(b.registeredAt))
       .map(publicRegistration);
     return send(res, 200, list);
   }
 
   // GET/POST /activities/:id/announcements
-  // ผู้จัดส่งประกาศ (เช่น "เปิดเช็กอินแล้ว") → แอปนักศึกษาที่ลงทะเบียนไว้ดึงไปเด้งแจ้งเตือน
+  // ผู้จัดส่งประกาศ (เช่น "เริ่มกิจกรรมแล้ว") → แอปนักศึกษาที่ลงทะเบียนไว้ดึงไปเด้งแจ้งเตือน
   if (parts[0] === 'activities' && parts[2] === 'announcements' && parts.length === 3) {
     if (method === 'GET') {
       requireUser(req);
@@ -622,7 +631,9 @@ async function handle(req, res) {
   if (method === 'GET' && url.pathname === '/announcements') {
     const user = requireUser(req);
     const mine = new Set(
-      db.registrations.filter((r) => r.userId === user.id && r.status !== 'cancelled').map((r) => r.activityId),
+      db.registrations
+        .filter((r) => r.userId === user.id && r.status !== 'cancelled' && r.status !== 'rejected')
+        .map((r) => r.activityId),
     );
     const list = db.announcements
       .filter((a) => mine.has(a.activityId))
@@ -651,8 +662,12 @@ async function handle(req, res) {
     }
 
     assertValid(validateRegistrationBody(body));
+    if (activity.cancelledAt) throw new HttpError(409, 'activity_cancelled', 'กิจกรรมนี้ถูกยกเลิกแล้ว');
     if (new Date(activity.endsAt).getTime() < Date.now()) {
       throw new HttpError(409, 'activity_ended', 'กิจกรรมนี้จบไปแล้ว');
+    }
+    if (db.registrations.some((r) => r.activityId === activity.id && r.userId === user.id && r.status === 'rejected')) {
+      throw new HttpError(409, 'registration_rejected', 'เจ้าหน้าที่ไม่รับการลงทะเบียนของคุณในกิจกรรมนี้');
     }
     if (activeRegistrations(activity.id).some((r) => r.userId === user.id)) {
       throw new HttpError(409, 'already_registered', 'คุณลงทะเบียนกิจกรรมนี้แล้ว');
@@ -703,7 +718,13 @@ async function handle(req, res) {
     const user = requireUser(req);
     const registration = findOwnRegistration(user, parts[1]);
     if (registration.status !== 'registered') {
-      throw new HttpError(409, 'cannot_cancel', 'ยกเลิกไม่ได้ เพราะเช็กอินไปแล้ว');
+      const reason =
+        registration.status === 'rejected'
+          ? 'การลงทะเบียนนี้ไม่ได้รับอนุมัติอยู่แล้ว'
+          : registration.status === 'cancelled'
+            ? 'การลงทะเบียนนี้ถูกยกเลิกไปแล้ว'
+            : 'ยกเลิกไม่ได้ เพราะส่งหลักฐานการเข้าร่วมไปแล้ว';
+      throw new HttpError(409, 'cannot_cancel', reason);
     }
     registration.status = 'cancelled';
     persist();
@@ -722,6 +743,7 @@ async function handle(req, res) {
       if (registration.checkIn) return send(res, 200, publicRegistration(registration));
       throw new HttpError(409, 'not_registered', 'การลงทะเบียนนี้ถูกยกเลิกแล้ว');
     }
+    if (activity.cancelledAt) throw new HttpError(409, 'activity_cancelled', 'กิจกรรมนี้ถูกยกเลิกแล้ว');
     const { photoBase64, latitude, longitude, takenAt } = body;
     // คิวออฟไลน์รุ่นเก่าไม่มีช่องนี้ = ถ่ายสด
     const photoSource = body.photoSource === 'library' ? 'library' : 'camera';
@@ -749,19 +771,14 @@ async function handle(req, res) {
     };
 
     registration.reviewNote = null;
-    if (activity.checkInMethod === 'paper') {
-      // แอปอ่านลายเซ็นในรูปไม่ได้ ต้องให้ผู้จัดตรวจเทียบกับกระดาษก่อนนับ (หน้า "จัดการ" ของผู้จัด)
-      registration.status = 'pending_review';
-      notify([activity.organizerId], {
-        kind: 'manage',
-        targetId: activity.id,
-        title: 'มีหลักฐานการเข้าร่วมรอตรวจ',
-        body: `${registration.form.fullName} · ${activity.title}`,
-      });
-    } else {
-      registration.status = 'checked_in';
-      registration.checkIn.verifiedAt = registration.checkIn.submittedAt;
-    }
+    // ทุกกิจกรรม: เจ้าหน้าที่เป็นคนตรวจรูปแล้วกดผ่าน/ไม่ผ่านเอง (แชทที่ 3 ไม่ตรวจตำแหน่ง/เวลาแล้ว จึงไม่ผ่านอัตโนมัติ)
+    registration.status = 'pending_review';
+    notify([activity.organizerId], {
+      kind: 'manage',
+      targetId: activity.id,
+      title: 'มีหลักฐานการเข้าร่วมรอตรวจ',
+      body: `${registration.form.fullName} · ${activity.title}`,
+    });
     persist();
     return send(res, 200, publicRegistration(registration));
   }
@@ -824,6 +841,56 @@ async function handle(req, res) {
     return send(res, 200, publicRegistration(registration));
   }
 
+  // POST /registrations/:id/reject (เจ้าหน้าที่ไม่รับการลงทะเบียนของนักศึกษาคนนี้ พร้อมเหตุผล)
+  if (method === 'POST' && parts[0] === 'registrations' && parts[2] === 'reject' && parts.length === 3) {
+    const organizer = requireStaff(requireUser(req), 'activities');
+    const registration = db.registrations.find((r) => r.id === parts[1]);
+    if (!registration) throw new HttpError(404, 'registration_not_found', 'ไม่พบการลงทะเบียนนี้');
+    const activity = findOwnActivity(organizer, registration.activityId);
+    if (registration.status !== 'registered' && registration.status !== 'pending_review') {
+      throw new HttpError(409, 'cannot_reject', 'รายการนี้ไม่อยู่ในสถานะที่ไม่รับได้แล้ว');
+    }
+    const note = reasonText((await readJson(req)).note);
+    if (!note) throw new HttpError(400, 'validation_failed', 'กรุณาระบุเหตุผล', { note: 'กรุณาระบุเหตุผล' });
+    registration.status = 'rejected';
+    registration.reviewNote = note;
+    notify([registration.userId], {
+      kind: 'registration',
+      targetId: registration.id,
+      title: 'การลงทะเบียนไม่ได้รับอนุมัติ',
+      body: `${activity.title}: ${note}`,
+    });
+    persist();
+    return send(res, 200, publicRegistration(registration));
+  }
+
+  // POST /activities/:id/cancel (เจ้าหน้าที่ยกเลิกทั้งกิจกรรม แจ้งทุกคนที่ลงทะเบียน)
+  if (method === 'POST' && parts[0] === 'activities' && parts[2] === 'cancel' && parts.length === 3) {
+    const organizer = requireStaff(requireUser(req), 'activities');
+    const activity = findOwnActivity(organizer, parts[1]);
+    if (activity.cancelledAt) throw new HttpError(409, 'activity_cancelled', 'กิจกรรมนี้ถูกยกเลิกไปแล้ว');
+    if (new Date(activity.endsAt).getTime() < Date.now()) throw new HttpError(409, 'activity_ended', 'กิจกรรมนี้จบไปแล้ว');
+    const note = reasonText((await readJson(req)).note);
+    if (!note) throw new HttpError(400, 'validation_failed', 'กรุณาระบุเหตุผล', { note: 'กรุณาระบุเหตุผล' });
+    activity.cancelledAt = new Date().toISOString();
+    activity.cancelReason = note;
+    const affected = db.registrations.filter(
+      (r) => r.activityId === activity.id && (r.status === 'registered' || r.status === 'pending_review'),
+    );
+    for (const r of affected) {
+      r.status = 'cancelled';
+      r.reviewNote = `กิจกรรมถูกยกเลิก: ${note}`;
+    }
+    // คนที่เข้าร่วมแล้ว (checked_in) ยกเลิกกลางงาน: เก็บชั่วโมงไว้ แต่ต้องได้รู้ว่ากิจกรรมถูกยกเลิก
+    const checkedIn = db.registrations.filter((r) => r.activityId === activity.id && r.status === 'checked_in');
+    notify(
+      [...affected, ...checkedIn].map((r) => r.userId),
+      { kind: 'activity', targetId: activity.id, title: 'กิจกรรมถูกยกเลิก', body: `${activity.title}: ${note}` },
+    );
+    persist();
+    return send(res, 200, publicActivity(activity));
+  }
+
   // แจ้งซ่อม / ประกาศ / กล่องแจ้งเตือน (แยกไฟล์ server/tickets.mjs)
   if (await ticketRoutes(req, res, { url, parts, method })) return;
 
@@ -857,7 +924,7 @@ export function startServer(port = PORT) {
     });
   });
   server.listen(port, '0.0.0.0', () => {
-    console.log(`[api] NK Today API พร้อมที่ http://localhost:${port}`);
+    console.log(`[api] KKUNK Today API พร้อมที่ http://localhost:${port}`);
   });
   return server;
 }

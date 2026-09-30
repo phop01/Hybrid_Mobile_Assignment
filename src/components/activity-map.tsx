@@ -27,7 +27,7 @@ export function ActivityMap({ venue, title, user, height = 220 }: ActivityMapPro
     <View
       style={[styles.wrap, { height }]}
       accessible
-      accessibilityLabel={`แผนที่ ${venue.name} รัศมีเช็กอิน ${venue.radiusM} เมตร`}>
+      accessibilityLabel={`แผนที่ ${venue.name} บริเวณจัดงาน ${venue.radiusM} เมตร`}>
       <MapView
         style={StyleSheet.absoluteFill}
         initialRegion={{ latitude: venue.latitude, longitude: venue.longitude, latitudeDelta: span, longitudeDelta: span }}

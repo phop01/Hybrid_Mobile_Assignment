@@ -13,9 +13,8 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { firstParam, useActivity } from '@/hooks/use-activity';
 import { useActivityAnnouncements } from '@/hooks/use-organizer';
 import { CATEGORIES } from '@/lib/categories';
-import { checkInOpensAt } from '@/lib/check-in-rules';
 import { isEnded, seatsLeft } from '@/lib/filter-activities';
-import { formatDateRange, formatTime } from '@/lib/format';
+import { formatDateRange } from '@/lib/format';
 import { toAbsoluteUrl } from '@/services/api-config';
 import { useFavorites } from '@/state/favorites-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
@@ -86,6 +85,15 @@ export default function ActivityDetailScreen() {
         />
       </View>
     );
+  } else if (activity.cancelledAt) {
+    action = (
+      <View style={{ gap: Spacing.sm }}>
+        <Banner tone="danger" icon="close-circle">
+          กิจกรรมนี้ถูกยกเลิก: {activity.cancelReason}
+        </Banner>
+        <Button title="กิจกรรมถูกยกเลิก" disabled onPress={() => undefined} />
+      </View>
+    );
   } else if (ended) {
     action = <Button title="กิจกรรมจบแล้ว" disabled onPress={() => undefined} />;
   } else if (left === 0) {
@@ -149,10 +157,9 @@ export default function ActivityDetailScreen() {
           </InfoRow>
           <InfoRow icon={activity.checkInMethod === 'paper' ? 'document-text-outline' : 'phone-portrait-outline'}>
             {activity.checkInMethod === 'paper'
-              ? 'ผู้จัดใช้ใบเซ็นชื่อ: เซ็นชื่อแล้วถ่ายรูปใบเซ็นชื่อเป็นหลักฐาน รอผู้จัดตรวจก่อนนับ'
-              : 'เช็กอินในแอป: อยู่ในพื้นที่จัดงานแล้วถ่ายรูปสดยืนยัน นับทันที'}
+              ? 'ใบเซ็นชื่อกระดาษ: เซ็นชื่อกับเจ้าหน้าที่แล้วถ่ายรูปใบเซ็นชื่อส่งในแอป เจ้าหน้าที่ตรวจก่อนนับชั่วโมง'
+              : 'ถ่ายรูปที่งาน: ส่งรูปเป็นหลักฐานการเข้าร่วมในแอป เจ้าหน้าที่ตรวจก่อนนับชั่วโมง'}
           </InfoRow>
-          <InfoRow icon="alarm-outline">เปิดเช็กอิน {formatTime(checkInOpensAt(activity).toISOString())} (ก่อนเริ่ม 30 นาที)</InfoRow>
         </Card>
 
         {action}
@@ -170,9 +177,9 @@ export default function ActivityDetailScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>สถานที่และพื้นที่เช็กอิน</SectionTitle>
+          <SectionTitle>สถานที่</SectionTitle>
           <ActivityMap venue={activity.location} title={activity.title} />
-          <Text style={styles.muted}>วงกลมคือพื้นที่ที่เช็กอินได้ (รัศมี {activity.location.radiusM} ม.)</Text>
+          <Text style={styles.muted}>วงกลมคือบริเวณจัดงาน (รัศมี {activity.location.radiusM} ม.)</Text>
           <NavigateButtons place={activity.location} />
         </Card>
       </Screen>

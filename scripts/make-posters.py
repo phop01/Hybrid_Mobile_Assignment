@@ -1,5 +1,6 @@
 # สร้างโปสเตอร์ตัวอย่าง (รูปปกกิจกรรม 16:9 + โปสเตอร์ประกาศ 3:4) เก็บที่ server/demo-posters/
 # วิธีใช้: npm run posters  (ต้องมี Python + Pillow และ Google Chrome ในเครื่อง)
+# รูปปกกิจกรรมตอนนี้เป็นรูปจริง → ไม่เขียนทับไฟล์ที่มีอยู่แล้ว (สร้างเฉพาะที่ยังไม่มี) · บังคับสร้างใหม่ทั้งหมด: npm run posters -- --force
 #
 # ทำไมใช้ Chrome: Pillow ในเครื่องส่วนใหญ่ไม่มี raqm จึงวางสระ/วรรณยุกต์ภาษาไทยผิดที่
 # เลยเขียนโปสเตอร์เป็น HTML/CSS แล้วให้ Chrome แบบ headless ถ่ายภาพ (จัดตัวอักษรไทยถูกต้อง) แล้วค่อยแปลงเป็น JPEG
@@ -106,7 +107,7 @@ h1 {{ font-size: 74px; line-height: 1.12; font-weight: 800; letter-spacing: -0.5
   </div>
 </div>
 <div class="art"><span class="emoji">{emoji}</span></div>
-<div class="footer"><div class="brand"><span class="dot">NK</span> NK Today · มข. วิทยาเขตหนองคาย</div><div style="font-size:22px;opacity:.85">ลงทะเบียนในแอป</div></div>
+<div class="footer"><div class="brand"><span class="dot">NK</span> KKUNK Today · มข. วิทยาเขตหนองคาย</div><div style="font-size:22px;opacity:.85">ลงทะเบียนในแอป</div></div>
 </body></html>"""
 
 
@@ -139,7 +140,7 @@ h1 {{ font-size: 78px; line-height: 1.12; font-weight: 800; text-shadow: 0 4px 1
   <p class="place"><span class="emoji">📍</span> {html.escape(b['place'])}</p>
 </div>
 <div class="notice"><span class="emoji">⚠️</span><span>{html.escape(b['notice'])}</span></div>
-<div class="footer"><div class="brand"><span class="dot">NK</span> NK Today · มข. วิทยาเขตหนองคาย</div></div>
+<div class="footer"><div class="brand"><span class="dot">NK</span> KKUNK Today · มข. วิทยาเขตหนองคาย</div></div>
 </body></html>"""
 
 
@@ -189,7 +190,11 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
+        force = '--force' in sys.argv
         for activity_id, cat, emoji, title, tagline, place, hours, badge in ACTIVITIES:
+            if not force and (OUT / f'{activity_id}.jpg').exists():
+                print(f'ข้าม {activity_id}.jpg (มีรูปอยู่แล้ว)')
+                continue
             render(chrome, work, activity_id, activity_html(cat, emoji, title, tagline, place, hours, badge), 1280, 720)
         for b in BROADCASTS:
             render(chrome, work, b['id'], broadcast_html(b), 900, 1200)

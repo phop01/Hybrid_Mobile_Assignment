@@ -1,8 +1,7 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
 import { availableReminderLeads, countdownProblem, customLeadProblem, formatCountdown, formatLead, reminderTime } from '@/lib/check-in-rules';
 import { formatDate, formatTime } from '@/lib/format';
 import {
@@ -15,6 +14,7 @@ import {
 import type { Activity } from '@/types/models';
 
 import { Banner, Button, Chip } from './ui';
+import { WheelGroup, WheelPicker } from './wheel-picker';
 
 const CUSTOM = -1;
 const COUNTDOWN = -2;
@@ -23,27 +23,46 @@ const COUNTDOWN = -2;
  * ตั้ง/เปลี่ยน/ยกเลิกแจ้งเตือนกิจกรรม: เลือกเวลาสำเร็จรูป, "กำหนดเอง" (วัน/ชม./นาที ก่อนงานเริ่ม)
  * หรือ "นับถอยหลังจากตอนนี้" (ชม./นาที/วินาที นับจากตอนกด ใช้ได้จนงานจบ เช่น ระหว่างงานให้เตือนไปส่งหลักฐาน)
  * ขอสิทธิ์แจ้งเตือนตอนกดปุ่มนี้เท่านั้น ไม่ขอตอนเปิดแอป
- * (ประกาศด่วนจากผู้จัด เช่น "เปิดเช็กอินแล้ว" เด้งให้เองโดยไม่ต้องตั้ง)
+ * (ประกาศด่วนจากผู้จัด เช่น "เริ่มกิจกรรมแล้ว" เด้งให้เองโดยไม่ต้องตั้ง)
  */
-export function ReminderControl({ registrationId, activity, now }: { registrationId: string; activity: Activity; now: number }) {
+export function ReminderControl({
+  registrationId,
+  activity,
+  now,
+  preferCountdown = false,
+}: {
+  registrationId: string;
+  activity: Activity;
+  now: number;
+  /** เปิดมาเลือก "นับถอยหลังจากตอนนี้" ไว้ก่อน (หน้าลงทะเบียนสำเร็จ: เตือนให้ไปเช็กอิน) */
+  preferCountdown?: boolean;
+}) {
   const [scheduled, setScheduled] = useState<ScheduledReminder | null>(null);
   const [changing, setChanging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'danger' | 'info'; text: string } | null>(null);
   const [denied, setDenied] = useState(false);
   const leads = availableReminderLeads(activity, now);
-  const [lead, setLead] = useState<number | null>(null);
+  const [lead, setLead] = useState<number | null>(preferCountdown ? COUNTDOWN : null);
   // ค่าเริ่มของ "กำหนดเอง": 2 ชม. ก่อนงาน
   const [custom, setCustom] = useState({ days: 0, hours: 2, minutes: 0 });
-  // ค่าเริ่มของ "นับถอยหลังจากตอนนี้": 10 วินาที
-  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 10 });
+  // ค่าเริ่มของ "นับถอยหลังจากตอนนี้": 5 วินาที (ขั้นต่ำ)
+  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 5 });
 
   useEffect(() => {
     loadReminderMap().then((map) => setScheduled(map[registrationId] ?? null));
   }, [registrationId]);
 
+  // ถึงเวลาเตือนแล้ว → กลับไปหน้าตั้งเตือนทันที (ตั้งรอบใหม่ได้เลย ไม่ต้องรอนาฬิกาในหน้าอัปเดต)
+  const scheduledAt = scheduled?.at;
+  useEffect(() => {
+    if (!scheduledAt) return;
+    const timer = setTimeout(() => setScheduled(null), Math.max(0, new Date(scheduledAt).getTime() - Date.now()) + 500);
+    return () => clearTimeout(timer);
+  }, [scheduledAt]);
+
   if (!supportsNotifications) {
-    return <Banner tone="info" icon="notifications-off-outline">การแจ้งเตือนใช้ได้บนแอปมือถือ (Expo Go) เว็บเบราว์เซอร์ไม่รองรับ</Banner>;
+    return <Banner tone="info" icon="notifications-off-outline">เบราว์เซอร์นี้ไม่มีแจ้งเตือนของระบบ ใช้แอปมือถือ (Expo Go) แทน</Banner>;
   }
 
   const eventStarted = new Date(activity.startsAt).getTime() <= now;
@@ -129,23 +148,22 @@ export function ReminderControl({ registrationId, activity, now }: { registratio
 
           {selected === CUSTOM ? (
             <View style={styles.custom}>
-              <Text style={styles.customTitle}>นับถอยหลังก่อนงานเริ่ม</Text>
-              <View style={styles.steppers}>
-                <Stepper label="วัน" value={custom.days} step={1} max={7} onChange={(days) => setCustom((c) => ({ ...c, days }))} />
-                <Stepper label="ชั่วโมง" value={custom.hours} step={1} max={23} onChange={(hours) => setCustom((c) => ({ ...c, hours }))} />
-                <Stepper label="นาที" value={custom.minutes} step={5} max={55} onChange={(minutes) => setCustom((c) => ({ ...c, minutes }))} />
-              </View>
+              <Text style={styles.customTitle}>ก่อนงานเริ่ม</Text>
+              <WheelGroup>
+                <WheelPicker label="วัน" unit="วัน" values={range(0, 7)} value={custom.days} onChange={(days) => setCustom((c) => ({ ...c, days }))} />
+                <WheelPicker label="ชั่วโมง" unit="ชม." values={range(0, 23)} value={custom.hours} onChange={(hours) => setCustom((c) => ({ ...c, hours }))} />
+                <WheelPicker label="นาที" unit="นาที" values={range(0, 55, 5)} value={custom.minutes} onChange={(minutes) => setCustom((c) => ({ ...c, minutes }))} />
+              </WheelGroup>
             </View>
           ) : null}
 
           {isCountdown ? (
             <View style={styles.custom}>
-              <Text style={styles.customTitle}>นับถอยหลังจากตอนนี้</Text>
-              <View style={styles.steppers}>
-                <Stepper label="ชั่วโมง" value={countdown.hours} step={1} max={23} onChange={(hours) => setCountdown((c) => ({ ...c, hours }))} />
-                <Stepper label="นาที" value={countdown.minutes} step={1} max={59} onChange={(minutes) => setCountdown((c) => ({ ...c, minutes }))} />
-                <Stepper label="วินาที" value={countdown.seconds} step={5} max={55} onChange={(seconds) => setCountdown((c) => ({ ...c, seconds }))} />
-              </View>
+              <WheelGroup>
+                <WheelPicker label="ชั่วโมง" unit="ชม." values={range(0, 23)} value={countdown.hours} onChange={(hours) => setCountdown((c) => ({ ...c, hours }))} />
+                <WheelPicker label="นาที" unit="นาที" values={range(0, 59)} value={countdown.minutes} onChange={(minutes) => setCountdown((c) => ({ ...c, minutes }))} />
+                <WheelPicker label="วินาที" unit="วิ." values={range(0, 59)} value={countdown.seconds} onChange={(seconds) => setCountdown((c) => ({ ...c, seconds }))} />
+              </WheelGroup>
             </View>
           ) : null}
 
@@ -170,7 +188,8 @@ export function ReminderControl({ registrationId, activity, now }: { registratio
           {changing ? <Button title="ไม่เปลี่ยน" variant="ghost" onPress={() => setChanging(false)} /> : null}
         </>
       )}
-      <Text style={styles.hint}>ถ้าผู้จัดส่งประกาศ (เช่น เปิดเช็กอินแล้ว / ย้ายห้อง) จะเด้งแจ้งเตือนให้อัตโนมัติ</Text>
+      {Platform.OS === 'web' ? <Text style={styles.hint}>บนเว็บต้องเปิดแท็บนี้ค้างไว้จนถึงเวลาเตือน</Text> : null}
+      <Text style={styles.hint}>ถ้าผู้จัดส่งประกาศ (เช่น เริ่มกิจกรรมแล้ว / ย้ายห้อง) จะเด้งแจ้งเตือนให้อัตโนมัติ</Text>
       {message ? <Banner tone={message.tone}>{message.text}</Banner> : null}
       {denied && Platform.OS !== 'web' ? (
         <Button title="เปิดการตั้งค่า" variant="ghost" icon="settings-outline" onPress={() => Linking.openSettings()} />
@@ -179,31 +198,9 @@ export function ReminderControl({ registrationId, activity, now }: { registratio
   );
 }
 
-/** ปุ่ม − ค่า + (ไม่ต้องพิมพ์ ใช้นิ้วเดียวได้ และกรอกผิดรูปแบบไม่ได้) */
-function Stepper({ label, value, step, max, onChange }: { label: string; value: number; step: number; max: number; onChange: (v: number) => void }) {
-  const button = (icon: 'remove' | 'add', next: number, disabled: boolean, a11y: string) => (
-    <Pressable
-      onPress={() => onChange(next)}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={a11y}
-      accessibilityState={{ disabled }}
-      style={({ pressed }) => [styles.stepButton, disabled && { opacity: 0.35 }, pressed && { opacity: 0.7 }]}>
-      <Ionicons name={icon} size={20} color={Colors.primary} />
-    </Pressable>
-  );
-  return (
-    <View style={styles.stepper} accessible={false}>
-      <Text style={styles.stepLabel}>{label}</Text>
-      <View style={styles.stepRow}>
-        {button('remove', Math.max(0, value - step), value <= 0, `ลด${label}`)}
-        <Text style={styles.stepValue} accessibilityLabel={`${value} ${label}`}>
-          {value}
-        </Text>
-        {button('add', Math.min(max, value + step), value >= max, `เพิ่ม${label}`)}
-      </View>
-    </View>
-  );
+/** ตัวเลข from..to (รวมปลายทั้งสองข้าง) ทีละ step */
+function range(from: number, to: number, step = 1): number[] {
+  return Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
 }
 
 const styles = StyleSheet.create({
@@ -213,21 +210,6 @@ const styles = StyleSheet.create({
   problem: { fontSize: 13, color: Colors.danger },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   flex: { flex: 1, minWidth: 140 },
-  custom: { backgroundColor: Colors.primarySoft, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.sm },
+  custom: { gap: Spacing.xs },
   customTitle: { fontSize: 13, fontWeight: '700', color: Colors.primaryDark },
-  steppers: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, justifyContent: 'space-between' },
-  stepper: { alignItems: 'center', gap: 4, minWidth: 110, flexGrow: 1 },
-  stepLabel: { fontSize: 12, color: Colors.textMuted },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  stepButton: {
-    width: MinTouch,
-    height: MinTouch,
-    borderRadius: MinTouch / 2,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepValue: { minWidth: 28, textAlign: 'center', fontSize: 20, fontWeight: '800', color: Colors.text },
 });

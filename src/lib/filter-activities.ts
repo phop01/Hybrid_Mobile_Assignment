@@ -20,8 +20,9 @@ export function filterActivities(activities: Activity[], query: string, category
   });
 }
 
+/** จบแล้ว หรือเจ้าหน้าที่ยกเลิกแล้ว (ทั้งสองแบบไม่ต้องแสดงเป็นกิจกรรมที่กำลังจะมาถึง) */
 export function isEnded(activity: Activity, now = Date.now()): boolean {
-  return new Date(activity.endsAt).getTime() < now;
+  return Boolean(activity.cancelledAt) || new Date(activity.endsAt).getTime() < now;
 }
 
 export function seatsLeft(activity: Activity): number {
