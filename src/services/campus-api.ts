@@ -57,9 +57,14 @@ export async function logout(token: string): Promise<void> {
   await apiRequest('/auth/logout', { method: 'POST', token });
 }
 
+/** ขอรหัสล้างข้อมูลสาธิต: รหัส 6 หลักขึ้นในหน้าจอคอมที่รัน server (ไม่ส่งกลับมาที่แอป) */
+export async function requestResetCode(token: string): Promise<void> {
+  await apiRequest('/demo/reset/code', { method: 'POST', token });
+}
+
 /** ล้างข้อมูลทั้งระบบกลับเป็นข้อมูลตัวอย่าง (ใช้ตอนสาธิต) ทุก session ถูกล้าง ต้อง login ใหม่ */
-export async function resetDemoData(token: string): Promise<void> {
-  await apiRequest('/demo/reset', { method: 'POST', token });
+export async function resetDemoData(token: string, code: string): Promise<void> {
+  await apiRequest('/demo/reset', { method: 'POST', token, body: { code } });
 }
 
 export async function getMe(token: string): Promise<User> {
@@ -114,6 +119,16 @@ export async function addEvidencePhoto(token: string, registrationId: string, ph
     token,
     body: { photoBase64 },
   });
+  return parseOne(payload, isRegistration, 'รูปหลักฐาน');
+}
+
+/** ลบรูปที่แนบเพิ่ม (รูปหลักลบไม่ได้) photoUrl = ค่าใน extraPhotos เช่น /uploads/x.jpg */
+export async function deleteEvidencePhoto(token: string, registrationId: string, photoUrl: string): Promise<Registration> {
+  const file = photoUrl.split('/').pop() ?? '';
+  const payload = await apiRequest(
+    `/registrations/${encodeURIComponent(registrationId)}/photos/${encodeURIComponent(file)}`,
+    { method: 'DELETE', token },
+  );
   return parseOne(payload, isRegistration, 'รูปหลักฐาน');
 }
 
