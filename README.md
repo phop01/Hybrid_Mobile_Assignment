@@ -33,7 +33,8 @@
 npm install
 npm start          # เปิด API (พอร์ต 3001) + Expo พร้อมกัน แล้วสแกน QR ด้วย Expo Go
 npm run web        # เปิดบนเว็บ (จอคอมแสดงเป็นกรอบมือถือ)
-npm run reset-data # ล้างข้อมูลกลับเป็นข้อมูลตัวอย่าง (ปิด server ก่อน)
+npm run reset-live # ล้างข้อมูลกลับเป็นข้อมูลตัวอย่างขณะ server เปิดอยู่ (ทุกเครื่อง login ใหม่)
+npm run reset-data # แบบเดียวกันแต่ต้องปิด server ก่อน
 ```
 
 มือถือต้องต่อ Wi-Fi วงเดียวกับคอม

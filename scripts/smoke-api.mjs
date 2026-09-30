@@ -1,7 +1,7 @@
 // smoke test ของ API ส่วนแจ้งซ่อม/ประกาศ/กล่องแจ้งเตือน
 // วิธีใช้: เปิด server ก่อน (npm run api หรือ npm start) แล้วรัน npm run smoke
-// สคริปต์สร้างเรื่องทดสอบของตัวเองจริงในฐานข้อมูล ล้างได้ด้วย npm run reset-data
-// รันซ้ำภายใน 10 นาทีจะติดจำกัด 5 เรื่องต่อ 10 นาที (ตั้งใจไว้) ให้ reset-data ก่อนรันใหม่
+// สคริปต์สร้างเรื่องทดสอบของตัวเองจริงในฐานข้อมูล แล้วจบด้วยการล้างข้อมูลทั้งหมด (/admin/reset)
+// → อย่ารันกับ server ที่มีข้อมูลที่อยากเก็บไว้ · รันซ้ำได้เลย ไม่ต้อง reset-data
 const BASE = process.env.API_URL ?? 'http://localhost:3001';
 const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 1)]).toString('base64');
 let pass = 0;
@@ -251,17 +251,24 @@ if (existsSync(dbFile)) {
   check('db.json stores no raw tokens', !raw.includes(s1) && !raw.includes(staff) && !raw.includes('"token"'));
 }
 
-// ปุ่ม "ล้างข้อมูลสาธิต": ต้อง login + รหัส 6 หลักที่ขึ้นเฉพาะหน้าจอ server · รหัสผิดครั้งเดียวใช้ไม่ได้อีก
-r = await call('POST', '/demo/reset/code', null);
-check('reset code requires login 401', r.status === 401, String(r.status));
+// ล้างข้อมูลขณะ server เปิด (npm run reset-live): ไม่มีในแอป ต้องใช้ token ในไฟล์ server/.data
 r = await call('POST', '/demo/reset', s1, {});
-check('reset without code 403', r.status === 403, String(r.status));
-r = await call('POST', '/demo/reset/code', s1);
-check('request reset code 204 (code not in response)', r.status === 204 && !r.body, String(r.status));
-r = await call('POST', '/demo/reset', s1, { code: 'x' });
-check('reset with wrong code 403', r.status === 403, String(r.status));
+check('no demo reset endpoint 404', r.status === 404, String(r.status));
+r = await call('POST', '/admin/reset', s1);
+check('admin reset without token 404', r.status === 404, String(r.status));
+r = await call('POST', '/admin/reset', null, undefined, { 'x-admin-token': 'x' });
+check('admin reset with wrong token 404', r.status === 404, String(r.status));
 r = await call('GET', '/me', s1);
-check('data kept after wrong code', r.status === 200, String(r.status));
+check('data kept after rejected reset', r.status === 200, String(r.status));
+const tokenFile = new URL(`../server/.data/admin-token-${new URL(BASE).port || '80'}`, import.meta.url);
+if (existsSync(tokenFile)) {
+  // ท้ายสุด: ล้างจริง แล้วรัน smoke ซ้ำได้โดยไม่ต้อง reset-data
+  r = await call('POST', '/admin/reset', null, undefined, { 'x-admin-token': readFileSync(tokenFile, 'utf8').trim() });
+  check('admin reset with token 204', r.status === 204, String(r.status));
+  r = await call('GET', '/me', s1);
+  check('sessions cleared after reset 401', r.status === 401, String(r.status));
+  check('seed account works after reset', Boolean(await login('6609876543', 'campus1234')));
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

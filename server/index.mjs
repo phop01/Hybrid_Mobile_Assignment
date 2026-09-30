@@ -7,7 +7,7 @@
 //   (ไม่เชื่อค่าระยะที่แอปคำนวณ เพราะแอปถูกแก้ไขได้)
 
 import { createServer } from 'node:http';
-import { createHash, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, createReadStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -391,9 +391,22 @@ const LOGIN_LOCK_AFTER = 5;
 const LOGIN_LOCK_MS = 60 * 1000;
 const loginFailures = new Map(); // loginId → { count, lockedUntil }
 
-// รหัสล้างข้อมูลสาธิตที่ออกล่าสุด (อยู่ใน memory เท่านั้น)
-const RESET_CODE_TTL_MS = 5 * 60 * 1000;
-let resetCode = null;
+// ---------- token ผู้ดูแล (ล้างข้อมูลตอน server เปิดอยู่) ----------
+// สุ่มใหม่ทุกครั้งที่เปิด server เขียนลงไฟล์ใน server/.data ให้ scripts/reset-live.mjs อ่าน
+// ไม่เชื่อ IP ของผู้เรียก เพราะคำขอที่ผ่าน tunnel ก็มาจาก localhost เหมือนกัน
+
+const ADMIN_TOKEN = randomBytes(24).toString('hex');
+
+export function adminTokenFile(port) {
+  return join(DATA_DIR, `admin-token-${port}`);
+}
+
+function isAdminToken(value) {
+  if (typeof value !== 'string') return false;
+  const given = Buffer.from(value);
+  const expected = Buffer.from(ADMIN_TOKEN);
+  return given.length === expected.length && timingSafeEqual(given, expected);
+}
 
 function checkLoginLock(loginId) {
   const entry = loginFailures.get(loginId);
@@ -514,25 +527,11 @@ async function handle(req, res) {
     return send(res, 204);
   }
 
-  // ล้างข้อมูลสาธิต 2 ขั้น กันคนอื่นกดเล่น: รหัส 6 หลักขึ้นเฉพาะในหน้าจอคอมที่รัน server
-  // POST /demo/reset/code: ออกรหัสใหม่ (ใช้ได้ 5 นาที ครั้งเดียว)
-  if (method === 'POST' && url.pathname === '/demo/reset/code') {
-    requireUser(req);
-    resetCode = { code: String(randomInt(0, 1_000_000)).padStart(6, '0'), expiresAt: Date.now() + RESET_CODE_TTL_MS };
-    console.log(`\n[api] รหัสล้างข้อมูลสาธิต: ${resetCode.code} (ใช้ได้ 5 นาที)\n`);
-    return send(res, 204);
-  }
-
-  // POST /demo/reset { code }: รหัสถูก → กลับเป็นข้อมูลตัวอย่างล้วน (ทุก session ถูกล้าง ต้อง login ใหม่)
-  // รหัสผิดครั้งเดียว รหัสนั้นใช้ไม่ได้อีก ต้องขอใหม่ (เดารหัสไม่ได้)
-  if (method === 'POST' && url.pathname === '/demo/reset') {
-    requireUser(req);
-    const body = await readJson(req);
-    const current = resetCode;
-    resetCode = null;
-    if (!current || Date.now() > current.expiresAt || body.code !== current.code) {
-      throw new HttpError(403, 'wrong_code', 'รหัสไม่ถูกต้องหรือหมดอายุ กดล้างข้อมูลใหม่เพื่อขอรหัสใหม่');
-    }
+  // POST /admin/reset (header x-admin-token): กลับเป็นข้อมูลตัวอย่างล้วน ทุก session ถูกล้าง ต้อง login ใหม่
+  // เรียกจากคอมที่รัน server เท่านั้น (npm run reset-live อ่าน token จากไฟล์) ไม่มีในแอป
+  // token ผิด/ไม่มี ตอบ 404 เหมือนไม่มี endpoint นี้
+  if (method === 'POST' && url.pathname === '/admin/reset') {
+    if (!isAdminToken(req.headers['x-admin-token'])) throw new HttpError(404, 'not_found', 'ไม่พบ endpoint นี้');
     Object.assign(db, buildDb({}));
     loginFailures.clear();
     rmSync(UPLOAD_DIR, { recursive: true, force: true });
@@ -972,6 +971,7 @@ export function startServer(port = PORT) {
       }
     });
   });
+  writeFileSync(adminTokenFile(port), ADMIN_TOKEN);
   server.listen(port, '0.0.0.0', () => {
     console.log(`[api] KKUNK Today API พร้อมที่ http://localhost:${port}`);
   });
