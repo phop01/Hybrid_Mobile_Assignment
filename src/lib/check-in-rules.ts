@@ -19,6 +19,9 @@ export function canCheckIn(registration: Registration): CheckInDecision {
   if (registration.status === 'pending_review' || registration.status === 'checked_in') {
     return { ok: false, reason: 'already_submitted', message: 'ส่งหลักฐานการเข้าร่วมไปแล้ว' };
   }
+  if (registration.status === 'rejected') {
+    return { ok: false, reason: 'not_registered', message: 'การลงทะเบียนนี้ไม่ได้รับอนุมัติ' };
+  }
   if (registration.status !== 'registered') {
     return { ok: false, reason: 'not_registered', message: 'การลงทะเบียนนี้ถูกยกเลิกแล้ว' };
   }

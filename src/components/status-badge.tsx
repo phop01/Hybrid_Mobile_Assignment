@@ -14,6 +14,7 @@ const STATUS: Record<DisplayStatus, { label: string; fg: string; bg: string; ico
   pending_review: { label: 'รอตรวจหลักฐาน', fg: Colors.warning, bg: Colors.warningSoft, icon: 'hourglass' },
   checked_in: { label: 'เข้าร่วมแล้ว', fg: Colors.success, bg: Colors.successSoft, icon: 'checkmark-circle' },
   cancelled: { label: 'ยกเลิกแล้ว', fg: Colors.textMuted, bg: Colors.background, icon: 'close-circle' },
+  rejected: { label: 'ไม่ได้รับอนุมัติ', fg: Colors.danger, bg: Colors.dangerSoft, icon: 'ban' },
 };
 
 export function StatusBadge({ status }: { status: DisplayStatus }) {

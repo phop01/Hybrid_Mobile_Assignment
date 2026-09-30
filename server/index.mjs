@@ -182,8 +182,15 @@ function distanceMeters(a, b) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+/** การลงทะเบียนที่ยังนับที่นั่ง (ไม่นับที่ยกเลิก/ไม่ได้รับอนุมัติ) */
 function activeRegistrations(activityId) {
-  return db.registrations.filter((r) => r.activityId === activityId && r.status !== 'cancelled');
+  return db.registrations.filter((r) => r.activityId === activityId && r.status !== 'cancelled' && r.status !== 'rejected');
+}
+
+/** เหตุผลจากเจ้าหน้าที่ 3–200 ตัวอักษร (ไม่ครบ → null) */
+function reasonText(value) {
+  const note = typeof value === 'string' ? value.trim() : '';
+  return note.length >= 3 && note.length <= 200 ? note : null;
 }
 
 function publicActivity(activity) {
@@ -634,8 +641,12 @@ async function handle(req, res) {
     if (Object.keys(errors).length > 0) {
       return send(res, 400, { code: 'validation_failed', message: 'ข้อมูลไม่ถูกต้อง', fields: errors });
     }
+    if (activity.cancelledAt) throw new HttpError(409, 'activity_cancelled', 'กิจกรรมนี้ถูกยกเลิกแล้ว');
     if (new Date(activity.endsAt).getTime() < Date.now()) {
       throw new HttpError(409, 'activity_ended', 'กิจกรรมนี้จบไปแล้ว');
+    }
+    if (db.registrations.some((r) => r.activityId === activity.id && r.userId === user.id && r.status === 'rejected')) {
+      throw new HttpError(409, 'registration_rejected', 'เจ้าหน้าที่ไม่รับการลงทะเบียนของคุณในกิจกรรมนี้');
     }
     if (activeRegistrations(activity.id).some((r) => r.userId === user.id)) {
       throw new HttpError(409, 'already_registered', 'คุณลงทะเบียนกิจกรรมนี้แล้ว');
@@ -705,6 +716,7 @@ async function handle(req, res) {
       if (registration.checkIn) return send(res, 200, publicRegistration(registration));
       throw new HttpError(409, 'not_registered', 'การลงทะเบียนนี้ถูกยกเลิกแล้ว');
     }
+    if (activity.cancelledAt) throw new HttpError(409, 'activity_cancelled', 'กิจกรรมนี้ถูกยกเลิกแล้ว');
     const { photoBase64, latitude, longitude, takenAt } = body;
     // คิวออฟไลน์รุ่นเก่าไม่มีช่องนี้ = ถ่ายสด
     const photoSource = body.photoSource === 'library' ? 'library' : 'camera';
@@ -737,19 +749,14 @@ async function handle(req, res) {
     };
 
     registration.reviewNote = null;
-    if (activity.checkInMethod === 'paper') {
-      // แอปอ่านลายเซ็นในรูปไม่ได้ ต้องให้ผู้จัดตรวจเทียบกับกระดาษก่อนนับ (หน้า "จัดการ" ของผู้จัด)
-      registration.status = 'pending_review';
-      notify([activity.organizerId], {
-        kind: 'manage',
-        targetId: activity.id,
-        title: 'มีหลักฐานการเข้าร่วมรอตรวจ',
-        body: `${registration.form.fullName} · ${activity.title}`,
-      });
-    } else {
-      registration.status = 'checked_in';
-      registration.checkIn.verifiedAt = registration.checkIn.submittedAt;
-    }
+    // ทุกกิจกรรม: เจ้าหน้าที่เป็นคนตรวจรูปแล้วกดผ่าน/ไม่ผ่านเอง (แชทที่ 3 ไม่ตรวจตำแหน่ง/เวลาแล้ว จึงไม่ผ่านอัตโนมัติ)
+    registration.status = 'pending_review';
+    notify([activity.organizerId], {
+      kind: 'manage',
+      targetId: activity.id,
+      title: 'มีหลักฐานการเข้าร่วมรอตรวจ',
+      body: `${registration.form.fullName} · ${activity.title}`,
+    });
     persist();
     return send(res, 200, publicRegistration(registration));
   }
@@ -822,6 +829,54 @@ async function handle(req, res) {
     );
     persist();
     return send(res, 200, publicRegistration(registration));
+  }
+
+  // POST /registrations/:id/reject (เจ้าหน้าที่ไม่รับการลงทะเบียนของนักศึกษาคนนี้ พร้อมเหตุผล)
+  if (method === 'POST' && parts[0] === 'registrations' && parts[2] === 'reject' && parts.length === 3) {
+    const organizer = requireStaff(req, 'activities');
+    const registration = db.registrations.find((r) => r.id === parts[1]);
+    if (!registration) throw new HttpError(404, 'registration_not_found', 'ไม่พบการลงทะเบียนนี้');
+    const activity = findOwnActivity(organizer, registration.activityId);
+    if (registration.status !== 'registered' && registration.status !== 'pending_review') {
+      throw new HttpError(409, 'cannot_reject', 'รายการนี้ไม่อยู่ในสถานะที่ไม่รับได้แล้ว');
+    }
+    const note = reasonText((await readJson(req)).note);
+    if (!note) return send(res, 400, { code: 'validation_failed', message: 'กรุณาระบุเหตุผล', fields: { note: 'กรุณาระบุเหตุผล' } });
+    registration.status = 'rejected';
+    registration.reviewNote = note;
+    notify([registration.userId], {
+      kind: 'registration',
+      targetId: registration.id,
+      title: 'การลงทะเบียนไม่ได้รับอนุมัติ',
+      body: `${activity.title}: ${note}`,
+    });
+    persist();
+    return send(res, 200, publicRegistration(registration));
+  }
+
+  // POST /activities/:id/cancel (เจ้าหน้าที่ยกเลิกทั้งกิจกรรม แจ้งทุกคนที่ลงทะเบียน)
+  if (method === 'POST' && parts[0] === 'activities' && parts[2] === 'cancel' && parts.length === 3) {
+    const organizer = requireStaff(req, 'activities');
+    const activity = findOwnActivity(organizer, parts[1]);
+    if (activity.cancelledAt) throw new HttpError(409, 'activity_cancelled', 'กิจกรรมนี้ถูกยกเลิกไปแล้ว');
+    if (new Date(activity.endsAt).getTime() < Date.now()) throw new HttpError(409, 'activity_ended', 'กิจกรรมนี้จบไปแล้ว');
+    const note = reasonText((await readJson(req)).note);
+    if (!note) return send(res, 400, { code: 'validation_failed', message: 'กรุณาระบุเหตุผล', fields: { note: 'กรุณาระบุเหตุผล' } });
+    activity.cancelledAt = new Date().toISOString();
+    activity.cancelReason = note;
+    const affected = db.registrations.filter(
+      (r) => r.activityId === activity.id && (r.status === 'registered' || r.status === 'pending_review'),
+    );
+    for (const r of affected) {
+      r.status = 'cancelled';
+      r.reviewNote = `กิจกรรมถูกยกเลิก: ${note}`;
+    }
+    notify(
+      affected.map((r) => r.userId),
+      { kind: 'activity', targetId: activity.id, title: 'กิจกรรมถูกยกเลิก', body: `${activity.title}: ${note}` },
+    );
+    persist();
+    return send(res, 200, publicActivity(activity));
   }
 
   // แจ้งซ่อม / ประกาศ / กล่องแจ้งเตือน (แยกไฟล์ server/tickets.mjs)

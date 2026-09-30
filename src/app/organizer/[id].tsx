@@ -1,5 +1,5 @@
-// ผู้จัดดูรายชื่อผู้เข้าร่วม และตรวจหลักฐานใบเซ็นชื่อ (ผ่าน / ไม่ผ่านพร้อมเหตุผล)
-// แทนที่ "ผู้จัดจำลอง" ของ Assignment 11: ตอนนี้มีคนตรวจจริงในแอป
+// ผู้จัดดูรายชื่อผู้เข้าร่วม ตรวจหลักฐานการเข้าร่วม (ผ่าน / ไม่ผ่านพร้อมเหตุผล) ทุกกิจกรรม
+// ไม่รับการลงทะเบียนรายคน และยกเลิกทั้งกิจกรรมได้ (ทุกอย่างต้องมีเหตุผล และอีกฝั่งได้แจ้งเตือน)
 
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -11,8 +11,10 @@ import { StatusBadge } from '@/components/status-badge';
 import { Banner, Button, Card, Chip, InfoRow, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { firstParam } from '@/hooks/use-activity';
+import { useNow } from '@/hooks/use-now';
 import { useActivityAnnouncements, useAttendees } from '@/hooks/use-organizer';
 import { formatDateRange, formatTime, formatVenueDistance } from '@/lib/format';
+import { confirmAction } from '@/lib/platform-actions';
 import { PHOTO_SOURCE_LABEL } from '@/lib/photo-time';
 import { toAbsoluteUrl } from '@/services/api-config';
 import { useActivities } from '@/state/activities-context';
@@ -23,20 +25,27 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'ทั้งหมด' },
   { key: 'pending_review', label: 'รอตรวจ' },
   { key: 'checked_in', label: 'เข้าร่วมแล้ว' },
-  { key: 'registered', label: 'ยังไม่เช็กอิน' },
+  { key: 'registered', label: 'ยังไม่ส่งหลักฐาน' },
+  { key: 'rejected', label: 'ไม่รับ' },
 ];
-const REJECT_REASONS = ['ไม่พบชื่อในใบเซ็นชื่อ', 'รูปไม่ชัด อ่านไม่ออก', 'ไม่ใช่ใบเซ็นชื่อของกิจกรรมนี้'];
+const REJECT_REASONS = ['ไม่พบตัวคุณในรูป', 'รูปไม่เกี่ยวกับกิจกรรมนี้', 'ไม่พบชื่อในใบเซ็นชื่อ', 'รูปไม่ชัด'];
+const REGISTRATION_REJECT_REASONS = ['คุณสมบัติไม่ตรงกับกิจกรรม', 'ข้อมูลลงทะเบียนไม่ถูกต้อง', 'ที่นั่งสำหรับกลุ่มนี้เต็มแล้ว'];
+const CANCEL_REASONS = ['สภาพอากาศไม่เอื้ออำนวย', 'วิทยากรติดภารกิจ', 'ผู้ลงทะเบียนไม่ถึงจำนวนขั้นต่ำ'];
 
 export default function OrganizerActivityScreen() {
   const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);
   const { getById } = useActivities();
   const activity = id ? getById(id) : undefined;
-  const { data: attendees, loading, error, reload, review } = useAttendees(id);
+  const { data: attendees, loading, error, reload, review, reject, cancelActivity } = useAttendees(id);
+  const { refresh: refreshActivities } = useActivities();
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const now = useNow();
   const [filter, setFilter] = useState<Filter>('all');
   const announcements = useActivityAnnouncements(id);
 
   const counts = useMemo(() => {
-    const c: Record<Filter, number> = { all: attendees.length, pending_review: 0, checked_in: 0, registered: 0, cancelled: 0 };
+    const c: Record<Filter, number> = { all: attendees.length, pending_review: 0, checked_in: 0, registered: 0, cancelled: 0, rejected: 0 };
     for (const r of attendees) c[r.status] += 1;
     return c;
   }, [attendees]);
@@ -71,17 +80,24 @@ export default function OrganizerActivityScreen() {
       ) : null}
 
       {error ? <Banner tone="danger">{error}</Banner> : null}
+      {activity?.cancelledAt ? (
+        <Banner tone="danger" icon="close-circle">
+          กิจกรรมนี้ถูกยกเลิกแล้ว: {activity.cancelReason}
+        </Banner>
+      ) : null}
 
-      <Card>
-        <SectionTitle>แจ้งเตือนผู้ลงทะเบียน</SectionTitle>
-        <AnnouncementComposer onSend={announcements.send} />
-        <AnnouncementList items={announcements.data.slice(0, 3)} />
-      </Card>
+      {activity?.cancelledAt ? null : (
+        <Card>
+          <SectionTitle>แจ้งเตือนผู้ลงทะเบียน</SectionTitle>
+          <AnnouncementComposer onSend={announcements.send} />
+          <AnnouncementList items={announcements.data.slice(0, 3)} />
+        </Card>
+      )}
 
       {pending.length > 0 ? (
         <>
           <SectionTitle>หลักฐานรอตรวจ ({pending.length})</SectionTitle>
-          <Text style={styles.muted}>เทียบรูปกับใบเซ็นชื่อกระดาษ ผ่านแล้วนักศึกษาได้ชั่วโมงทันทีและได้รับแจ้งเตือน</Text>
+          <Text style={styles.muted}>ดูรูปแล้วกดผ่าน/ไม่ผ่าน (แบบใบเซ็นชื่อ: เทียบกับกระดาษ) ผ่านแล้วนักศึกษาได้ชั่วโมงทันทีและได้รับแจ้งเตือน</Text>
           {pending.map((r) => (
             <ReviewCard key={r.id} registration={r} onReview={review} />
           ))}
@@ -101,26 +117,130 @@ export default function OrganizerActivityScreen() {
       ) : (
         <Card>
           {visible.map((r, i) => (
-            <View key={r.id} style={[styles.person, i > 0 && styles.divider]}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={styles.name}>{r.form.fullName}</Text>
-                <Text style={styles.muted}>
-                  {r.form.studentId} · {r.form.faculty}
-                </Text>
-                {r.checkIn ? (
+            <View key={r.id} style={[styles.personBlock, i > 0 && styles.divider]}>
+              <View style={styles.person}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={styles.name}>{r.form.fullName}</Text>
                   <Text style={styles.muted}>
-                    ส่งหลักฐาน {formatTime(r.checkIn.takenAt)} · {formatVenueDistance(r.checkIn.distanceM)}
+                    {r.form.studentId} · {r.form.faculty}
                   </Text>
-                ) : r.reviewNote ? (
-                  <Text style={[styles.muted, { color: Colors.danger }]}>ไม่ผ่าน: {r.reviewNote} (รอส่งใหม่)</Text>
-                ) : null}
+                  {r.status === 'rejected' || r.status === 'cancelled' ? (
+                    r.reviewNote ? (
+                      <Text style={[styles.muted, { color: Colors.danger }]}>
+                        {r.status === 'rejected' ? 'ไม่รับ: ' : ''}
+                        {r.reviewNote}
+                      </Text>
+                    ) : null
+                  ) : r.checkIn ? (
+                    <Text style={styles.muted}>
+                      ส่งหลักฐาน {formatTime(r.checkIn.takenAt)} · {formatVenueDistance(r.checkIn.distanceM)}
+                    </Text>
+                  ) : r.reviewNote ? (
+                    <Text style={[styles.muted, { color: Colors.danger }]}>หลักฐานไม่ผ่าน: {r.reviewNote} (รอส่งใหม่)</Text>
+                  ) : null}
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <StatusBadge status={r.status} />
+                  {(r.status === 'registered' || r.status === 'pending_review') && rejectingId !== r.id && !activity?.cancelledAt ? (
+                    <Button title="ไม่รับ" variant="ghost" icon="ban" onPress={() => setRejectingId(r.id)} />
+                  ) : null}
+                </View>
               </View>
-              <StatusBadge status={r.status} />
+              {rejectingId === r.id ? (
+                <ReasonForm
+                  reasons={REGISTRATION_REJECT_REASONS}
+                  label={`เหตุผลที่ไม่รับ ${r.form.fullName} (นักศึกษาจะเห็นข้อความนี้)`}
+                  confirmLabel="ยืนยันไม่รับ"
+                  onCancel={() => setRejectingId(null)}
+                  onConfirm={async (note) => {
+                    await reject(r.id, note);
+                    setRejectingId(null);
+                  }}
+                />
+              ) : null}
             </View>
           ))}
         </Card>
       )}
+
+      {activity && !activity.cancelledAt && new Date(activity.endsAt).getTime() > now ? (
+        <Card>
+          <SectionTitle>ยกเลิกกิจกรรม</SectionTitle>
+          <Text style={styles.muted}>ทุกคนที่ลงทะเบียนจะได้แจ้งเตือนพร้อมเหตุผล และลงทะเบียนเพิ่มไม่ได้อีก</Text>
+          {cancelling ? (
+            <ReasonForm
+              reasons={CANCEL_REASONS}
+              label="เหตุผลที่ยกเลิก (ผู้ลงทะเบียนจะเห็นข้อความนี้)"
+              confirmLabel="ยืนยันยกเลิกกิจกรรม"
+              onCancel={() => setCancelling(false)}
+              onConfirm={async (note) => {
+                const ok = await confirmAction('ยกเลิกกิจกรรม', `ยกเลิก “${activity.title}” ใช่ไหม? ทำย้อนกลับไม่ได้`, 'ยกเลิกกิจกรรม');
+                if (!ok) return;
+                await cancelActivity(note);
+                await refreshActivities();
+                setCancelling(false);
+              }}
+            />
+          ) : (
+            <Button title="ยกเลิกกิจกรรมนี้" variant="danger" icon="close-circle-outline" onPress={() => setCancelling(true)} />
+          )}
+        </Card>
+      ) : null}
     </Screen>
+  );
+}
+
+/** เลือกเหตุผลสำเร็จรูปหรือพิมพ์เอง แล้วยืนยัน (ใช้กับ ไม่รับการลงทะเบียน / ยกเลิกกิจกรรม) */
+function ReasonForm({
+  reasons,
+  label,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+}: {
+  reasons: string[];
+  label: string;
+  confirmLabel: string;
+  onCancel: () => void;
+  onConfirm: (note: string) => Promise<void>;
+}) {
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <View style={{ gap: Spacing.sm }}>
+      <View style={styles.chipsWrap}>
+        {reasons.map((r) => (
+          <Chip key={r} label={r} selected={note === r} onPress={() => setNote(r)} />
+        ))}
+      </View>
+      <TextField label={label} value={note} onChangeText={setNote} maxLength={200} />
+      {error ? <Banner tone="danger">{error}</Banner> : null}
+      <View style={styles.actions}>
+        <View style={styles.flex}>
+          <Button title="ไม่ทำแล้ว" variant="secondary" onPress={onCancel} disabled={busy} />
+        </View>
+        <View style={styles.flex}>
+          <Button
+            title={confirmLabel}
+            variant="danger"
+            loading={busy}
+            disabled={note.trim().length < 3}
+            onPress={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                await onConfirm(note.trim());
+              } catch (e) {
+                setError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -219,7 +339,8 @@ const styles = StyleSheet.create({
   muted: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
   chips: { gap: Spacing.sm, paddingVertical: 2 },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  person: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: Spacing.sm },
+  personBlock: { gap: Spacing.sm, paddingVertical: Spacing.sm },
+  person: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   divider: { borderTopWidth: 1, borderTopColor: Colors.border },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: Radius.md, backgroundColor: Colors.border },
   extra: { width: 96, height: 96, borderRadius: Radius.md, backgroundColor: Colors.border },

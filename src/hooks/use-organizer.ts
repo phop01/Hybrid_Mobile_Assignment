@@ -80,7 +80,29 @@ export function useAttendees(activityId: string | undefined) {
     [token, live],
   );
 
-  return { ...live, review };
+  /** ไม่รับการลงทะเบียนของคนนี้ */
+  const reject = useCallback(
+    async (registrationId: string, note: string) => {
+      if (!token) throw new Error('กรุณาเข้าสู่ระบบ');
+      const updated = await api.rejectRegistration(token, registrationId, note);
+      live.setData(live.data.map((r) => (r.id === updated.id ? updated : r)));
+      return updated;
+    },
+    [token, live],
+  );
+
+  /** ยกเลิกทั้งกิจกรรม แล้วโหลดรายชื่อใหม่ (ทุกคนเปลี่ยนเป็นยกเลิก) */
+  const cancelActivity = useCallback(
+    async (note: string) => {
+      if (!token || !activityId) throw new Error('กรุณาเข้าสู่ระบบ');
+      const updated = await api.cancelActivity(token, activityId, note);
+      await live.reload();
+      return updated;
+    },
+    [token, activityId, live],
+  );
+
+  return { ...live, review, reject, cancelActivity };
 }
 
 /**

@@ -183,11 +183,50 @@ const myReg = r.body.id;
 r = await call('POST', `/registrations/${myReg}/photos`, s1, { photoBase64: JPEG });
 check('extra photo before submitting 409', r.status === 409);
 r = await call('POST', `/registrations/${myReg}/check-in`, s1, { photoBase64: JPEG, photoSource: 'library', latitude: null, longitude: null, takenAt: '2020-01-01T00:00:00Z' });
-check('check-in without location, any time 200', r.status === 200 && r.body.status === 'checked_in' && r.body.checkIn.distanceM === null, JSON.stringify(r.body));
+check('check-in without location, any time → waits for staff', r.status === 200 && r.body.status === 'pending_review' && r.body.checkIn.distanceM === null, JSON.stringify(r.body));
 r = await call('POST', `/registrations/${myReg}/photos`, s1, { photoBase64: JPEG });
 check('add extra evidence photo', r.status === 200 && r.body.checkIn.extraPhotos.length === 1, JSON.stringify(r.body));
 r = await call('POST', `/registrations/${myReg}/photos`, s2, { photoBase64: JPEG });
 check('cannot add photo to another user registration 404', r.status === 404, String(r.status));
+
+// ---- เจ้าหน้าที่: ตรวจหลักฐาน / ไม่รับการลงทะเบียน / ยกเลิกกิจกรรม ----
+r = await call('POST', `/registrations/${myReg}/review`, org, { approve: true });
+check('staff approves evidence → checked_in', r.status === 200 && r.body.status === 'checked_in', JSON.stringify(r.body));
+const s3 = (
+  await call('POST', '/auth/register', null, { studentId: `67${String(Date.now()).slice(-8)}`, fullName: 'ทดสอบ ไม่รับ', faculty: 'คณะสหวิทยาการ', password: 'test12345' })
+).body.token;
+r = await call('POST', `/activities/${openActivity.id}/registrations`, s3, { fullName: 'ทดสอบ ไม่รับ', studentId: '6700000000', faculty: 'คณะสหวิทยาการ', phone: '0812345678', dietary: '' });
+const regToReject = r.body.id;
+r = await call('POST', `/registrations/${regToReject}/reject`, s3, { note: 'ไม่รับตัวเอง' });
+check('student cannot reject registration 403', r.status === 403, String(r.status));
+r = await call('POST', `/registrations/${regToReject}/reject`, staff, { note: 'ไม่ใช่งานของฉัน' });
+check('facilities staff cannot reject registration 403', r.status === 403, String(r.status));
+r = await call('POST', `/registrations/${regToReject}/reject`, org, { note: 'x' });
+check('reject without reason 400', r.status === 400, String(r.status));
+r = await call('POST', `/registrations/${regToReject}/reject`, org, { note: 'คุณสมบัติไม่ตรงกับกิจกรรม' });
+check('staff rejects registration', r.status === 200 && r.body.status === 'rejected' && r.body.reviewNote === 'คุณสมบัติไม่ตรงกับกิจกรรม', JSON.stringify(r.body));
+r = await call('POST', `/activities/${openActivity.id}/registrations`, s3, { fullName: 'ทดสอบ ไม่รับ', studentId: '6700000000', faculty: 'คณะสหวิทยาการ', phone: '0812345678', dietary: '' });
+check('rejected student cannot register again 409', r.status === 409, String(r.status));
+r = await call('GET', '/me/inbox?since=', s3);
+check('rejected student notified', (r.body.items ?? r.body).some((i) => i.title === 'การลงทะเบียนไม่ได้รับอนุมัติ'));
+r = await call('POST', '/activities', org, {
+  title: 'กิจกรรมทดสอบยกเลิก', description: 'ทดสอบการยกเลิกกิจกรรมทั้งกิจกรรม', category: 'academic',
+  startsAt: new Date(Date.now() + 3600e3).toISOString(), endsAt: new Date(Date.now() + 7200e3).toISOString(),
+  location: { name: 'ห้อง 101', latitude: 17.87, longitude: 102.72, radiusM: 100 }, checkInMethod: 'app', capacity: 20,
+});
+const toCancel = r.body.id;
+r = await call('POST', `/activities/${toCancel}/registrations`, s3, { fullName: 'ทดสอบ ไม่รับ', studentId: '6700000000', faculty: 'คณะสหวิทยาการ', phone: '0812345678', dietary: '' });
+const cancelledReg = r.body.id;
+r = await call('POST', `/activities/${toCancel}/cancel`, s3, { note: 'นักศึกษายกเลิกเอง' });
+check('student cannot cancel activity 403', r.status === 403, String(r.status));
+r = await call('POST', `/activities/${toCancel}/cancel`, org, { note: 'วิทยากรติดภารกิจ' });
+check('staff cancels activity', r.status === 200 && !!r.body.cancelledAt && r.body.cancelReason === 'วิทยากรติดภารกิจ', JSON.stringify(r.body));
+r = await call('GET', `/registrations/${cancelledReg}`, s3);
+check('registrations of cancelled activity become cancelled', r.body.status === 'cancelled', JSON.stringify(r.body));
+r = await call('POST', `/activities/${toCancel}/registrations`, s1, { fullName: 'ทดสอบ นักศึกษา', studentId: '6600000000', faculty: 'คณะสหวิทยาการ', phone: '0812345678', dietary: '' });
+check('cannot register for cancelled activity 409', r.status === 409, String(r.status));
+r = await call('GET', '/me/inbox?since=', s3);
+check('registrants notified of cancellation', (r.body.items ?? r.body).some((i) => i.title === 'กิจกรรมถูกยกเลิก'));
 
 r = await call('POST', '/auth/logout', s2);
 r = await call('GET', '/me', s2);
