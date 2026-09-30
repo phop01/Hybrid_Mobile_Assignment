@@ -68,13 +68,20 @@ function UserTickets({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [offlineSince, setOfflineSince] = useState<string | null>(null);
   const [queued, setQueued] = useState<PendingTicket[]>([]);
+  // ค่าล่าสุดเสมอ: ผลของ action ที่เพิ่งเสร็จต้องต่อจากข้อมูลปัจจุบัน ไม่ใช่ค่าตอนกดปุ่ม
   const ticketsRef = useRef<Ticket[]>([]);
+  const broadcastsRef = useRef<Broadcast[]>([]);
+
+  const show = useCallback((nextTickets: Ticket[], nextBroadcasts: Broadcast[]) => {
+    ticketsRef.current = nextTickets;
+    broadcastsRef.current = nextBroadcasts;
+    setTickets(nextTickets);
+    setBroadcasts(nextBroadcasts);
+  }, []);
 
   const apply = useCallback(
     (nextTickets: Ticket[], nextBroadcasts: Broadcast[]) => {
-      ticketsRef.current = nextTickets;
-      setTickets(nextTickets);
-      setBroadcasts(nextBroadcasts);
+      show(nextTickets, nextBroadcasts);
       if (!userId) return;
       writeJson(TICKETS_CACHE_KEY, {
         userId,
@@ -86,16 +93,16 @@ function UserTickets({ children }: { children: ReactNode }) {
       const mine = nextTickets.filter((t) => t.reporterId === userId || t.following || t.assigneeId === userId);
       syncAppointmentReminders(mine).catch(() => undefined);
     },
-    [userId],
+    [show, userId],
   );
 
   const replaceOne = useCallback(
     (ticket: Ticket) => {
       const exists = ticketsRef.current.some((t) => t.id === ticket.id);
       const next = exists ? ticketsRef.current.map((t) => (t.id === ticket.id ? ticket : t)) : [ticket, ...ticketsRef.current];
-      apply(next, broadcasts);
+      apply(next, broadcastsRef.current);
     },
-    [apply, broadcasts],
+    [apply],
   );
 
   /** ส่งเรื่องที่ค้างในคิว (key เดิม server ไม่สร้างซ้ำ) */
@@ -106,7 +113,7 @@ function UserTickets({ children }: { children: ReactNode }) {
         await ticketsApi.createTicket(token, item.input, item.idempotencyKey);
         await removeQueuedTicket(item.idempotencyKey);
       } catch (e) {
-        if (e instanceof ApiError && e.isNetwork) break;
+        if (e instanceof ApiError && e.isRetryable) break; // ยังออฟไลน์/server ล่มชั่วคราว ลองใหม่รอบหน้า
         await removeQueuedTicket(item.idempotencyKey);
         setError(e instanceof Error ? `เรื่องที่รอส่งถูกปฏิเสธ: ${e.message}` : 'เรื่องที่รอส่งถูกปฏิเสธ');
       }
@@ -127,9 +134,7 @@ function UserTickets({ children }: { children: ReactNode }) {
       if (e instanceof ApiError && e.isNetwork) {
         const cache = await readJson(TICKETS_CACHE_KEY, isCache, null);
         if (cache && cache.userId === userId) {
-          ticketsRef.current = cache.tickets;
-          setTickets(cache.tickets);
-          setBroadcasts(cache.broadcasts);
+          show(cache.tickets, cache.broadcasts);
           setOfflineSince(cache.updatedAt);
           setStatus('ready');
           return;
@@ -138,7 +143,7 @@ function UserTickets({ children }: { children: ReactNode }) {
       setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
       setStatus((s) => (s === 'ready' ? s : 'error'));
     }
-  }, [apply, flushQueue, token, userId]);
+  }, [apply, flushQueue, show, token, userId]);
 
   // เข้าระบบ → แสดงข้อมูลในเครื่องก่อน แล้วโหลดจาก server
   useEffect(() => {
@@ -146,9 +151,7 @@ function UserTickets({ children }: { children: ReactNode }) {
     readJson(TICKETS_CACHE_KEY, isCache, null)
       .then((cache) => {
         if (cache && cache.userId === userId) {
-          ticketsRef.current = cache.tickets;
-          setTickets(cache.tickets);
-          setBroadcasts(cache.broadcasts);
+          show(cache.tickets, cache.broadcasts);
           setStatus('ready');
         }
       })
@@ -216,10 +219,10 @@ function UserTickets({ children }: { children: ReactNode }) {
     async (input: NewBroadcastInput) => {
       if (!token) throw new Error('กรุณาเข้าสู่ระบบ');
       const created = await ticketsApi.createBroadcast(token, input);
-      apply(ticketsRef.current, [created, ...broadcasts]);
+      apply(ticketsRef.current, [created, ...broadcastsRef.current]);
       return created;
     },
-    [apply, broadcasts, token],
+    [apply, token],
   );
 
   const endBroadcast = useCallback(
@@ -228,10 +231,10 @@ function UserTickets({ children }: { children: ReactNode }) {
       await ticketsApi.endBroadcast(token, id);
       apply(
         ticketsRef.current,
-        broadcasts.filter((b) => b.id !== id),
+        broadcastsRef.current.filter((b) => b.id !== id),
       );
     },
-    [apply, broadcasts, token],
+    [apply, token],
   );
 
   const value: TicketsValue = {

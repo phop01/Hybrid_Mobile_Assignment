@@ -51,6 +51,8 @@ export default function NewBroadcastScreen() {
   };
 
   const send = async () => {
+    // ประกาศซ้ำ = ทุกคนได้แจ้งเตือนสองรอบ จึงกันกดรัว
+    if (sending) return;
     const nextErrors: Record<string, string> = {};
     if (message.trim().length < 5) nextErrors.message = 'ข้อความต้องยาวอย่างน้อย 5 ตัวอักษร';
     if (placeName.trim().length < 2) nextErrors.locationName = 'กรุณาระบุสถานที่';
