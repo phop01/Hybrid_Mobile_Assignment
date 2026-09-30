@@ -1,4 +1,4 @@
-// API ส่วนกิจกรรมและบัญชีผู้ใช้ของ NK Today (ตรงกับ server/index.mjs)
+// API ส่วนกิจกรรมและบัญชีผู้ใช้ของ KKUNK Today (ตรงกับ server/index.mjs)
 
 import type {
   AccountRole,
@@ -127,7 +127,7 @@ export async function getAttendees(token: string, activityId: string, signal?: A
   return parseList(payload, isRegistration, 'ผู้เข้าร่วม');
 }
 
-/** ผู้จัดตรวจหลักฐานใบเซ็นชื่อ: ผ่าน หรือไม่ผ่านพร้อมเหตุผล */
+/** ผู้จัดตรวจหลักฐานการเข้าร่วม: ผ่าน หรือไม่ผ่านพร้อมเหตุผล */
 export async function reviewRegistration(
   token: string,
   registrationId: string,
@@ -139,6 +139,26 @@ export async function reviewRegistration(
     body: decision,
   });
   return parseOne(payload, isRegistration, 'การลงทะเบียน');
+}
+
+/** ผู้จัดไม่รับการลงทะเบียนของนักศึกษาคนนี้ พร้อมเหตุผล */
+export async function rejectRegistration(token: string, registrationId: string, note: string): Promise<Registration> {
+  const payload = await apiRequest(`/registrations/${encodeURIComponent(registrationId)}/reject`, {
+    method: 'POST',
+    token,
+    body: { note },
+  });
+  return parseOne(payload, isRegistration, 'การลงทะเบียน');
+}
+
+/** ผู้จัดยกเลิกทั้งกิจกรรม (ทุกคนที่ลงทะเบียนได้แจ้งเตือน) */
+export async function cancelActivity(token: string, activityId: string, note: string): Promise<Activity> {
+  const payload = await apiRequest(`/activities/${encodeURIComponent(activityId)}/cancel`, {
+    method: 'POST',
+    token,
+    body: { note },
+  });
+  return parseOne(payload, isActivity, 'กิจกรรม');
 }
 
 /** ผู้จัดส่งประกาศถึงทุกคนที่ลงทะเบียนกิจกรรมนี้ */

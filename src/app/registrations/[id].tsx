@@ -41,7 +41,8 @@ export default function RegistrationDetailScreen() {
   }
 
   const queued = queuedIds.includes(registration.id);
-  const ended = now > new Date(activity.endsAt).getTime();
+  // กิจกรรมถูกยกเลิก = จบแล้ว (ไม่ให้ส่งหลักฐาน/ตั้งเตือน แม้ข้อมูลการลงทะเบียนในเครื่องยังเก่าอยู่)
+  const ended = Boolean(activity.cancelledAt) || now > new Date(activity.endsAt).getTime();
 
   const onCancel = async () => {
     const ok = await confirmAction('ยกเลิกการลงทะเบียน', `ยกเลิก “${activity.title}” ใช่ไหม? ที่นั่งจะว่างให้คนอื่น`, 'ยกเลิกการลงทะเบียน');

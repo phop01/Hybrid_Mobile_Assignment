@@ -12,7 +12,7 @@ import type { Announcement } from '@/types/models';
 import { Banner, Button, Chip, TextField } from './ui';
 
 const TEMPLATES = [
-  'เปิดเช็กอินแล้ว เข้ามาเช็กอินในแอปได้เลย',
+  'เริ่มกิจกรรมแล้ว ส่งหลักฐานการเข้าร่วมในแอปได้เลย',
   'เปลี่ยนสถานที่จัดกิจกรรม กรุณาดูรายละเอียดในแอป',
   'กิจกรรมเลื่อนเวลาเริ่ม 15 นาที',
 ];
@@ -50,7 +50,7 @@ export function AnnouncementComposer({ onSend }: { onSend: (message: string) => 
         onChangeText={setMessage}
         maxLength={200}
         multiline
-        placeholder="เช่น เปิดเช็กอินแล้ว"
+        placeholder="เช่น เริ่มกิจกรรมแล้ว"
       />
       <Button title="ส่งแจ้งเตือนถึงผู้ลงทะเบียน" icon="megaphone-outline" loading={busy} disabled={trimmed.length === 0} onPress={send} />
       {result ? <Banner tone={result.tone}>{result.text}</Banner> : null}

@@ -19,6 +19,9 @@ export function canCheckIn(registration: Registration): CheckInDecision {
   if (registration.status === 'pending_review' || registration.status === 'checked_in') {
     return { ok: false, reason: 'already_submitted', message: 'ส่งหลักฐานการเข้าร่วมไปแล้ว' };
   }
+  if (registration.status === 'rejected') {
+    return { ok: false, reason: 'not_registered', message: 'การลงทะเบียนนี้ไม่ได้รับอนุมัติ' };
+  }
   if (registration.status !== 'registered') {
     return { ok: false, reason: 'not_registered', message: 'การลงทะเบียนนี้ถูกยกเลิกแล้ว' };
   }
@@ -30,7 +33,7 @@ export const REMINDER_LEADS = [
   { minutes: 24 * 60, label: 'ล่วงหน้า 1 วัน' },
   { minutes: 3 * 60, label: 'ล่วงหน้า 3 ชม.' },
   { minutes: 60, label: 'ล่วงหน้า 1 ชม.' },
-  { minutes: CHECK_IN_OPENS_BEFORE_MS / 60000, label: 'ตอนเปิดเช็กอิน' },
+  { minutes: CHECK_IN_OPENS_BEFORE_MS / 60000, label: 'ล่วงหน้า 30 นาที' },
   { minutes: 15, label: 'ล่วงหน้า 15 นาที' },
 ] as const;
 

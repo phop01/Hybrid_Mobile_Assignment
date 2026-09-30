@@ -1,5 +1,5 @@
 export const Colors = {
-  // สีหลักของ NK Today: น้ำเงินแม่น้ำโขง ขาวบน primary 6.9:1
+  // สีหลักของ KKUNK Today: น้ำเงินแม่น้ำโขง ขาวบน primary 6.9:1
   primary: '#0F5F8C',
   primaryDark: '#0A4668',
   primarySoft: '#E3F0F7',

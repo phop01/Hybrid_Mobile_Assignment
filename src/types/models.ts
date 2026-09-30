@@ -1,4 +1,4 @@
-// โครงสร้างข้อมูลหลักของ NK Today
+// โครงสร้างข้อมูลหลักของ KKUNK Today
 // กำหนดด้วย TypeScript ตั้งแต่แรก เพื่อให้ข้อมูลผิดรูปแบบถูกจับได้ตั้งแต่ตอนเขียนโค้ด
 
 export type Category = 'academic' | 'volunteer' | 'sport' | 'culture';
@@ -31,6 +31,9 @@ export type Activity = {
   organizerName: string;
   /** รูปปก/โปสเตอร์ที่ผู้จัดเลือกจากคลัง (ไม่บังคับ) */
   imageUrl?: string | null;
+  /** เจ้าหน้าที่ยกเลิกกิจกรรม (ไม่มี = ยังจัดตามปกติ) */
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
 };
 
 /** ตัวเลขสรุปที่ผู้จัดเห็นในหน้า "จัดการ" */
@@ -51,7 +54,8 @@ export type NewActivityInput = {
   coverBase64?: string;
 };
 
-export type RegistrationStatus = 'registered' | 'pending_review' | 'checked_in' | 'cancelled';
+/** rejected = เจ้าหน้าที่ไม่รับการลงทะเบียน (เหตุผลอยู่ใน reviewNote) */
+export type RegistrationStatus = 'registered' | 'pending_review' | 'checked_in' | 'cancelled' | 'rejected';
 
 /** ที่มาของรูปเช็กอิน: ให้ผู้จัดรู้ว่ารูปไหนถ่ายสด รูปไหนเลือกจากคลัง */
 export type PhotoSource = 'camera' | 'library';

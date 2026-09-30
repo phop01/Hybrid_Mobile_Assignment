@@ -2,9 +2,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useReducer, useRef } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, type TextInput } from 'react-native';
 
+import { ReminderControl } from '@/components/reminder-control';
 import { Banner, Button, Card, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { firstParam, useActivity } from '@/hooks/use-activity';
+import { useNow } from '@/hooks/use-now';
 import { formatDateRange } from '@/lib/format';
 import { newIdempotencyKey } from '@/lib/platform-actions';
 import { hasErrors, validateRegistration } from '@/lib/validate-registration';
@@ -19,6 +21,7 @@ export default function RegisterScreen() {
   const activityState = useActivity(id);
   const session = useAuthenticatedSession();
   const { register, findActiveForActivity } = useMyRegistrations();
+  const now = useNow();
 
   // เติมชื่อ รหัส คณะ จากโปรไฟล์ ไม่ต้องพิมพ์ซ้ำทุกกิจกรรม
   const [state, dispatch] = useReducer(
@@ -48,7 +51,7 @@ export default function RegisterScreen() {
       <StateView
         kind="empty"
         icon="checkmark-circle-outline"
-        title="คุณลงทะเบียนกิจกรรมนี้แล้ว"
+        title={existing.status === 'rejected' ? 'การลงทะเบียนของคุณไม่ได้รับอนุมัติ' : 'คุณลงทะเบียนกิจกรรมนี้แล้ว'}
         actionLabel="ดูการลงทะเบียน"
         onAction={() => router.replace({ pathname: '/registrations/[id]', params: { id: existing.id } })}
       />
@@ -68,7 +71,8 @@ export default function RegisterScreen() {
       const registration = await register(activity.id, state.values, idempotencyKey);
       dispatch({ type: 'success', registration });
       // ขอสิทธิ์แจ้งเตือนตอนนี้ เพราะเพิ่งลงทะเบียน ผู้ใช้เข้าใจว่าจะได้รับประกาศของกิจกรรมนี้
-      if (supportsNotifications) ensureNotificationPermission().catch(() => undefined);
+      // เว็บ: เบราว์เซอร์ให้ขอสิทธิ์ได้เฉพาะตอนผู้ใช้กดปุ่ม จึงไปขอตอนกด "ตั้งแจ้งเตือน" แทน
+      if (supportsNotifications && Platform.OS !== 'web') ensureNotificationPermission().catch(() => undefined);
     } catch (e) {
       if (e instanceof ApiError) {
         dispatch({ type: 'failure', message: e.message, fieldErrors: e.fields });
@@ -83,6 +87,10 @@ export default function RegisterScreen() {
     return (
       <Screen>
         <Banner tone="success">ลงทะเบียน “{activity.title}” สำเร็จ</Banner>
+        <Card>
+          <SectionTitle>เตือนให้ไปเช็กอิน</SectionTitle>
+          <ReminderControl registrationId={registrationId} activity={activity} now={now} preferCountdown />
+        </Card>
         <Button
           title="ดูการลงทะเบียนของฉัน"
           icon="ticket-outline"

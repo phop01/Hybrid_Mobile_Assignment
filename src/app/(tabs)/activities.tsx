@@ -6,11 +6,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
 
 import { ActivityCard } from '@/components/activity-card';
+import { useAppWidth } from '@/components/phone-frame';
 import { Banner, ChipBar, OfflineBanner, StateView } from '@/components/ui';
 import { Colors, MaxContentWidth, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useDisplayStatus } from '@/hooks/use-display-status';
@@ -43,7 +43,7 @@ export default function ActivitiesScreen() {
   const visible = filterActivities(sortForBrowsing(activities), query, category);
 
   // จอกว้าง (แท็บเล็ต/เว็บ) แสดง 2 คอลัมน์ คำนวณจากพื้นที่จริง ไม่ยึดขนาดเครื่องเดียว
-  const { width } = useWindowDimensions();
+  const width = useAppWidth();
   const columns = Math.min(width, MaxContentWidth) >= 720 ? 2 : 1;
 
   const clearFilters = () => {

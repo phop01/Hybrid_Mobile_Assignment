@@ -74,7 +74,7 @@ function seedActivities() {
     {
       id: 'demo-hackathon',
       title: 'NKC Hackathon 2026',
-      description: 'แข่งขันเขียนโปรแกรมแก้ปัญหาโจทย์จริงรอบรั้ววิทยาเขต พร้อมรับคำแนะนำจาก Mentor แบบใกล้ชิด เช็กอินผ่านแอปเมื่ออยู่ในพื้นที่แข่งขัน',
+      description: 'แข่งขันเขียนโปรแกรมแก้ปัญหาโจทย์จริงรอบรั้ววิทยาเขต พร้อมรับคำแนะนำจาก Mentor แบบใกล้ชิด ส่งรูปหลักฐานการเข้าร่วมผ่านแอป',
       category: 'academic',
       startsAt: at(-15 * MINUTE, false),
       endsAt: at(4 * HOUR, false),
@@ -160,8 +160,8 @@ function seedActivities() {
       title: 'บริจาคโลหิต กู้วิกฤติคลังเลือด',
       description: 'ร่วมบริจาคโลหิตกับสภากาชาดไทยสาขาจังหวัดหนองคาย เพื่อช่วยเหลือผู้ป่วย',
       category: 'volunteer',
-      startsAt: dayAt(-1, 9),
-      endsAt: dayAt(-1, 15),
+      startsAt: dayAt(10, 9),
+      endsAt: dayAt(10, 15),
       location: at_('classroom-1', 'โถงชั้น 1 อาคารเรียนรวม 1 (อครเก่า)', 120),
       checkInMethod: 'paper',
       capacity: 150,
@@ -275,7 +275,7 @@ export function buildBroadcasts() {
     },
     {
       id: 'demo-broadcast-water',
-      message: 'ปิดน้ำประปาอาคารเรียนรวม 1 (อครเก่า) เพื่อซ่อมท่อ 13:00–16:00 น. ขออภัยในความไม่สะดวก',
+      message: 'ปิดน้ำประปาอาคารเรียนรวม 1 (อครเก่า) ชั่วคราวระหว่างซ่อมท่อ ใช้ห้องน้ำอาคารเรียนรวม 2 แทน ขออภัยในความไม่สะดวก',
       location: point('classroom-1', 'อาคารเรียนรวม 1 (อครเก่า)'),
       imageUrl: null,
       byId: 'staff2',
