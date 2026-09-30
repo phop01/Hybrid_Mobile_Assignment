@@ -5,7 +5,7 @@
 | ค่า | ตั้งไว้ | หมายเหตุ |
 |---|---|---|
 | name | NK Today | ชื่อที่เห็นบนเครื่อง |
-| scheme | `nktoday` | deep link เช่น `nktoday://tickets/demo-repair-light`, `nktoday://activities/mobile-dev-seminar` |
+| scheme | `nktoday` | deep link เช่น `nktoday://tickets/demo-repair-light`, `nktoday://activities/demo-hackathon` |
 | version | 1.0.0 | รุ่นแรกของ NK Today |
 | android.package / ios.bundleIdentifier | `com.phop.nktoday` | ห้ามเปลี่ยนหลังขึ้น store |
 | android.versionCode / ios.buildNumber | 1 | ต้องเพิ่มทุก build ที่ส่ง store (โปรไฟล์ production ตั้ง `autoIncrement`) |

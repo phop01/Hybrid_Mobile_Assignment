@@ -99,7 +99,7 @@ const posterRes = await fetch(BASE + r.body.imageUrl);
 check('poster image served', posterRes.status === 200 && posterRes.headers.get('content-type') === 'image/jpeg');
 r = await call('POST', '/broadcasts', org, { message: 'โปสเตอร์ไม่ใช่ JPEG', location: bLoc, hours: 3, posterBase64: Buffer.alloc(200, 7).toString('base64') });
 check('non-JPEG poster 400', r.status === 400);
-const demoPoster = await fetch(BASE + '/posters/demo-paper-checkin.jpg');
+const demoPoster = await fetch(BASE + '/posters/demo-hackathon.jpg');
 check('demo poster served', demoPoster.status === 200 && demoPoster.headers.get('content-type') === 'image/jpeg');
 r = await call('GET', '/activities', s1);
 const seeded = r.body.filter((a) => a.imageUrl?.startsWith('/posters/'));

@@ -74,7 +74,7 @@ function seedActivities() {
     {
       id: 'demo-hackathon',
       title: 'NKC Hackathon 2026',
-      description: 'แข่งขันเขียนโปรแกรมแก้ปัญหาโจทย์จริงรอบรั้ววิทยาเขต พร้อมรับคำแนะนำจาก Mentor แบบใกล้ชิด เช็กอินผ่านแอปเมื่ออยู่ในพื้นที่แข่งขัน',
+      description: 'แข่งขันเขียนโปรแกรมแก้ปัญหาโจทย์จริงรอบรั้ววิทยาเขต พร้อมรับคำแนะนำจาก Mentor แบบใกล้ชิด ส่งรูปหลักฐานการเข้าร่วมผ่านแอป',
       category: 'academic',
       startsAt: at(-15 * MINUTE, false),
       endsAt: at(4 * HOUR, false),
