@@ -1,6 +1,7 @@
 // ฟอร์มแจ้งซ่อม 3 ขั้น (useReducer): 1) หมวด 2) รูป+ตำแหน่ง 3) รายละเอียด
 // แยก state และการตรวจออกจากหน้าจอ ทดสอบได้ด้วย unit test
 
+import { parseRoomCode } from '@/lib/campus';
 import type { Coordinates } from '@/lib/geo';
 import type { NewTicketInput, TicketCategory, TicketKind } from '@/types/models';
 
@@ -81,7 +82,14 @@ export function toTicketInput(state: TicketFormState): NewTicketInput | null {
     category: state.category,
     title: state.title.trim(),
     detail: state.detail.trim(),
-    location: { name: state.placeName.trim(), latitude: state.point.latitude, longitude: state.point.longitude },
+    location: { name: placeLabel(state.placeName), latitude: state.point.latitude, longitude: state.point.longitude },
     ...(state.photo ? { photoBase64: state.photo.base64 } : {}),
   };
+}
+
+/** พิมพ์มาแค่รหัสห้อง (เช่น "NK6301") → ใส่ชื่ออาคารและชั้นให้ด้วย ช่างอ่านแล้วรู้ทันทีว่าอยู่ตึกไหน */
+function placeLabel(name: string): string {
+  const trimmed = name.trim();
+  const code = /^NK\s?\d{4}$/i.test(trimmed) ? parseRoomCode(trimmed) : null;
+  return code ? code.label : trimmed;
 }

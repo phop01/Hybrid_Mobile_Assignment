@@ -120,6 +120,13 @@ describe('ticket form (useReducer)', () => {
       photoBase64: 'abc',
     });
   });
+
+  it('expands a bare room code into the building name', () => {
+    const name = toTicketInput(filled({ placeName: 'NK6301' }))?.location.name ?? '';
+    expect(name).toMatch(/^อาคาร.* ชั้น 3 ห้อง NK6301$/);
+    // มีข้อความอื่นปนมา = ผู้ใช้เขียนเอง ไม่แก้ให้
+    expect(toTicketInput(filled({ placeName: 'หน้าห้อง NK6301' }))?.location.name).toBe('หน้าห้อง NK6301');
+  });
 });
 
 describe('inbox', () => {
