@@ -58,10 +58,8 @@ export function AnnouncementComposer({ onSend }: { onSend: (message: string) => 
   );
 }
 
-export function AnnouncementList({ items, emptyText }: { items: Announcement[]; emptyText?: string }) {
-  if (items.length === 0) {
-    return emptyText ? <Text style={styles.muted}>{emptyText}</Text> : null;
-  }
+export function AnnouncementList({ items }: { items: Announcement[] }) {
+  if (items.length === 0) return null;
   return (
     <View style={{ gap: Spacing.sm }}>
       {items.map((a) => (

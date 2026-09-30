@@ -28,8 +28,6 @@ export type NotificationData =
   | { type: 'inbox'; kind: InboxKind; targetId: string };
 export type ScheduledReminder = { notificationId: string; at: string };
 
-export const APPOINTMENT_LEAD_MS = 60 * 60 * 1000;
-
 const unsupported = () => Promise.reject(new Error('notifications-unsupported-on-web'));
 
 export async function loadReminderMap(): Promise<Record<string, ScheduledReminder>> {

@@ -2,10 +2,6 @@
 
 export type PushResult = 'active' | 'local' | 'no-permission' | 'unavailable';
 
-export function isPushActive(): boolean {
-  return false;
-}
-
 export async function registerForPush(_sessionToken: string): Promise<PushResult> {
   return 'unavailable';
 }

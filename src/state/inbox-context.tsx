@@ -10,6 +10,7 @@ import { registerForPush, type PushResult } from '@/services/push';
 import { ensureNotificationPermission, presentInboxItem } from '@/services/reminders';
 import * as ticketsApi from '@/services/tickets-api';
 import { isInboxItem } from '@/services/validators';
+import { INBOX_KEY } from '@/storage/keys';
 import { readJson, writeJson } from '@/storage/kv';
 import type { InboxItem } from '@/types/models';
 
@@ -17,7 +18,6 @@ import { useAuthenticatedSession } from './session-context';
 
 /** ถี่พอให้ "อีกฝั่งกด → อีกเครื่องเด้ง" ภายในไม่กี่วินาที และ poll เฉพาะตอนแอปเปิดอยู่ */
 const POLL_MS = 8000;
-export const INBOX_KEY = 'nktoday/inbox/v1';
 
 type Stored = { userId: string; items: InboxItem[]; since: string; readUntil: string | null };
 const isStored = (v: unknown): v is Stored | null =>

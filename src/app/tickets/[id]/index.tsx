@@ -5,7 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppointmentPicker } from '@/components/appointment-picker';
 import { PickMap } from '@/components/pick-map';
@@ -13,6 +13,7 @@ import { KindBadge, TicketStatusBadge } from '@/components/ticket-card';
 import { NavigateButtons } from '@/components/navigate-buttons';
 import { Banner, Button, Card, InfoRow, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
 import { formatDate, formatTime, formatUpdatedAt } from '@/lib/format';
 import { confirmAction } from '@/lib/platform-actions';
 import { availableActions, categoryInfo, eventLabel, KIND_INFO } from '@/lib/tickets';
@@ -32,7 +33,6 @@ export default function TicketDetailScreen() {
   const ticket = id ? getById(id) : undefined;
   // ลิงก์ไม่มี id → แสดง "ไม่พบเรื่องนี้" ทันที ไม่ค้างหน้าโหลด
   const [loading, setLoading] = useState(!ticket && Boolean(id));
-  const [refreshing, setRefreshing] = useState(false);
   const [notFound, setNotFound] = useState(!id);
   const [panel, setPanel] = useState<Panel>(null);
   const [appointment, setAppointment] = useState<string | null>(null);
@@ -52,11 +52,7 @@ export default function TicketDetailScreen() {
           .finally(() => setLoading(false))
       : Promise.resolve();
 
-  const onPullRefresh = async () => {
-    setRefreshing(true);
-    await reload();
-    setRefreshing(false);
-  };
+  const refreshControl = useRefreshControl(reload);
 
   useEffect(() => {
     reload();
@@ -115,7 +111,7 @@ export default function TicketDetailScreen() {
     userId === ticket.reporterId ? ticket.reporterName : userId === ticket.assigneeId ? (ticket.assigneeName ?? 'ผู้รับเรื่อง') : 'ผู้ใช้';
 
   return (
-    <Screen refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onPullRefresh} tintColor={Colors.primary} />}>
+    <Screen refreshControl={refreshControl}>
       <Card>
         <View style={styles.badges}>
           <KindBadge kind={ticket.kind} />

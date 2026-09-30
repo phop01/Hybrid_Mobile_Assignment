@@ -6,6 +6,7 @@ import * as api from '@/services/campus-api';
 import { forgetPush } from '@/services/push';
 import { clearAllReminders } from '@/services/reminders';
 import { isUser } from '@/services/validators';
+import { USER_DATA_KEYS, USER_KEY } from '@/storage/keys';
 import { readJson, removeKeys, writeJson } from '@/storage/kv';
 import { clearOfflineData } from '@/storage/offline-db';
 import { clearToken, loadToken, saveToken } from '@/storage/token-storage';
@@ -25,9 +26,8 @@ type SessionContextValue = {
   switchRole: (role: AccountRole) => Promise<void>;
 };
 
-// ข้อมูลโปรไฟล์ (ไม่ใช่ความลับ) เก็บไว้ด้วย เพื่อเปิดแอปตอนไม่มีเน็ตแล้วยังเข้าระบบอยู่
+// ข้อมูลโปรไฟล์ (ไม่ใช่ความลับ) เก็บไว้ด้วย (USER_KEY) เพื่อเปิดแอปตอนไม่มีเน็ตแล้วยังเข้าระบบอยู่
 // เช่น ไปถึงงานที่สัญญาณไม่ดี ต้องยังเปิดการลงทะเบียนและเช็กอินแบบออฟไลน์ได้
-const USER_KEY = 'nktoday/session-user/v1';
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
@@ -41,9 +41,6 @@ export function consumePostLoginRedirect(): string | null {
   postLoginRedirect = null;
   return path;
 }
-
-// ข้อมูลของผู้ใช้ที่เก็บใน AsyncStorage (กล่องแจ้งเตือน, cache เรื่องแจ้ง) ต้องลบตอน logout ด้วย
-const USER_DATA_KEYS = [USER_KEY, 'nktoday/inbox/v1', 'nktoday/tickets-cache/v1'];
 
 async function wipeLocalSession() {
   // Logout ต้องล้างทุกอย่างของผู้ใช้ เครื่องอาจใช้ร่วมกัน

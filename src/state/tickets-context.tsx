@@ -9,6 +9,7 @@ import { ApiError } from '@/services/api-client';
 import { syncAppointmentReminders } from '@/services/reminders';
 import * as ticketsApi from '@/services/tickets-api';
 import { isBroadcast, isTicket } from '@/services/validators';
+import { TICKETS_CACHE_KEY } from '@/storage/keys';
 import { readJson, writeJson } from '@/storage/kv';
 import { enqueueTicket, listQueuedTickets, removeQueuedTicket } from '@/storage/offline-db';
 import type { Broadcast, NewBroadcastInput, NewTicketInput, PendingTicket, Ticket } from '@/types/models';
@@ -16,7 +17,6 @@ import type { Broadcast, NewBroadcastInput, NewTicketInput, PendingTicket, Ticke
 import { useInbox } from './inbox-context';
 import { useAuthenticatedSession } from './session-context';
 
-export const TICKETS_CACHE_KEY = 'nktoday/tickets-cache/v1';
 const RETRY_QUEUE_MS = 15000;
 
 type Cache = { userId: string; tickets: Ticket[]; broadcasts: Broadcast[]; updatedAt: string };

@@ -3,13 +3,14 @@
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useCallback } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BroadcastList } from '@/components/broadcast-card';
 import { TicketCard } from '@/components/ticket-card';
-import { Banner, Button, Card, Screen, SectionTitle, type IconName } from '@/components/ui';
+import { Button, Card, OfflineBanner, Screen, SectionTitle, type IconName } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
 import { REQUIRED_HOURS, summarizeAttendance } from '@/lib/attendance';
 import { CATEGORIES } from '@/lib/categories';
 import { isEnded } from '@/lib/filter-activities';
@@ -29,15 +30,11 @@ export default function TodayScreen() {
   const activitiesState = useActivities();
   const ticketsState = useTickets();
   const registrationsState = useMyRegistrations();
-  const [refreshing, setRefreshing] = useState(false);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.allSettled([activitiesState.refresh(), ticketsState.refresh(), registrationsState.refresh()]);
-    setRefreshing(false);
-  }, [activitiesState, registrationsState, ticketsState]);
-
-  const refreshControl = <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />;
+  const refreshAll = useCallback(
+    () => Promise.allSettled([activitiesState.refresh(), ticketsState.refresh(), registrationsState.refresh()]),
+    [activitiesState, registrationsState, ticketsState],
+  );
+  const refreshControl = useRefreshControl(refreshAll);
   const upcoming = activitiesState.activities
     .filter((a) => !isEnded(a))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -69,7 +66,7 @@ export default function TodayScreen() {
     return (
       <Screen refreshControl={refreshControl}>
         <Greeting name={user.fullName} />
-        {offlineSince ? <Banner tone="warning">ออฟไลน์ · แสดงข้อมูลล่าสุดที่มีในเครื่อง</Banner> : null}
+        <OfflineBanner since={offlineSince} />
         <BroadcastList items={broadcasts} />
         <View style={styles.actions}>
           <QuickAction icon="clipboard" label="จัดการ / ตรวจหลักฐาน" onPress={() => router.navigate('/manage')} />
@@ -91,7 +88,7 @@ export default function TodayScreen() {
     return (
       <Screen refreshControl={refreshControl}>
         <Greeting name={user.fullName} />
-        {offlineSince ? <Banner tone="warning">ออฟไลน์ · แสดงข้อมูลล่าสุดที่มีในเครื่อง</Banner> : null}
+        <OfflineBanner since={offlineSince} />
         <View style={styles.stats}>
           <Stat value={openRepairs.length} label="เรื่องรอรับ" onPress={() => router.navigate('/tickets')} />
           <Stat value={myJobs.length} label="งานของฉัน" onPress={() => router.navigate('/tickets')} />
@@ -136,7 +133,7 @@ export default function TodayScreen() {
   return (
     <Screen refreshControl={refreshControl}>
       <Greeting name={user.fullName} />
-      {offlineSince ? <Banner tone="warning">ออฟไลน์ · แสดงข้อมูลล่าสุดที่มีในเครื่อง</Banner> : null}
+      <OfflineBanner since={offlineSince} />
       <BroadcastList items={broadcasts} />
 
       <View style={styles.actions}>
