@@ -32,8 +32,9 @@ export default function ManageScreen() {
 function ManageList() {
   const { data: activities, loading, error, reload } = useOrganizerActivities();
   const now = useNow(60000);
-  const upcoming = activities.filter((a) => new Date(a.endsAt).getTime() >= now);
-  const past = activities.filter((a) => new Date(a.endsAt).getTime() < now);
+  // ยกเลิกแล้ว = ไม่ต้องจัดการต่อ ไปอยู่กลุ่มที่ผ่านมา
+  const upcoming = activities.filter((a) => !a.cancelledAt && new Date(a.endsAt).getTime() >= now);
+  const past = activities.filter((a) => a.cancelledAt || new Date(a.endsAt).getTime() < now);
   const pendingTotal = activities.reduce((sum, a) => sum + a.stats.pendingReview, 0);
 
   return (
@@ -94,7 +95,7 @@ function ManageCard({ activity }: { activity: OrganizerActivity }) {
         </View>
         <Text style={styles.muted}>
           {formatDateRange(activity.startsAt, activity.endsAt)} · {activity.hours} ชม. ·{' '}
-          {activity.checkInMethod === 'paper' ? 'ใบเซ็นชื่อ' : 'เช็กอินในแอป'}
+          {activity.cancelledAt ? 'ยกเลิกแล้ว' : activity.checkInMethod === 'paper' ? 'ใบเซ็นชื่อ' : 'ถ่ายรูปที่งาน'}
         </Text>
         <View style={styles.stats}>
           <Stat label="ลงทะเบียน" value={`${stats.registered}/${activity.capacity}`} tone="primary" />

@@ -33,7 +33,7 @@ export const REMINDER_LEADS = [
   { minutes: 24 * 60, label: 'ล่วงหน้า 1 วัน' },
   { minutes: 3 * 60, label: 'ล่วงหน้า 3 ชม.' },
   { minutes: 60, label: 'ล่วงหน้า 1 ชม.' },
-  { minutes: CHECK_IN_OPENS_BEFORE_MS / 60000, label: 'ตอนเปิดเช็กอิน' },
+  { minutes: CHECK_IN_OPENS_BEFORE_MS / 60000, label: 'ล่วงหน้า 30 นาที' },
   { minutes: 15, label: 'ล่วงหน้า 15 นาที' },
 ] as const;
 

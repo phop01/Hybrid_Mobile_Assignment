@@ -115,7 +115,7 @@ export const ActivityCard = memo(function ActivityCard({
                   color={Colors.textMuted}
                 />
                 <Text style={styles.method}>
-                  {activity.checkInMethod === 'paper' ? 'เซ็นชื่อกระดาษ' : 'เช็กอินในแอป'}
+                  {activity.checkInMethod === 'paper' ? 'ใบเซ็นชื่อ' : 'ถ่ายรูปที่งาน'}
                 </Text>
               </View>
             </View>
