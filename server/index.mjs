@@ -572,7 +572,7 @@ async function handle(req, res) {
   }
 
   // GET/POST /activities/:id/announcements
-  // ผู้จัดส่งประกาศ (เช่น "เปิดเช็กอินแล้ว") → แอปนักศึกษาที่ลงทะเบียนไว้ดึงไปเด้งแจ้งเตือน
+  // ผู้จัดส่งประกาศ (เช่น "เริ่มกิจกรรมแล้ว") → แอปนักศึกษาที่ลงทะเบียนไว้ดึงไปเด้งแจ้งเตือน
   if (parts[0] === 'activities' && parts[2] === 'announcements' && parts.length === 3) {
     if (method === 'GET') {
       requireUser(req);

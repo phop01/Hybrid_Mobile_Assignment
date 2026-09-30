@@ -28,7 +28,7 @@ export function ActivityMap({ venue, title, user, height = 220 }: ActivityMapPro
     <LeafletWebView
       html={html}
       style={[styles.wrap, { height }]}
-      accessibilityLabel={`แผนที่ ${venue.name} รัศมีเช็กอิน ${venue.radiusM} เมตร`}
+      accessibilityLabel={`แผนที่ ${venue.name} บริเวณจัดงาน ${venue.radiusM} เมตร`}
     />
   );
 }

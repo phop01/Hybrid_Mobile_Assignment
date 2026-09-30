@@ -202,7 +202,7 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
                   <Button title="เลือกจากคลัง" icon="images-outline" variant="secondary" disabled={busy} onPress={() => pickFromLibrary('main')} />
                 </View>
               </View>
-              <Button title={isPaper ? 'ส่งหลักฐาน' : 'ยืนยันเช็กอิน'} icon="send" loading={busy} onPress={submit} />
+              <Button title="ส่งหลักฐาน" icon="send" loading={busy} onPress={submit} />
             </>
           ) : busy ? (
             <StateView kind="loading" message="กำลังเตรียมรูป…" />

@@ -173,13 +173,13 @@ export default function NewActivityScreen() {
           </View>
           {previewHours !== null ? (
             <Banner tone="info" icon="time-outline">
-              นักศึกษาที่เข้าร่วมจะได้ {previewHours} ชั่วโมงกิจกรรม · เปิดเช็กอินก่อนเริ่ม 30 นาที
+              นักศึกษาที่เข้าร่วมจะได้ {previewHours} ชั่วโมงกิจกรรม เมื่อคุณตรวจหลักฐานผ่าน
             </Banner>
           ) : null}
         </Card>
 
         <Card>
-          <SectionTitle>สถานที่และพื้นที่เช็กอิน</SectionTitle>
+          <SectionTitle>สถานที่จัดงาน</SectionTitle>
           <TextField
             label="ชื่อสถานที่ *"
             value={values.locationName}
@@ -206,7 +206,7 @@ export default function NewActivityScreen() {
           ) : (
             <Text style={styles.muted}>แตะแผนที่หรือลากหมุดไปที่สถานที่จัดงาน</Text>
           )}
-          <Text style={styles.label}>รัศมีที่เช็กอินได้</Text>
+          <Text style={styles.label}>บริเวณจัดงาน (รัศมีบนแผนที่)</Text>
           <View style={styles.row}>
             {RADII.map((r) => (
               <Chip key={r} label={`${r} ม.`} selected={values.radiusM === r} onPress={() => set('radiusM', r)} />
@@ -215,14 +215,14 @@ export default function NewActivityScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>การเช็กชื่อและจำนวนรับ</SectionTitle>
+          <SectionTitle>หลักฐานการเข้าร่วมและจำนวนรับ</SectionTitle>
           <View style={styles.row}>
-            <Chip label="เช็กอินในแอป" selected={values.checkInMethod === 'app'} onPress={() => set('checkInMethod', 'app')} />
+            <Chip label="ถ่ายรูปที่งาน" selected={values.checkInMethod === 'app'} onPress={() => set('checkInMethod', 'app')} />
             <Chip label="ใบเซ็นชื่อกระดาษ" selected={values.checkInMethod === 'paper'} onPress={() => set('checkInMethod', 'paper')} />
           </View>
           <Text style={styles.muted}>
             {values.checkInMethod === 'app'
-              ? 'นักศึกษาต้องอยู่ในรัศมีและถ่ายรูปสด ระบบนับชั่วโมงทันที'
+              ? 'นักศึกษาถ่ายรูปที่งานส่งมา คุณตรวจในแอปก่อนนับชั่วโมง'
               : 'นักศึกษาถ่ายรูปใบเซ็นชื่อส่งมา คุณตรวจในแอปก่อนนับชั่วโมง'}
           </Text>
           <TextField
