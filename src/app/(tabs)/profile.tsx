@@ -1,6 +1,5 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { RoleSwitcher } from '@/components/role-switcher';
@@ -12,7 +11,7 @@ import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
 import { formatDate } from '@/lib/format';
 import { confirmAction } from '@/lib/platform-actions';
 import { isFacilities } from '@/lib/tickets';
-import { API_URL, toAbsoluteUrl } from '@/services/api-config';
+import { resetDemoData } from '@/services/campus-api';
 import { useActivities } from '@/state/activities-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { useAuthenticatedSession, useSession } from '@/state/session-context';
@@ -22,13 +21,14 @@ export default function ProfileScreen() {
   const { signOut } = useSession();
   const { registrations } = useMyRegistrations();
   const { activities, getById } = useActivities();
+  const [resetError, setResetError] = useState<string | null>(null);
 
   if (!session) {
     return (
       <LoginPrompt
         icon="person-circle-outline"
         title="โปรไฟล์และชั่วโมงสะสม"
-        message="เข้าสู่ระบบเพื่อดูชั่วโมงกิจกรรม/จิตอาสา เรื่องที่แจ้ง และหลักฐานการเข้าร่วม"
+        message="เข้าสู่ระบบเพื่อดูชั่วโมงกิจกรรม/จิตอาสา และประวัติกิจกรรม"
         next="/profile"
       />
     );
@@ -46,11 +46,6 @@ export default function ProfileScreen() {
     .filter((x) => x.activity)
     .sort((a, b) => b.activity!.startsAt.localeCompare(a.activity!.startsAt));
 
-  // แกลเลอรีหลักฐาน: รวมรูปเช็กอินทุกกิจกรรม ใช้ยื่นหลักฐาน (เช่น ชั่วโมงจิตอาสา กยศ.) หรือทำพอร์ตได้
-  const evidence = registrations
-    .filter((r) => r.checkIn && (r.status === 'checked_in' || r.status === 'pending_review'))
-    .sort((a, b) => (b.checkIn?.takenAt ?? '').localeCompare(a.checkIn?.takenAt ?? ''));
-
   const onSignOut = async () => {
     const ok = await confirmAction(
       'ออกจากระบบ',
@@ -58,6 +53,24 @@ export default function ProfileScreen() {
       'ออกจากระบบ',
     );
     if (ok) await signOut();
+  };
+
+  // สำหรับสาธิต: ล้างข้อมูลทั้งระบบกลับเป็นข้อมูลตัวอย่าง แล้วออกจากระบบ (ทุก session ถูกล้างด้วย)
+  const onResetDemo = async () => {
+    const ok = await confirmAction(
+      'ล้างข้อมูลสาธิต',
+      'ลบการลงทะเบียน เช็กอิน รูป เรื่องแจ้ง และแจ้งเตือนทั้งหมด กลับเป็นข้อมูลตัวอย่าง แล้วออกจากระบบ',
+      'ล้างข้อมูล',
+    );
+    if (!ok) return;
+    setResetError(null);
+    try {
+      await resetDemoData(session.token);
+    } catch (e) {
+      setResetError(e instanceof Error ? e.message : 'ล้างข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง');
+      return;
+    }
+    await signOut();
   };
 
   return (
@@ -176,35 +189,6 @@ export default function ProfileScreen() {
         </>
       )}
 
-      {isOrganizer ? null : (
-        <Card>
-          <SectionTitle>หลักฐานการเข้าร่วม</SectionTitle>
-          {evidence.length === 0 ? (
-            <Text style={styles.muted}>ยังไม่มีรูปหลักฐาน รูปจากการเช็กอินจะมาอยู่ที่นี่</Text>
-          ) : (
-            <View style={styles.gallery}>
-              {evidence.map((r) => (
-                <Pressable
-                  key={r.id}
-                  style={styles.photoCell}
-                  accessibilityRole="button"
-                  accessibilityLabel={`หลักฐาน ${getById(r.activityId)?.title ?? ''}`}
-                  onPress={() => router.push({ pathname: '/registrations/[id]', params: { id: r.id } })}>
-                  <Image source={{ uri: toAbsoluteUrl(r.checkIn!.photoUrl) }} style={styles.photo} contentFit="cover" />
-                  <Text numberOfLines={2} style={styles.photoTitle}>
-                    {getById(r.activityId)?.title ?? 'กิจกรรม'}
-                  </Text>
-                  <Text style={styles.photoDate}>
-                    {formatDate(r.checkIn!.takenAt)}
-                    {r.status === 'pending_review' ? ' · รอตรวจ' : ''}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-        </Card>
-      )}
-
       <Card>
         <SectionTitle>ทางลัด</SectionTitle>
         {isOrganizer ? null : (
@@ -217,10 +201,12 @@ export default function ProfileScreen() {
       </Card>
 
       <Button title="ออกจากระบบ" icon="log-out-outline" variant="secondary" onPress={onSignOut} />
-      <View style={styles.apiInfo}>
-        <Ionicons name="server-outline" size={14} color={Colors.textMuted} />
-        <Text style={styles.apiText}>API: {API_URL}</Text>
-      </View>
+      <Button title="ล้างข้อมูลสาธิต" icon="refresh-outline" variant="secondary" onPress={onResetDemo} />
+      {resetError ? (
+        <Banner tone="danger" icon="alert-circle">
+          {resetError}
+        </Banner>
+      ) : null}
     </Screen>
   );
 }
@@ -255,11 +241,4 @@ const styles = StyleSheet.create({
   historyDot: { width: 10, height: 10, borderRadius: 5 },
   historyTitle: { fontSize: 15, fontWeight: '600', color: Colors.text },
   historyHours: { fontSize: 15, fontWeight: '800', color: Colors.success },
-  gallery: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
-  photoCell: { width: 140, gap: 4 },
-  photo: { width: 140, height: 140, borderRadius: Radius.md, backgroundColor: Colors.border },
-  photoTitle: { fontSize: 13, fontWeight: '600', color: Colors.text },
-  photoDate: { fontSize: 12, color: Colors.textMuted },
-  apiInfo: { flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'center' },
-  apiText: { fontSize: 12, color: Colors.textMuted },
 });

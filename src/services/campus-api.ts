@@ -57,6 +57,11 @@ export async function logout(token: string): Promise<void> {
   await apiRequest('/auth/logout', { method: 'POST', token });
 }
 
+/** ล้างข้อมูลทั้งระบบกลับเป็นข้อมูลตัวอย่าง (ใช้ตอนสาธิต) ทุก session ถูกล้าง ต้อง login ใหม่ */
+export async function resetDemoData(token: string): Promise<void> {
+  await apiRequest('/demo/reset', { method: 'POST', token });
+}
+
 export async function getMe(token: string): Promise<User> {
   return parseOne(await apiRequest('/me', { token }), isUser, 'ผู้ใช้');
 }
