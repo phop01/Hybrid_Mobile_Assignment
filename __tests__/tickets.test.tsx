@@ -1,4 +1,4 @@
-// ทดสอบกฎของแจ้งซ่อม / กล่องแจ้งเตือน (ส่วนที่เพิ่มใน NK Today)
+// ทดสอบกฎของแจ้งซ่อม / กล่องแจ้งเตือน (ส่วนที่เพิ่มใน KKUNK Today)
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { appointmentFrom } from '@/components/appointment-picker';

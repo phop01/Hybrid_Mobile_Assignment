@@ -107,7 +107,7 @@ h1 {{ font-size: 74px; line-height: 1.12; font-weight: 800; letter-spacing: -0.5
   </div>
 </div>
 <div class="art"><span class="emoji">{emoji}</span></div>
-<div class="footer"><div class="brand"><span class="dot">NK</span> NK Today · มข. วิทยาเขตหนองคาย</div><div style="font-size:22px;opacity:.85">ลงทะเบียนในแอป</div></div>
+<div class="footer"><div class="brand"><span class="dot">NK</span> KKUNK Today · มข. วิทยาเขตหนองคาย</div><div style="font-size:22px;opacity:.85">ลงทะเบียนในแอป</div></div>
 </body></html>"""
 
 
@@ -140,7 +140,7 @@ h1 {{ font-size: 78px; line-height: 1.12; font-weight: 800; text-shadow: 0 4px 1
   <p class="place"><span class="emoji">📍</span> {html.escape(b['place'])}</p>
 </div>
 <div class="notice"><span class="emoji">⚠️</span><span>{html.escape(b['notice'])}</span></div>
-<div class="footer"><div class="brand"><span class="dot">NK</span> NK Today · มข. วิทยาเขตหนองคาย</div></div>
+<div class="footer"><div class="brand"><span class="dot">NK</span> KKUNK Today · มข. วิทยาเขตหนองคาย</div></div>
 </body></html>"""
 
 

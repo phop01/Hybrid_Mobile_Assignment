@@ -1,4 +1,4 @@
-// โครงสร้างข้อมูลหลักของ NK Today
+// โครงสร้างข้อมูลหลักของ KKUNK Today
 // กำหนดด้วย TypeScript ตั้งแต่แรก เพื่อให้ข้อมูลผิดรูปแบบถูกจับได้ตั้งแต่ตอนเขียนโค้ด
 
 export type Category = 'academic' | 'volunteer' | 'sport' | 'culture';

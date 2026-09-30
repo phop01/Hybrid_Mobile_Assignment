@@ -1,4 +1,4 @@
-// NK Today API server
+// KKUNK Today API server
 // ใช้ Node.js ล้วน (node:http) ไม่ต้องติดตั้ง package เพิ่ม เพื่อให้ clone แล้วรันได้ทันที
 //
 // เหตุผลที่ต้องมี server กลาง:
@@ -866,7 +866,7 @@ export function startServer(port = PORT) {
     });
   });
   server.listen(port, '0.0.0.0', () => {
-    console.log(`[api] NK Today API พร้อมที่ http://localhost:${port}`);
+    console.log(`[api] KKUNK Today API พร้อมที่ http://localhost:${port}`);
   });
   return server;
 }
