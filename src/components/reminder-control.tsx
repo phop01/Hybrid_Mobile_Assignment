@@ -1,8 +1,7 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
 import { availableReminderLeads, countdownProblem, customLeadProblem, formatCountdown, formatLead, reminderTime } from '@/lib/check-in-rules';
 import { formatDate, formatTime } from '@/lib/format';
 import {
@@ -15,6 +14,7 @@ import {
 import type { Activity } from '@/types/models';
 
 import { Banner, Button, Chip } from './ui';
+import { WheelGroup, WheelPicker } from './wheel-picker';
 
 const CUSTOM = -1;
 const COUNTDOWN = -2;
@@ -148,23 +148,22 @@ export function ReminderControl({
 
           {selected === CUSTOM ? (
             <View style={styles.custom}>
-              <Text style={styles.customTitle}>นับถอยหลังก่อนงานเริ่ม</Text>
-              <View style={styles.steppers}>
-                <Stepper label="วัน" value={custom.days} step={1} max={7} onChange={(days) => setCustom((c) => ({ ...c, days }))} />
-                <Stepper label="ชั่วโมง" value={custom.hours} step={1} max={23} onChange={(hours) => setCustom((c) => ({ ...c, hours }))} />
-                <Stepper label="นาที" value={custom.minutes} step={5} max={55} onChange={(minutes) => setCustom((c) => ({ ...c, minutes }))} />
-              </View>
+              <Text style={styles.customTitle}>ก่อนงานเริ่ม</Text>
+              <WheelGroup>
+                <WheelPicker label="วัน" unit="วัน" values={range(0, 7)} value={custom.days} onChange={(days) => setCustom((c) => ({ ...c, days }))} />
+                <WheelPicker label="ชั่วโมง" unit="ชม." values={range(0, 23)} value={custom.hours} onChange={(hours) => setCustom((c) => ({ ...c, hours }))} />
+                <WheelPicker label="นาที" unit="นาที" values={range(0, 55, 5)} value={custom.minutes} onChange={(minutes) => setCustom((c) => ({ ...c, minutes }))} />
+              </WheelGroup>
             </View>
           ) : null}
 
           {isCountdown ? (
             <View style={styles.custom}>
-              <Text style={styles.customTitle}>นับถอยหลังจากตอนนี้</Text>
-              <View style={styles.steppers}>
-                <Stepper label="ชั่วโมง" value={countdown.hours} step={1} max={23} onChange={(hours) => setCountdown((c) => ({ ...c, hours }))} />
-                <Stepper label="นาที" value={countdown.minutes} step={1} max={59} onChange={(minutes) => setCountdown((c) => ({ ...c, minutes }))} />
-                <Stepper label="วินาที" value={countdown.seconds} step={5} max={55} onChange={(seconds) => setCountdown((c) => ({ ...c, seconds }))} />
-              </View>
+              <WheelGroup>
+                <WheelPicker label="ชั่วโมง" unit="ชม." values={range(0, 23)} value={countdown.hours} onChange={(hours) => setCountdown((c) => ({ ...c, hours }))} />
+                <WheelPicker label="นาที" unit="นาที" values={range(0, 59)} value={countdown.minutes} onChange={(minutes) => setCountdown((c) => ({ ...c, minutes }))} />
+                <WheelPicker label="วินาที" unit="วิ." values={range(0, 59)} value={countdown.seconds} onChange={(seconds) => setCountdown((c) => ({ ...c, seconds }))} />
+              </WheelGroup>
             </View>
           ) : null}
 
@@ -199,31 +198,9 @@ export function ReminderControl({
   );
 }
 
-/** ปุ่ม − ค่า + (ไม่ต้องพิมพ์ ใช้นิ้วเดียวได้ และกรอกผิดรูปแบบไม่ได้) */
-function Stepper({ label, value, step, max, onChange }: { label: string; value: number; step: number; max: number; onChange: (v: number) => void }) {
-  const button = (icon: 'remove' | 'add', next: number, disabled: boolean, a11y: string) => (
-    <Pressable
-      onPress={() => onChange(next)}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={a11y}
-      accessibilityState={{ disabled }}
-      style={({ pressed }) => [styles.stepButton, disabled && { opacity: 0.35 }, pressed && { opacity: 0.7 }]}>
-      <Ionicons name={icon} size={20} color={Colors.primary} />
-    </Pressable>
-  );
-  return (
-    <View style={styles.stepper} accessible={false}>
-      <Text style={styles.stepLabel}>{label}</Text>
-      <View style={styles.stepRow}>
-        {button('remove', Math.max(0, value - step), value <= 0, `ลด${label}`)}
-        <Text style={styles.stepValue} accessibilityLabel={`${value} ${label}`}>
-          {value}
-        </Text>
-        {button('add', Math.min(max, value + step), value >= max, `เพิ่ม${label}`)}
-      </View>
-    </View>
-  );
+/** ตัวเลข from..to (รวมปลายทั้งสองข้าง) ทีละ step */
+function range(from: number, to: number, step = 1): number[] {
+  return Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step);
 }
 
 const styles = StyleSheet.create({
@@ -233,21 +210,6 @@ const styles = StyleSheet.create({
   problem: { fontSize: 13, color: Colors.danger },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   flex: { flex: 1, minWidth: 140 },
-  custom: { backgroundColor: Colors.primarySoft, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.sm },
+  custom: { gap: Spacing.xs },
   customTitle: { fontSize: 13, fontWeight: '700', color: Colors.primaryDark },
-  steppers: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md, justifyContent: 'space-between' },
-  stepper: { alignItems: 'center', gap: 4, minWidth: 110, flexGrow: 1 },
-  stepLabel: { fontSize: 12, color: Colors.textMuted },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  stepButton: {
-    width: MinTouch,
-    height: MinTouch,
-    borderRadius: MinTouch / 2,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepValue: { minWidth: 28, textAlign: 'center', fontSize: 20, fontWeight: '800', color: Colors.text },
 });
