@@ -1,14 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { LoginPrompt } from '@/components/login-prompt';
 import { Banner, Button, StateView, type IconName } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { formatUpdatedAt } from '@/lib/format';
 import { targetFor } from '@/lib/inbox';
-import { enableWebNotifications, supportsNotifications, webNotificationStatus } from '@/services/reminders';
+import { enableWebNotifications, webNotificationStatus } from '@/services/reminders';
 import { useInbox } from '@/state/inbox-context';
 import { useAuthenticatedSession } from '@/state/session-context';
 import type { InboxItem, InboxKind } from '@/types/models';
@@ -141,7 +141,7 @@ export default function InboxScreen() {
       contentContainerStyle={styles.list}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       ListHeaderComponent={
-        supportsNotifications ? <PushCard /> : <WebNotificationCard />
+        Platform.OS === 'web' ? <WebNotificationCard /> : <PushCard />
       }
       renderItem={({ item }) => (
         <Pressable
