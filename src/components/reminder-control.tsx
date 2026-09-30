@@ -25,25 +25,44 @@ const COUNTDOWN = -2;
  * ขอสิทธิ์แจ้งเตือนตอนกดปุ่มนี้เท่านั้น ไม่ขอตอนเปิดแอป
  * (ประกาศด่วนจากผู้จัด เช่น "เปิดเช็กอินแล้ว" เด้งให้เองโดยไม่ต้องตั้ง)
  */
-export function ReminderControl({ registrationId, activity, now }: { registrationId: string; activity: Activity; now: number }) {
+export function ReminderControl({
+  registrationId,
+  activity,
+  now,
+  preferCountdown = false,
+}: {
+  registrationId: string;
+  activity: Activity;
+  now: number;
+  /** เปิดมาเลือก "นับถอยหลังจากตอนนี้" ไว้ก่อน (หน้าลงทะเบียนสำเร็จ: เตือนให้ไปเช็กอิน) */
+  preferCountdown?: boolean;
+}) {
   const [scheduled, setScheduled] = useState<ScheduledReminder | null>(null);
   const [changing, setChanging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'success' | 'danger' | 'info'; text: string } | null>(null);
   const [denied, setDenied] = useState(false);
   const leads = availableReminderLeads(activity, now);
-  const [lead, setLead] = useState<number | null>(null);
+  const [lead, setLead] = useState<number | null>(preferCountdown ? COUNTDOWN : null);
   // ค่าเริ่มของ "กำหนดเอง": 2 ชม. ก่อนงาน
   const [custom, setCustom] = useState({ days: 0, hours: 2, minutes: 0 });
-  // ค่าเริ่มของ "นับถอยหลังจากตอนนี้": 10 วินาที
-  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 10 });
+  // ค่าเริ่มของ "นับถอยหลังจากตอนนี้": 5 วินาที (ขั้นต่ำ)
+  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 5 });
 
   useEffect(() => {
     loadReminderMap().then((map) => setScheduled(map[registrationId] ?? null));
   }, [registrationId]);
 
+  // ถึงเวลาเตือนแล้ว → กลับไปหน้าตั้งเตือนทันที (ตั้งรอบใหม่ได้เลย ไม่ต้องรอนาฬิกาในหน้าอัปเดต)
+  const scheduledAt = scheduled?.at;
+  useEffect(() => {
+    if (!scheduledAt) return;
+    const timer = setTimeout(() => setScheduled(null), Math.max(0, new Date(scheduledAt).getTime() - Date.now()) + 500);
+    return () => clearTimeout(timer);
+  }, [scheduledAt]);
+
   if (!supportsNotifications) {
-    return <Banner tone="info" icon="notifications-off-outline">การแจ้งเตือนใช้ได้บนแอปมือถือ (Expo Go) เว็บเบราว์เซอร์ไม่รองรับ</Banner>;
+    return <Banner tone="info" icon="notifications-off-outline">เบราว์เซอร์นี้ไม่มีแจ้งเตือนของระบบ ใช้แอปมือถือ (Expo Go) แทน</Banner>;
   }
 
   const eventStarted = new Date(activity.startsAt).getTime() <= now;
@@ -170,6 +189,7 @@ export function ReminderControl({ registrationId, activity, now }: { registratio
           {changing ? <Button title="ไม่เปลี่ยน" variant="ghost" onPress={() => setChanging(false)} /> : null}
         </>
       )}
+      {Platform.OS === 'web' ? <Text style={styles.hint}>บนเว็บต้องเปิดแท็บนี้ค้างไว้จนถึงเวลาเตือน</Text> : null}
       <Text style={styles.hint}>ถ้าผู้จัดส่งประกาศ (เช่น เปิดเช็กอินแล้ว / ย้ายห้อง) จะเด้งแจ้งเตือนให้อัตโนมัติ</Text>
       {message ? <Banner tone={message.tone}>{message.text}</Banner> : null}
       {denied && Platform.OS !== 'web' ? (
