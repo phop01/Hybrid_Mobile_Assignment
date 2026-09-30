@@ -7,7 +7,7 @@
 //   (ไม่เชื่อค่าระยะที่แอปคำนวณ เพราะแอปถูกแก้ไขได้)
 
 import { createServer } from 'node:http';
-import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, createReadStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -391,6 +391,10 @@ const LOGIN_LOCK_AFTER = 5;
 const LOGIN_LOCK_MS = 60 * 1000;
 const loginFailures = new Map(); // loginId → { count, lockedUntil }
 
+// รหัสล้างข้อมูลสาธิตที่ออกล่าสุด (อยู่ใน memory เท่านั้น)
+const RESET_CODE_TTL_MS = 5 * 60 * 1000;
+let resetCode = null;
+
 function checkLoginLock(loginId) {
   const entry = loginFailures.get(loginId);
   if (entry && entry.lockedUntil > Date.now()) {
@@ -510,9 +514,25 @@ async function handle(req, res) {
     return send(res, 204);
   }
 
-  // POST /demo/reset: ปุ่ม "ล้างข้อมูลสาธิต" ในแอป กลับเป็นข้อมูลตัวอย่างล้วน (ทุก session ถูกล้าง ต้อง login ใหม่)
+  // ล้างข้อมูลสาธิต 2 ขั้น กันคนอื่นกดเล่น: รหัส 6 หลักขึ้นเฉพาะในหน้าจอคอมที่รัน server
+  // POST /demo/reset/code: ออกรหัสใหม่ (ใช้ได้ 5 นาที ครั้งเดียว)
+  if (method === 'POST' && url.pathname === '/demo/reset/code') {
+    requireUser(req);
+    resetCode = { code: String(randomInt(0, 1_000_000)).padStart(6, '0'), expiresAt: Date.now() + RESET_CODE_TTL_MS };
+    console.log(`\n[api] รหัสล้างข้อมูลสาธิต: ${resetCode.code} (ใช้ได้ 5 นาที)\n`);
+    return send(res, 204);
+  }
+
+  // POST /demo/reset { code }: รหัสถูก → กลับเป็นข้อมูลตัวอย่างล้วน (ทุก session ถูกล้าง ต้อง login ใหม่)
+  // รหัสผิดครั้งเดียว รหัสนั้นใช้ไม่ได้อีก ต้องขอใหม่ (เดารหัสไม่ได้)
   if (method === 'POST' && url.pathname === '/demo/reset') {
     requireUser(req);
+    const body = await readJson(req);
+    const current = resetCode;
+    resetCode = null;
+    if (!current || Date.now() > current.expiresAt || body.code !== current.code) {
+      throw new HttpError(403, 'wrong_code', 'รหัสไม่ถูกต้องหรือหมดอายุ กดล้างข้อมูลใหม่เพื่อขอรหัสใหม่');
+    }
     Object.assign(db, buildDb({}));
     loginFailures.clear();
     rmSync(UPLOAD_DIR, { recursive: true, force: true });
@@ -800,6 +820,19 @@ async function handle(req, res) {
   }
 
   // POST /registrations/:id/photos (แนบรูปหลักฐานเพิ่มหลังส่งแล้ว สูงสุด MAX_EXTRA_PHOTOS รูป)
+  // DELETE /registrations/:id/photos/:file: ลบรูปที่แนบเพิ่ม (ถ่ายผิด) รูปหลักที่ส่งเป็นหลักฐานลบไม่ได้
+  if (method === 'DELETE' && parts[0] === 'registrations' && parts[2] === 'photos' && parts.length === 4) {
+    const user = requireUser(req);
+    const registration = findOwnRegistration(user, parts[1]);
+    const extras = registration.checkIn?.extraPhotos ?? [];
+    const photoUrl = `/uploads/${parts[3]}`;
+    if (!extras.includes(photoUrl)) throw new HttpError(404, 'not_found', 'ไม่พบรูปนี้ (รูปหลักลบไม่ได้)');
+    registration.checkIn.extraPhotos = extras.filter((u) => u !== photoUrl);
+    rmSync(join(UPLOAD_DIR, parts[3]), { force: true });
+    persist();
+    return send(res, 200, publicRegistration(registration));
+  }
+
   if (method === 'POST' && parts[0] === 'registrations' && parts[2] === 'photos' && parts.length === 3) {
     const user = requireUser(req);
     const registration = findOwnRegistration(user, parts[1]);

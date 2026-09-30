@@ -32,6 +32,8 @@ type MyRegistrationsValue = {
   checkIn: (item: PendingCheckIn) => Promise<CheckInOutcome>;
   /** แนบรูปหลักฐานเพิ่มหลังส่งแล้ว (ต้องออนไลน์) */
   addPhoto: (registrationId: string, photoBase64: string) => Promise<void>;
+  /** ลบรูปที่แนบเพิ่ม (ถ่ายผิด) ต้องออนไลน์ */
+  removePhoto: (registrationId: string, photoUrl: string) => Promise<void>;
 };
 
 const MyRegistrationsContext = createContext<MyRegistrationsValue | null>(null);
@@ -210,6 +212,15 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
     [replaceOne, token],
   );
 
+  const removePhoto = useCallback(
+    async (registrationId: string, photoUrl: string) => {
+      if (!token) throw new Error('กรุณาเข้าสู่ระบบ');
+      const updated = await api.deleteEvidencePhoto(token, registrationId, photoUrl);
+      replaceOne(updated);
+    },
+    [replaceOne, token],
+  );
+
   const value: MyRegistrationsValue = {
     registrations,
     loading,
@@ -224,6 +235,7 @@ function UserRegistrationsProvider({ children }: { children: ReactNode }) {
     cancel,
     checkIn,
     addPhoto,
+    removePhoto,
   };
   return <MyRegistrationsContext.Provider value={value}>{children}</MyRegistrationsContext.Provider>;
 }

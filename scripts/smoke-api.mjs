@@ -188,6 +188,17 @@ r = await call('POST', `/registrations/${myReg}/photos`, s1, { photoBase64: JPEG
 check('add extra evidence photo', r.status === 200 && r.body.checkIn.extraPhotos.length === 1, JSON.stringify(r.body));
 r = await call('POST', `/registrations/${myReg}/photos`, s2, { photoBase64: JPEG });
 check('cannot add photo to another user registration 404', r.status === 404, String(r.status));
+r = await call('POST', `/registrations/${myReg}/photos`, s1, { photoBase64: JPEG });
+const extraFile = r.body.checkIn.extraPhotos[1].split('/').pop();
+const mainFile = r.body.checkIn.photoUrl.split('/').pop();
+r = await call('DELETE', `/registrations/${myReg}/photos/${extraFile}`, s2);
+check('cannot delete photo of another user 404', r.status === 404, String(r.status));
+r = await call('DELETE', `/registrations/${myReg}/photos/${mainFile}`, s1);
+check('main evidence photo cannot be deleted 404', r.status === 404, String(r.status));
+r = await call('DELETE', `/registrations/${myReg}/photos/${extraFile}`, s1);
+check('delete extra photo', r.status === 200 && r.body.checkIn.extraPhotos.length === 1 && !r.body.checkIn.extraPhotos[0].endsWith(extraFile), JSON.stringify(r.body));
+r = await call('GET', `/uploads/${extraFile}`, s1);
+check('deleted photo file is gone 404', r.status === 404, String(r.status));
 
 // ---- เจ้าหน้าที่: ตรวจหลักฐาน / ไม่รับการลงทะเบียน / ยกเลิกกิจกรรม ----
 r = await call('POST', `/registrations/${myReg}/review`, org, { approve: true });
@@ -240,18 +251,17 @@ if (existsSync(dbFile)) {
   check('db.json stores no raw tokens', !raw.includes(s1) && !raw.includes(staff) && !raw.includes('"token"'));
 }
 
-// ปุ่ม "ล้างข้อมูลสาธิต": ต้อง login · ล้างทุก session · บัญชีตัวอย่างยัง login ได้และไม่มีการลงทะเบียนค้าง
-r = await call('POST', '/demo/reset', null);
-check('demo reset requires login 401', r.status === 401, String(r.status));
-r = await call('POST', '/demo/reset', s1);
-check('demo reset 204', r.status === 204, String(r.status));
+// ปุ่ม "ล้างข้อมูลสาธิต": ต้อง login + รหัส 6 หลักที่ขึ้นเฉพาะหน้าจอ server · รหัสผิดครั้งเดียวใช้ไม่ได้อีก
+r = await call('POST', '/demo/reset/code', null);
+check('reset code requires login 401', r.status === 401, String(r.status));
+r = await call('POST', '/demo/reset', s1, {});
+check('reset without code 403', r.status === 403, String(r.status));
+r = await call('POST', '/demo/reset/code', s1);
+check('request reset code 204 (code not in response)', r.status === 204 && !r.body, String(r.status));
+r = await call('POST', '/demo/reset', s1, { code: 'x' });
+check('reset with wrong code 403', r.status === 403, String(r.status));
 r = await call('GET', '/me', s1);
-check('sessions cleared after reset 401', r.status === 401, String(r.status));
-const fresh = await login('6609876543', 'campus1234');
-r = await call('GET', '/registrations', fresh);
-check('seed account logs in with no registrations after reset', r.status === 200 && (r.body.items ?? r.body).length === 0, JSON.stringify(r.body).slice(0, 200));
-r = await call('GET', '/activities', fresh);
-check('seed activities rebuilt after reset', r.status === 200 && (r.body.items ?? r.body).length > 0);
+check('data kept after wrong code', r.status === 200, String(r.status));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
