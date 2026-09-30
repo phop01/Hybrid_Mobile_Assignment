@@ -49,3 +49,6 @@ server/.data/
 CLAUDE.md
 AGENTS.md
 .claude/
+
+# บันทึกส่วนตัว ไม่ขึ้น GitHub
+notes/
