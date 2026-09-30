@@ -33,7 +33,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'วันนี้',
-          headerTitle: 'NK Today · วันนี้ในมอ',
+          headerTitle: 'KKUNK Today · วันนี้ในมอ',
           tabBarIcon: ({ color, size }) => <Ionicons name="today" size={size} color={color} />,
         }}
       />

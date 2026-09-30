@@ -1,4 +1,4 @@
-// API ส่วนกิจกรรมและบัญชีผู้ใช้ของ NK Today (ตรงกับ server/index.mjs)
+// API ส่วนกิจกรรมและบัญชีผู้ใช้ของ KKUNK Today (ตรงกับ server/index.mjs)
 
 import type {
   AccountRole,

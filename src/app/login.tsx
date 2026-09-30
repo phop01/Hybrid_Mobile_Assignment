@@ -50,7 +50,7 @@ export default function LoginScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen>
         <Card>
-          <SectionTitle>เข้าสู่ระบบ NK Today</SectionTitle>
+          <SectionTitle>เข้าสู่ระบบ KKUNK Today</SectionTitle>
           <Text style={styles.muted}>มหาวิทยาลัยขอนแก่น วิทยาเขตหนองคาย</Text>
           <Text style={styles.muted}>นักศึกษาใช้รหัสนักศึกษา ผู้จัดกิจกรรมใช้รหัสบุคลากร</Text>
           <TextField

@@ -53,7 +53,7 @@ export function loadReminderMap(): Promise<ReminderMap> {
 async function ensureChannel(): Promise<void> {
   if (!Notifications || Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: 'แจ้งเตือน NK Today',
+    name: 'แจ้งเตือน KKUNK Today',
     importance: Notifications.AndroidImportance.HIGH,
   });
 }
