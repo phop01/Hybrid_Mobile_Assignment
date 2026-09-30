@@ -3,7 +3,6 @@ import { useState } from 'react';
 import {
   FlatList,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,15 +11,19 @@ import {
 
 import { ActivityCard } from '@/components/activity-card';
 import { useAppWidth } from '@/components/phone-frame';
-import { Banner, Chip, StateView } from '@/components/ui';
+import { Banner, ChipBar, OfflineBanner, StateView } from '@/components/ui';
 import { Colors, MaxContentWidth, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { useDisplayStatus } from '@/hooks/use-display-status';
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
 import { filterActivities, isEnded, sortForBrowsing, type CategoryFilter } from '@/lib/filter-activities';
-import { formatUpdatedAt } from '@/lib/format';
 import { useActivities } from '@/state/activities-context';
 import { useFavorites } from '@/state/favorites-context';
 import { useAuthenticatedSession } from '@/state/session-context';
+
+const CATEGORY_FILTERS: { key: CategoryFilter; label: string; color?: string }[] = [
+  { key: 'all', label: 'ทั้งหมด' },
+  ...CATEGORY_ORDER.map((c) => ({ key: c, label: CATEGORIES[c].label, color: CATEGORIES[c].color })),
+];
 
 // ประกาศนอก component: เป็นฟังก์ชันเดิมทุก render การ์ด (memo) จึงไม่ render ซ้ำ
 const openActivity = (id: string) => router.push({ pathname: '/activities/[id]', params: { id } });
@@ -66,23 +69,8 @@ export default function ActivitiesScreen() {
           clearButtonMode="while-editing"
         />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        <Chip label="ทั้งหมด" selected={category === 'all'} onPress={() => setCategory('all')} />
-        {CATEGORY_ORDER.map((c) => (
-          <Chip
-            key={c}
-            label={CATEGORIES[c].label}
-            color={CATEGORIES[c].color}
-            selected={category === c}
-            onPress={() => setCategory(c)}
-          />
-        ))}
-      </ScrollView>
-      {offlineSince ? (
-        <Banner tone="warning">
-          ออฟไลน์ · แสดงข้อมูลล่าสุดเมื่อ {formatUpdatedAt(offlineSince)} ที่นั่งคงเหลืออาจไม่ตรงกับปัจจุบัน
-        </Banner>
-      ) : null}
+      <ChipBar options={CATEGORY_FILTERS} value={category} onChange={setCategory} />
+      <OfflineBanner since={offlineSince} note="ที่นั่งคงเหลืออาจไม่ตรงกับปัจจุบัน" />
       {error && status === 'ready' ? <Banner tone="danger">{error}</Banner> : null}
     </View>
   );
@@ -159,7 +147,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
   },
-  chips: { gap: Spacing.sm, paddingVertical: 2 },
   row: { gap: Spacing.md },
   cell: { flex: 1 },
 });

@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { LoginPrompt } from '@/components/login-prompt';
 import { TicketCard } from '@/components/ticket-card';
-import { Banner, Button, Chip, StateView } from '@/components/ui';
+import { Banner, Button, ChipBar, OfflineBanner, StateView } from '@/components/ui';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
-import { formatUpdatedAt } from '@/lib/format';
+import { useRefreshControl } from '@/hooks/use-refresh-control';
 import { isActive, isFacilities, sortByUrgency } from '@/lib/tickets';
 import { useAuthenticatedSession } from '@/state/session-context';
 import { useTickets } from '@/state/tickets-context';
@@ -14,6 +14,16 @@ import type { Ticket } from '@/types/models';
 
 type StudentFilter = 'all' | 'mine';
 type StaffFilter = 'queue' | 'mine' | 'closed';
+
+const STUDENT_FILTERS: { key: StudentFilter; label: string }[] = [
+  { key: 'all', label: 'ทั้งหมด' },
+  { key: 'mine', label: 'เกี่ยวกับฉัน' },
+];
+const STAFF_FILTERS: { key: StaffFilter; label: string }[] = [
+  { key: 'queue', label: 'รอรับเรื่อง' },
+  { key: 'mine', label: 'งานของฉัน' },
+  { key: 'closed', label: 'ปิดแล้ว' },
+];
 
 const openTicket = (id: string) => router.push({ pathname: '/tickets/[id]', params: { id } });
 
@@ -26,7 +36,6 @@ export default function TicketsScreen() {
   const { tickets, status, error, offlineSince, queued, refresh } = useTickets();
   const [studentFilter, setStudentFilter] = useState<StudentFilter>('all');
   const [staffFilter, setStaffFilter] = useState<StaffFilter>('queue');
-  const [refreshing, setRefreshing] = useState(false);
   // คิวงานเฉพาะเจ้าหน้าที่อาคาร · เจ้าหน้าที่กิจกรรมเห็นรายการแบบทั่วไปและแจ้งซ่อมได้
   const isStaff = isFacilities(session?.user);
   const userId = session?.user.id ?? '';
@@ -46,11 +55,7 @@ export default function TicketsScreen() {
     return [...list.filter(isActive), ...list.filter((t) => !isActive(t))];
   }, [isStaff, staffFilter, studentFilter, tickets, userId]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
-  }, [refresh]);
+  const refreshControl = useRefreshControl(refresh);
 
   const renderItem = useCallback(({ item }: { item: Ticket }) => <TicketCard ticket={item} onOpen={openTicket} />, []);
 
@@ -71,7 +76,7 @@ export default function TicketsScreen() {
 
   const header = (
     <View style={styles.header}>
-      {offlineSince ? <Banner tone="warning">ออฟไลน์ · ข้อมูลเมื่อ {formatUpdatedAt(offlineSince)}</Banner> : null}
+      <OfflineBanner since={offlineSince} />
       {queued.length > 0 ? (
         <Banner tone="warning" icon="cloud-upload">
           มี {queued.length} เรื่องรอส่ง จะส่งให้อัตโนมัติเมื่อกลับมาออนไลน์
@@ -80,18 +85,11 @@ export default function TicketsScreen() {
       {error && status === 'ready' ? <Banner tone="danger">{error}</Banner> : null}
 
       {isStaff ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          <Chip label="รอรับเรื่อง" selected={staffFilter === 'queue'} onPress={() => setStaffFilter('queue')} />
-          <Chip label="งานของฉัน" selected={staffFilter === 'mine'} onPress={() => setStaffFilter('mine')} />
-          <Chip label="ปิดแล้ว" selected={staffFilter === 'closed'} onPress={() => setStaffFilter('closed')} />
-        </ScrollView>
+        <ChipBar options={STAFF_FILTERS} value={staffFilter} onChange={setStaffFilter} />
       ) : (
         <>
           <Button title="แจ้งซ่อม" icon="construct" onPress={() => router.push('/tickets/new')} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-            <Chip label="ทั้งหมด" selected={studentFilter === 'all'} onPress={() => setStudentFilter('all')} />
-            <Chip label="เกี่ยวกับฉัน" selected={studentFilter === 'mine'} onPress={() => setStudentFilter('mine')} />
-          </ScrollView>
+          <ChipBar options={STUDENT_FILTERS} value={studentFilter} onChange={setStudentFilter} />
         </>
       )}
       {isStaff && staffFilter === 'queue' && visible.length > 0 ? (
@@ -108,7 +106,7 @@ export default function TicketsScreen() {
       style={{ backgroundColor: Colors.background }}
       contentContainerStyle={styles.list}
       ListHeaderComponent={header}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
+      refreshControl={refreshControl}
       ListEmptyComponent={
         <StateView
           kind="empty"
@@ -124,6 +122,5 @@ export default function TicketsScreen() {
 const styles = StyleSheet.create({
   list: { padding: Spacing.lg, gap: Spacing.md, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   header: { gap: Spacing.md },
-  chips: { gap: Spacing.sm, paddingVertical: 2 },
   hint: { fontSize: 13, color: Colors.textMuted },
 });

@@ -6,7 +6,7 @@ import { useMemo, useReducer, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CheckInCamera } from '@/components/check-in-camera';
-import { PhotoField, prepareCaptured } from '@/components/photo-field';
+import { PhotoField } from '@/components/photo-field';
 import { PickMap } from '@/components/pick-map';
 import { TicketCard } from '@/components/ticket-card';
 import { Banner, Button, Card, Chip, Screen, SectionTitle, TextField } from '@/components/ui';
@@ -23,6 +23,7 @@ import {
 import { categoryInfo, findDuplicates, KIND_INFO, REPAIR_ORDER } from '@/lib/tickets';
 import { ApiError } from '@/services/api-client';
 import { getCurrentCoordinates } from '@/services/location';
+import { preparePhotoForUpload } from '@/services/photo';
 import { useAuthenticatedSession } from '@/state/session-context';
 import { useTickets } from '@/state/tickets-context';
 
@@ -37,6 +38,8 @@ export default function NewTicketScreen() {
   const [locating, setLocating] = useState(false);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // server ถือว่ากด "เจอเหมือนกัน" ซ้ำ = เลิกติดตาม จึงต้องกันกดรัว
+  const [followingId, setFollowingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mapTouching, setMapTouching] = useState(false);
   const { tickets, create, act } = useTickets();
@@ -81,11 +84,14 @@ export default function NewTicketScreen() {
   };
 
   const follow = async (id: string) => {
+    if (followingId) return;
+    setFollowingId(id);
     try {
       await act(id, { type: 'follow' });
       router.replace({ pathname: '/tickets/[id]', params: { id } });
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'กดติดตามไม่สำเร็จ');
+      setFollowingId(null);
     }
   };
 
@@ -120,7 +126,7 @@ export default function NewTicketScreen() {
         onCapture={async (uri) => {
           setCameraOpen(false);
           try {
-            dispatch({ type: 'setPhoto', photo: await prepareCaptured(uri) });
+            dispatch({ type: 'setPhoto', photo: await preparePhotoForUpload(uri) });
             setErrors((e) => ({ ...e, photo: undefined }));
           } catch (e) {
             setMessage(e instanceof Error ? e.message : 'ประมวลผลรูปไม่สำเร็จ');
@@ -257,7 +263,14 @@ export default function NewTicketScreen() {
                     {ticket.reporterId === session?.user.id || ticket.following ? (
                       <Text style={styles.muted}>คุณติดตามเรื่องนี้อยู่แล้ว</Text>
                     ) : isStaff ? null : (
-                      <Button title="เจอเหมือนกัน (ไม่แจ้งซ้ำ)" icon="people" variant="secondary" onPress={() => follow(ticket.id)} />
+                      <Button
+                        title="เจอเหมือนกัน (ไม่แจ้งซ้ำ)"
+                        icon="people"
+                        variant="secondary"
+                        loading={followingId === ticket.id}
+                        disabled={followingId !== null}
+                        onPress={() => follow(ticket.id)}
+                      />
                     )}
                   </View>
                 ))}

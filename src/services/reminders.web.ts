@@ -29,7 +29,7 @@ export type NotificationData =
   | { type: 'inbox'; kind: InboxKind; targetId: string };
 export type ScheduledReminder = { notificationId: string; at: string };
 
-export const APPOINTMENT_LEAD_MS = 60 * 60 * 1000;
+const MAX_TIMER_MS = 2 ** 31 - 1;
 
 // registrationId → เตือนที่ตั้งไว้ (อยู่ในหน่วยความจำของแท็บนี้เท่านั้น)
 const timers = new Map<string, { reminder: ScheduledReminder; timer: ReturnType<typeof setTimeout> }>();
@@ -49,7 +49,7 @@ export async function scheduleCheckInReminder(registrationId: string, activity: 
   const title =
     leadMinutes > 0 ? `อีก ${formatLead(leadMinutes)} ถึงเวลากิจกรรม: ${activity.title}` : `ถึงเวลาเช็กอิน: ${activity.title}`;
   const reminder: ScheduledReminder = { notificationId: `web-${registrationId}`, at: date.toISOString() };
-  const timer = setTimeout(() => {
+  const fire = () => {
     timers.delete(registrationId);
     if (webNotificationStatus() !== 'granted') return;
     const notification = new Notification(title, { body: `ที่ ${activity.location.name} · แตะเพื่อเปิดหน้าการลงทะเบียน`, tag: reminder.notificationId, icon: '/favicon.ico' });
@@ -58,8 +58,14 @@ export async function scheduleCheckInReminder(registrationId: string, activity: 
       notification.close();
       router.push({ pathname: '/registrations/[id]', params: { id: registrationId } });
     };
-  }, date.getTime() - Date.now());
-  timers.set(registrationId, { reminder, timer });
+  };
+  // setTimeout รับได้ไม่เกิน ~24.8 วัน (เกินแล้วเบราว์เซอร์ยิงทันที) → รอเป็นช่วง ๆ แล้วตั้งใหม่จนถึงเวลา
+  const arm = () => {
+    const remaining = date.getTime() - Date.now();
+    const timer = setTimeout(remaining > MAX_TIMER_MS ? arm : fire, Math.min(remaining, MAX_TIMER_MS));
+    timers.set(registrationId, { reminder, timer });
+  };
+  arm();
   return reminder;
 }
 export async function cancelReminder(registrationId: string): Promise<void> {

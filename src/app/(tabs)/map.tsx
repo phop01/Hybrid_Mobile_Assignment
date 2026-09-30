@@ -1,17 +1,16 @@
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ActivityCard } from '@/components/activity-card';
 import { BroadcastCard } from '@/components/broadcast-card';
 import { PickMap, type MapMarker } from '@/components/pick-map';
 import { TicketCard } from '@/components/ticket-card';
-import { Banner, Chip, StateView } from '@/components/ui';
+import { ChipBar, OfflineBanner, StateView } from '@/components/ui';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useDisplayStatus } from '@/hooks/use-display-status';
 import { CATEGORIES } from '@/lib/categories';
 import { isEnded } from '@/lib/filter-activities';
-import { formatUpdatedAt } from '@/lib/format';
 import { isActive, KIND_INFO } from '@/lib/tickets';
 import { useActivities } from '@/state/activities-context';
 import { useFavorites } from '@/state/favorites-context';
@@ -76,20 +75,15 @@ export default function MapScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.top}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {LAYERS.map((l) => (
-            <Chip
-              key={l.key}
-              label={l.label}
-              selected={layer === l.key}
-              onPress={() => {
-                setLayer(l.key);
-                setSelectedId(null);
-              }}
-            />
-          ))}
-        </ScrollView>
-        {offlineSince ? <Banner tone="warning">ออฟไลน์ · ข้อมูลเมื่อ {formatUpdatedAt(offlineSince)}</Banner> : null}
+        <ChipBar
+          options={LAYERS}
+          value={layer}
+          onChange={(key) => {
+            setLayer(key);
+            setSelectedId(null);
+          }}
+        />
+        <OfflineBanner since={offlineSince} />
       </View>
 
       <View style={styles.map}>
@@ -130,7 +124,6 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.background },
   top: { padding: Spacing.md, gap: Spacing.sm, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
-  chips: { gap: Spacing.sm, paddingVertical: 2 },
   map: { flex: 1, overflow: 'hidden', borderTopWidth: 1, borderBottomWidth: 1, borderColor: Colors.border },
   bottom: { padding: Spacing.md, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   hint: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },

@@ -22,6 +22,11 @@ export class ApiError extends Error {
   get isNetwork() {
     return this.kind === 'network';
   }
+
+  /** ลองใหม่ทีหลังได้ (เน็ตหลุด / server ล่มชั่วคราว / ถูกจำกัดความถี่) ไม่ใช่การปฏิเสธถาวร */
+  get isRetryable() {
+    return this.isNetwork || (this.kind === 'http' && (this.status >= 500 || this.status === 408 || this.status === 429));
+  }
 }
 
 type RequestOptions = {
@@ -33,8 +38,9 @@ type RequestOptions = {
 };
 
 // ให้ session provider ลงทะเบียนไว้ เพื่อ logout อัตโนมัติเมื่อ token หมดอายุ (401)
-let onUnauthorized: (() => void) | null = null;
-export function setUnauthorizedHandler(handler: (() => void) | null) {
+// ส่ง token ที่โดน 401 ไปด้วย: request ค้างของบัญชีก่อนหน้าต้องไม่ทำให้บัญชีปัจจุบันหลุด
+let onUnauthorized: ((token: string) => void) | null = null;
+export function setUnauthorizedHandler(handler: ((token: string) => void) | null) {
   onUnauthorized = handler;
 }
 
@@ -81,7 +87,7 @@ export async function apiRequest(path: string, options: RequestOptions = {}): Pr
 
   if (!response.ok) {
     const body = (payload ?? {}) as { message?: string; code?: string; fields?: Record<string, string> };
-    if (response.status === 401 && options.token) onUnauthorized?.();
+    if (response.status === 401 && options.token) onUnauthorized?.(options.token);
     throw new ApiError(
       body.message ?? `คำขอไม่สำเร็จ (${response.status})`,
       'http',

@@ -4,10 +4,9 @@ import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-nativ
 import { ActivityCard } from '@/components/activity-card';
 import { LoginPrompt } from '@/components/login-prompt';
 import type { DisplayStatus } from '@/components/status-badge';
-import { Banner, StateView } from '@/components/ui';
+import { Banner, OfflineBanner, StateView } from '@/components/ui';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { isEnded } from '@/lib/filter-activities';
-import { formatUpdatedAt } from '@/lib/format';
 import { useActivities } from '@/state/activities-context';
 import { useFavorites } from '@/state/favorites-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
@@ -67,7 +66,7 @@ export default function MyScreen() {
       refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Colors.primary} />}
       ListHeaderComponent={
         <View style={{ gap: Spacing.sm }}>
-          {offlineSince ? <Banner tone="warning">ออฟไลน์ · ข้อมูลล่าสุดเมื่อ {formatUpdatedAt(offlineSince)}</Banner> : null}
+          <OfflineBanner since={offlineSince} />
           {queuedIds.length > 0 ? (
             <Banner tone="warning" icon="cloud-upload">
               มีเช็กอิน {queuedIds.length} รายการรอส่ง จะส่งให้อัตโนมัติเมื่อกลับมาออนไลน์
