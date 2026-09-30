@@ -4,14 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { RoleSwitcher } from '@/components/role-switcher';
 import { LoginPrompt } from '@/components/login-prompt';
-import { Banner, Button, Card, Screen, SectionTitle } from '@/components/ui';
+import { Banner, Button, Card, Screen, SectionTitle, TextField } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { REQUIRED_HOURS, summarizeAttendance } from '@/lib/attendance';
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
 import { formatDate } from '@/lib/format';
 import { confirmAction } from '@/lib/platform-actions';
 import { isFacilities } from '@/lib/tickets';
-import { resetDemoData } from '@/services/campus-api';
+import { requestResetCode, resetDemoData } from '@/services/campus-api';
 import { useActivities } from '@/state/activities-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { useAuthenticatedSession, useSession } from '@/state/session-context';
@@ -21,6 +21,10 @@ export default function ProfileScreen() {
   const { signOut } = useSession();
   const { registrations } = useMyRegistrations();
   const { activities, getById } = useActivities();
+  // ล้างข้อมูลสาธิต 2 ขั้น: กดปุ่ม → รหัส 6 หลักขึ้นที่หน้าจอคอม → พิมพ์รหัสยืนยัน (กันคนอื่นกดเล่น)
+  const [resetStep, setResetStep] = useState<'idle' | 'code'>('idle');
+  const [resetCode, setResetCode] = useState('');
+  const [resetBusy, setResetBusy] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
 
   if (!session) {
@@ -56,18 +60,36 @@ export default function ProfileScreen() {
   };
 
   // สำหรับสาธิต: ล้างข้อมูลทั้งระบบกลับเป็นข้อมูลตัวอย่าง แล้วออกจากระบบ (ทุก session ถูกล้างด้วย)
-  const onResetDemo = async () => {
+  const onRequestReset = async () => {
     const ok = await confirmAction(
       'ล้างข้อมูลสาธิต',
-      'ลบการลงทะเบียน เช็กอิน รูป เรื่องแจ้ง และแจ้งเตือนทั้งหมด กลับเป็นข้อมูลตัวอย่าง แล้วออกจากระบบ',
-      'ล้างข้อมูล',
+      'ลบการลงทะเบียน เช็กอิน รูป เรื่องแจ้ง และแจ้งเตือนทั้งหมด กลับเป็นข้อมูลตัวอย่าง แล้วออกจากระบบ\n\nรหัสยืนยัน 6 หลักจะขึ้นที่หน้าจอคอมที่รัน npm start',
+      'ขอรหัส',
     );
     if (!ok) return;
+    setResetBusy(true);
     setResetError(null);
     try {
-      await resetDemoData(session.token);
+      await requestResetCode(session.token);
+      setResetCode('');
+      setResetStep('code');
     } catch (e) {
+      setResetError(e instanceof Error ? e.message : 'ขอรหัสไม่สำเร็จ ลองใหม่อีกครั้ง');
+    } finally {
+      setResetBusy(false);
+    }
+  };
+
+  const onConfirmReset = async () => {
+    setResetBusy(true);
+    setResetError(null);
+    try {
+      await resetDemoData(session.token, resetCode.trim());
+    } catch (e) {
+      // รหัสผิดครั้งเดียวใช้ไม่ได้อีก ต้องกดขอรหัสใหม่
+      setResetStep('idle');
       setResetError(e instanceof Error ? e.message : 'ล้างข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง');
+      setResetBusy(false);
       return;
     }
     await signOut();
@@ -201,7 +223,30 @@ export default function ProfileScreen() {
       </Card>
 
       <Button title="ออกจากระบบ" icon="log-out-outline" variant="secondary" onPress={onSignOut} />
-      <Button title="ล้างข้อมูลสาธิต" icon="refresh-outline" variant="secondary" onPress={onResetDemo} />
+      {resetStep === 'code' ? (
+        <Card>
+          <SectionTitle>ยืนยันล้างข้อมูลสาธิต</SectionTitle>
+          <TextField
+            label="รหัส 6 หลัก"
+            hint="ดูรหัสที่หน้าจอคอมที่รัน npm start (ใช้ได้ 5 นาที)"
+            value={resetCode}
+            onChangeText={(t) => setResetCode(t.replace(/\D/g, '').slice(0, 6))}
+            keyboardType="number-pad"
+            maxLength={6}
+            autoFocus
+          />
+          <Button
+            title="ล้างข้อมูล"
+            icon="trash-outline"
+            loading={resetBusy}
+            disabled={resetCode.length !== 6}
+            onPress={onConfirmReset}
+          />
+          <Button title="ยกเลิก" variant="ghost" disabled={resetBusy} onPress={() => setResetStep('idle')} />
+        </Card>
+      ) : (
+        <Button title="ล้างข้อมูลสาธิต" icon="refresh-outline" variant="secondary" loading={resetBusy} onPress={onRequestReset} />
+      )}
       {resetError ? (
         <Banner tone="danger" icon="alert-circle">
           {resetError}

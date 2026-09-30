@@ -1,6 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Linking, Modal, Platform, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ActivityMap } from '@/components/activity-map';
 import { CheckInCamera } from '@/components/check-in-camera';
@@ -9,6 +10,7 @@ import { Colors, Radius, Spacing } from '@/constants/theme';
 import { canCheckIn } from '@/lib/check-in-rules';
 import { formatDate, formatTime, formatVenueDistance } from '@/lib/format';
 import { distanceMeters, type Coordinates } from '@/lib/geo';
+import { confirmAction } from '@/lib/platform-actions';
 import { PHOTO_SOURCE_LABEL } from '@/lib/photo-time';
 import { toAbsoluteUrl } from '@/services/api-config';
 import { getCurrentCoordinates } from '@/services/location';
@@ -33,7 +35,7 @@ const MAX_EXTRA_PHOTOS = 5;
  * ส่งแล้วแนบรูปเพิ่มได้ (เช่น ถ่ายบรรยากาศงานเพิ่ม)
  */
 export function EvidenceCard({ registration, activity }: { registration: Registration; activity: Activity }) {
-  const { checkIn, addPhoto, queuedIds } = useMyRegistrations();
+  const { checkIn, addPhoto, removePhoto, queuedIds } = useMyRegistrations();
   const [location, setLocation] = useState<LocationState>({ status: 'locating' });
   // main = รูปหลักก่อนส่ง · extra = รูปที่แนบเพิ่มหลังส่ง
   const [camera, setCamera] = useState<'main' | 'extra' | null>(null);
@@ -131,6 +133,23 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
     }
   };
 
+  // ลบรูปที่แนบเพิ่ม (ถ่ายผิด) รูปแรกคือหลักฐานหลักที่ส่งไปแล้ว ลบไม่ได้
+  const deleteExtra = async (url: string, index: number) => {
+    const ok = await confirmAction('ลบรูปนี้?', `ลบรูปที่แนบเพิ่มรูปที่ ${index + 1}`, 'ลบรูป');
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await removePhoto(registration.id, url);
+      setMessage('ลบรูปแล้ว');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'ลบรูปไม่สำเร็จ');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const record = registration.checkIn;
   const photos = record ? [record.photoUrl, ...(record.extraPhotos ?? [])] : [];
   const extraCount = record?.extraPhotos?.length ?? 0;
@@ -202,6 +221,7 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
                   <Button title="เลือกจากคลัง" icon="images-outline" variant="secondary" disabled={busy} onPress={() => pickFromLibrary('main')} />
                 </View>
               </View>
+              <Button title="ลบรูป" icon="trash-outline" variant="ghost" disabled={busy} onPress={() => setPhoto(null)} />
               <Button title="ส่งหลักฐาน" icon="send" loading={busy} onPress={submit} />
             </>
           ) : busy ? (
@@ -223,13 +243,24 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
         <View style={{ gap: Spacing.sm }}>
           <View style={styles.grid}>
             {photos.map((url, i) => (
-              <Image
-                key={url}
-                source={{ uri: toAbsoluteUrl(url) }}
-                style={[styles.thumb, i === 0 && photos.length === 1 && styles.single]}
-                contentFit="cover"
-                accessibilityLabel={`รูปหลักฐานที่ ${i + 1}`}
-              />
+              <View key={url} style={[styles.thumb, i === 0 && photos.length === 1 && styles.single]}>
+                <Image
+                  source={{ uri: toAbsoluteUrl(url) }}
+                  style={styles.thumbImage}
+                  contentFit="cover"
+                  accessibilityLabel={`รูปหลักฐานที่ ${i + 1}`}
+                />
+                {i > 0 && submitted && !busy ? (
+                  <Pressable
+                    onPress={() => deleteExtra(url, i)}
+                    style={styles.remove}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`ลบรูปที่ ${i + 1}`}>
+                    <Ionicons name="close" size={18} color="#fff" />
+                  </Pressable>
+                ) : null}
+              </View>
             ))}
           </View>
           <Text style={styles.muted}>
@@ -277,6 +308,18 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 140 },
   preview: { width: '100%', aspectRatio: 3 / 4, maxHeight: 420, borderRadius: Radius.md, backgroundColor: Colors.border },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  thumb: { width: '31%', aspectRatio: 1, borderRadius: Radius.md, backgroundColor: Colors.border },
+  thumb: { width: '31%', aspectRatio: 1, borderRadius: Radius.md, backgroundColor: Colors.border, overflow: 'hidden' },
+  thumbImage: { width: '100%', height: '100%' },
+  remove: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   single: { width: '100%', aspectRatio: 4 / 3 },
 });
