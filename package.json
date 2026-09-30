@@ -56,6 +56,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "app-only": "expo start",
+    "reset-live": "node scripts/reset-live.mjs",
     "reset-data": "node -e \"require('fs').rmSync('server/.data',{recursive:true,force:true});console.log('ล้างข้อมูล API แล้ว')\""
   },
   "private": true,
