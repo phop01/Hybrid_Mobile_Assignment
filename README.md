@@ -147,13 +147,6 @@ __tests__/         Jest + Testing Library
 - เว็บไม่มีแจ้งเตือนของระบบ จึงแสดงเป็นแถบด้านบนของแอปแทน
 - ข้อมูลเก็บเป็นไฟล์ JSON ใน `server/.data` เหมาะกับการนำเสนอ/ทดลองใช้ ถ้าใช้จริงต้องเปลี่ยนเป็นฐานข้อมูล
 
-## เครดิตไอเดียจากเพื่อนร่วมชั้น
-
-- แตะแจ้งเตือนแล้วเปิดหน้าที่ถูกต้องทุกสถานะแอป + หน้า fallback เมื่อไม่พบข้อมูล: [chaiyut-kun/campus-events-hybrid-mobile](https://github.com/chaiyut-kun/campus-events-hybrid-mobile), [DeadShotZ47/expo-location](https://github.com/DeadShotZ47/expo-location)
-- แจ้งเตือนที่เกิดจากข้อมูลเอง (ไม่ใช่ปุ่มทดสอบ) และยกเลิกทั้งหมดตอน logout: [ChubbyCats101/TravelDiary](https://github.com/ChubbyCats101/TravelDiary)
-- รายการกับหมุดบนแผนที่เลื่อนตามกัน: [xBiCx/location-and-map](https://github.com/xBiCx/location-and-map)
-- คิวรูปรอส่งตอนออฟไลน์: [jutatipp/appNong-Khai-Trip_Assignment11](https://github.com/jutatipp/appNong-Khai-Trip_Assignment11)
-- แยกชั้น screen → hook → repository และรายงาน accessibility: [Sojjyuu/khon-kaen-poi-week12](https://github.com/Sojjyuu/khon-kaen-poi-week12)
 
 ## เอกสารเพิ่มเติม
 
