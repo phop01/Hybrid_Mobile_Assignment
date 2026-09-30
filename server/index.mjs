@@ -8,7 +8,7 @@
 
 import { createServer } from 'node:http';
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, createReadStream } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, createReadStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,6 +58,11 @@ function loadDb() {
       process.exit(1);
     }
   }
+  return buildDb(saved);
+}
+
+/** สร้างข้อมูลใน memory จากที่บันทึกไว้ (ส่ง {} = เริ่มใหม่จากข้อมูลตัวอย่างล้วน) */
+function buildDb(saved) {
   // กิจกรรมที่ผู้จัดสร้างเองในแอป ต้องเก็บถาวร
   const customActivities = Array.isArray(saved.customActivities) ? saved.customActivities : [];
   // บัญชีที่สมัครเองในแอป (บัญชีตัวอย่างสร้างใหม่ทุกครั้ง ไม่ต้องเก็บ)
@@ -501,6 +506,17 @@ async function handle(req, res) {
     db.sessions = db.sessions.filter((s) => s !== ended);
     // ออกจากระบบ = เครื่องนี้ไม่ควรได้แจ้งเตือนของบัญชีนี้อีก
     if (ended) db.pushTokens = db.pushTokens.filter((t) => t.sessionHash !== ended.tokenHash);
+    persist();
+    return send(res, 204);
+  }
+
+  // POST /demo/reset: ปุ่ม "ล้างข้อมูลสาธิต" ในแอป กลับเป็นข้อมูลตัวอย่างล้วน (ทุก session ถูกล้าง ต้อง login ใหม่)
+  if (method === 'POST' && url.pathname === '/demo/reset') {
+    requireUser(req);
+    Object.assign(db, buildDb({}));
+    loginFailures.clear();
+    rmSync(UPLOAD_DIR, { recursive: true, force: true });
+    mkdirSync(UPLOAD_DIR, { recursive: true });
     persist();
     return send(res, 204);
   }

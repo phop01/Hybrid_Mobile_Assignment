@@ -43,7 +43,11 @@ export function BroadcastCard({ broadcast, width, compact }: { broadcast: Broadc
         accessibilityLabel={`โปสเตอร์ประกาศ ${broadcast.message} แตะเพื่อดูเต็มจอ`}
         style={({ pressed }) => [styles.posterWrap, pressed && { opacity: 0.9 }]}>
         <Image source={{ uri }} style={compact ? styles.thumb : styles.poster} contentFit={compact ? 'cover' : 'contain'} transition={150} />
-        {compact ? null : (
+        {compact ? (
+          <View style={styles.zoomIcon} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Ionicons name="expand" size={12} color="#fff" />
+          </View>
+        ) : (
           <View style={styles.zoomHint} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Ionicons name="expand" size={14} color="#fff" />
             <Text style={styles.zoomText}>แตะดูเต็ม</Text>
@@ -81,8 +85,8 @@ export function BroadcastCard({ broadcast, width, compact }: { broadcast: Broadc
 }
 
 /**
- * รายการประกาศบนหน้าแรก: ประกาศที่มีโปสเตอร์เรียงแนวนอนเลื่อนได้ (ไม่ดันเนื้อหาอื่นลงไปไกล)
- * ประกาศข้อความล้วนแสดงเป็นแถบด้านล่าง
+ * รายการประกาศบนหน้าแรก: โปสเตอร์แสดงเป็นการ์ดย่อ (รูปเล็กซ้าย ข้อความขวา) สูงพอๆ กับแถบประกาศข้อความ
+ * หลายใบเรียงแนวนอนเลื่อนได้ · แตะรูปเพื่อดูเต็มจอ · ประกาศข้อความล้วนแสดงเป็นแถบด้านล่าง
  */
 export function BroadcastList({ items }: { items: Broadcast[] }) {
   if (items.length === 0) return null;
@@ -90,11 +94,11 @@ export function BroadcastList({ items }: { items: Broadcast[] }) {
   const texts = items.filter((b) => !b.imageUrl);
   return (
     <View style={{ gap: Spacing.sm }}>
-      {posters.length === 1 ? <BroadcastCard broadcast={posters[0]} /> : null}
+      {posters.length === 1 ? <BroadcastCard broadcast={posters[0]} compact /> : null}
       {posters.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {posters.map((b) => (
-            <BroadcastCard key={b.id} broadcast={b} width={280} />
+            <BroadcastCard key={b.id} broadcast={b} width={300} compact />
           ))}
         </ScrollView>
       ) : null}
@@ -129,6 +133,14 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+  zoomIcon: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: Radius.pill,
+    padding: 4,
   },
   zoomText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   body: { padding: Spacing.md, gap: 6 },
