@@ -38,7 +38,8 @@ export default function TicketDoneScreen() {
       .catch(() => undefined);
   }, [ticket?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!ticket || ticket.assigneeId !== session?.user.id || ticket.status !== 'accepted') {
+  // กำลังส่ง/เพิ่งส่งสำเร็จ (สถานะเปลี่ยนเป็น done ก่อน router.back) → ไม่สลับไปหน้า "ทำรายการนี้ไม่ได้"
+  if (!ticket || (!submitting && (ticket.assigneeId !== session?.user.id || ticket.status !== 'accepted'))) {
     return (
       <StateView
         kind="empty"
@@ -51,6 +52,7 @@ export default function TicketDoneScreen() {
     );
   }
   const submit = async () => {
+    if (submitting) return;
     setSubmitting(true);
     setError(null);
     try {

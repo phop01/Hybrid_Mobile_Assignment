@@ -37,6 +37,8 @@ export default function NewTicketScreen() {
   const [locating, setLocating] = useState(false);
   const [locationNote, setLocationNote] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // server ถือว่ากด "เจอเหมือนกัน" ซ้ำ = เลิกติดตาม จึงต้องกันกดรัว
+  const [followingId, setFollowingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mapTouching, setMapTouching] = useState(false);
   const { tickets, create, act } = useTickets();
@@ -81,11 +83,14 @@ export default function NewTicketScreen() {
   };
 
   const follow = async (id: string) => {
+    if (followingId) return;
+    setFollowingId(id);
     try {
       await act(id, { type: 'follow' });
       router.replace({ pathname: '/tickets/[id]', params: { id } });
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'กดติดตามไม่สำเร็จ');
+      setFollowingId(null);
     }
   };
 
@@ -257,7 +262,14 @@ export default function NewTicketScreen() {
                     {ticket.reporterId === session?.user.id || ticket.following ? (
                       <Text style={styles.muted}>คุณติดตามเรื่องนี้อยู่แล้ว</Text>
                     ) : isStaff ? null : (
-                      <Button title="เจอเหมือนกัน (ไม่แจ้งซ้ำ)" icon="people" variant="secondary" onPress={() => follow(ticket.id)} />
+                      <Button
+                        title="เจอเหมือนกัน (ไม่แจ้งซ้ำ)"
+                        icon="people"
+                        variant="secondary"
+                        loading={followingId === ticket.id}
+                        disabled={followingId !== null}
+                        onPress={() => follow(ticket.id)}
+                      />
                     )}
                   </View>
                 ))}

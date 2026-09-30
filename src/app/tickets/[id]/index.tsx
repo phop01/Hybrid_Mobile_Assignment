@@ -30,9 +30,10 @@ export default function TicketDetailScreen() {
   const session = useAuthenticatedSession();
   const { getById, load, act } = useTickets();
   const ticket = id ? getById(id) : undefined;
-  const [loading, setLoading] = useState(!ticket);
+  // ลิงก์ไม่มี id → แสดง "ไม่พบเรื่องนี้" ทันที ไม่ค้างหน้าโหลด
+  const [loading, setLoading] = useState(!ticket && Boolean(id));
   const [refreshing, setRefreshing] = useState(false);
-  const [notFound, setNotFound] = useState(false);
+  const [notFound, setNotFound] = useState(!id);
   const [panel, setPanel] = useState<Panel>(null);
   const [appointment, setAppointment] = useState<string | null>(null);
   const [note, setNote] = useState('');
@@ -81,12 +82,15 @@ export default function TicketDetailScreen() {
   const category = categoryInfo(ticket.kind, ticket.category);
 
   const run = async (action: TicketAction, success: string) => {
+    if (busy) return;
     setBusy(true);
     setMessage(null);
     try {
       await act(ticket.id, action);
       setPanel(null);
       setNote('');
+      // ไม่ให้เวลานัดครั้งก่อนติดไปกับแผง "เลื่อนเวลานัด" ครั้งถัดไป
+      setAppointment(null);
       setMessage({ tone: 'success', text: success });
     } catch (e) {
       setMessage({ tone: 'danger', text: e instanceof Error ? e.message : 'ทำรายการไม่สำเร็จ' });

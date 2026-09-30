@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
+import { isActivitiesStaff } from '@/lib/tickets';
 import { ApiError, setUnauthorizedHandler } from '@/services/api-client';
 import * as api from '@/services/campus-api';
 import { forgetPush } from '@/services/push';
@@ -64,14 +65,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await writeJson(USER_KEY, user);
         if (!cancelled) setSession({ status: 'authenticated', token, user });
       } catch (error) {
-        if (error instanceof ApiError && error.isNetwork) {
-          // ออฟไลน์: เชื่อ token ไว้ก่อน server จะตรวจอีกทีตอนส่งข้อมูล
-          const cachedUser = await readJson<User | null>(USER_KEY, (v): v is User | null => v === null || isUser(v), null);
-          if (cachedUser) return !cancelled && setSession({ status: 'authenticated', token, user: cachedUser });
+        if (error instanceof ApiError && error.status === 401) {
+          // token หมดอายุหรือใช้ไม่ได้ → ล้างแล้วกลับไปสถานะยังไม่ login
+          await wipeLocalSession();
+          if (!cancelled) setSession({ status: 'anonymous' });
+          return;
         }
-        // token หมดอายุหรือใช้ไม่ได้ → ล้างแล้วกลับไปสถานะยังไม่ login ไม่ปล่อยให้ค้างที่ loading
-        await wipeLocalSession();
-        if (!cancelled) setSession({ status: 'anonymous' });
+        // ออฟไลน์ / server ล่มชั่วคราว: เชื่อ token ไว้ก่อน server จะตรวจอีกทีตอนส่งข้อมูล
+        // ห้ามล้างข้อมูลในเครื่อง ไม่อย่างนั้นเช็กอิน/เรื่องแจ้งที่รอส่งในคิวจะหายไป
+        const cachedUser = await readJson<User | null>(USER_KEY, (v): v is User | null => v === null || isUser(v), null);
+        if (cancelled) return;
+        // ไม่มีโปรไฟล์ในเครื่อง → ให้ login ใหม่ แต่ยังเก็บ token/คิวไว้ ครั้งหน้าเปิดแอปจะลองใหม่
+        setSession(cachedUser ? { status: 'authenticated', token, user: cachedUser } : { status: 'anonymous' });
       }
     })();
     return () => {
@@ -112,8 +117,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   // server ตอบ 401 (token หมดอายุ) ที่ไหนก็ตาม → ออกจากระบบ
+  // เฉพาะเมื่อเป็น token ของ session ปัจจุบัน (request ค้างของบัญชีที่ logout ไปแล้วไม่นับ)
+  const tokenRef = useRef<string | null>(null);
   useEffect(() => {
-    setUnauthorizedHandler(() => {
+    tokenRef.current = session.status === 'authenticated' ? session.token : null;
+  }, [session]);
+  useEffect(() => {
+    setUnauthorizedHandler((token) => {
+      if (token !== tokenRef.current) return;
       wipeLocalSession().then(() => setSession({ status: 'anonymous' }));
     });
     return () => setUnauthorizedHandler(null);
@@ -135,8 +146,8 @@ export function useAuthenticatedSession() {
   return session.status === 'authenticated' ? session : null;
 }
 
-/** session ของผู้จัดกิจกรรม (null ถ้าไม่ได้ login หรือเป็นนักศึกษา) */
+/** session ของเจ้าหน้าที่งานกิจกรรม (null ถ้าไม่ได้ login หรือเป็นบทบาทอื่น) ตรงกับที่ server ตรวจ */
 export function useOrganizerSession() {
   const session = useAuthenticatedSession();
-  return session?.user.role === 'organizer' ? session : null;
+  return isActivitiesStaff(session?.user) ? session : null;
 }

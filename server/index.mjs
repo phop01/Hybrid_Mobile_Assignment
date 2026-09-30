@@ -3,12 +3,12 @@
 //
 // เหตุผลที่ต้องมี server กลาง:
 // - ที่นั่งคงเหลือต้องเห็นตรงกันทุกคน
-// - ผลเช็กอินต้องถูกเก็บไว้ที่ที่ผู้จัดตรวจได้ และ server ต้องตรวจระยะทาง/เวลาซ้ำ
-//   เพราะค่าที่ส่งมาจากแอปถูกแก้ไขได้
+// - ผลเช็กอินต้องถูกเก็บไว้ที่ที่ผู้จัดตรวจได้ และ server คำนวณระยะทางเองจากพิกัดที่ส่งมา
+//   (ไม่เชื่อค่าระยะที่แอปคำนวณ เพราะแอปถูกแก้ไขได้)
 
 import { createServer } from 'node:http';
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, createReadStream } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, createReadStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,7 +51,11 @@ function loadDb() {
     try {
       saved = JSON.parse(readFileSync(DB_FILE, 'utf8'));
     } catch {
-      console.warn('[api] อ่าน db.json ไม่ได้ เริ่มฐานข้อมูลใหม่');
+      // ไม่เริ่มฐานข้อมูลว่างทับของเดิม: สำรองไฟล์ที่เสียไว้ แล้วหยุด ให้คนแก้/ลบเองก่อน
+      const backup = `${DB_FILE}.broken-${Date.now()}`;
+      copyFileSync(DB_FILE, backup);
+      console.error(`[api] อ่าน db.json ไม่ได้ สำรองไว้ที่ ${backup} (ลบ server/.data/db.json หรือ npm run reset-data เพื่อเริ่มใหม่)`);
+      process.exit(1);
     }
   }
   // กิจกรรมที่ผู้จัดสร้างเองในแอป ต้องเก็บถาวร
@@ -87,16 +91,19 @@ const db = loadDb();
 const MAX_NOTIFICATIONS = 1000;
 
 function persist() {
-  const { registrations, sessions, customActivities, registeredUsers, announcements, tickets, broadcasts, pushTokens } = db;
-  const notifications = db.notifications.slice(-MAX_NOTIFICATIONS);
+  if (db.notifications.length > MAX_NOTIFICATIONS) db.notifications = db.notifications.slice(-MAX_NOTIFICATIONS);
+  const { registrations, sessions, customActivities, registeredUsers, announcements, tickets, broadcasts, notifications, pushTokens } = db;
+  // เขียนลงไฟล์ชั่วคราวแล้ว rename: ถ้า process ตายกลางทาง db.json เดิมยังอยู่ครบ
+  const tmp = `${DB_FILE}.tmp`;
   writeFileSync(
-    DB_FILE,
+    tmp,
     JSON.stringify(
       { registrations, sessions, customActivities, users: registeredUsers, announcements, tickets, broadcasts, notifications, pushTokens },
       null,
       2,
     ),
   );
+  renameSync(tmp, DB_FILE);
 }
 
 /**
@@ -139,11 +146,18 @@ function startSession(user) {
 // ---------- helpers ----------
 
 class HttpError extends Error {
-  constructor(status, code, message) {
+  /** fields: ข้อความผิดพลาดรายช่องของฟอร์ม (ใช้กับ 400 validation_failed) */
+  constructor(status, code, message, fields) {
     super(message);
     this.status = status;
     this.code = code;
+    this.fields = fields;
   }
+}
+
+/** ข้อมูลในฟอร์มไม่ผ่าน: โยนเมื่อมี error อย่างน้อยหนึ่งช่อง */
+function assertValid(errors) {
+  if (Object.keys(errors).length > 0) throw new HttpError(400, 'validation_failed', 'ข้อมูลไม่ถูกต้อง', errors);
 }
 
 function send(res, status, body) {
@@ -164,11 +178,17 @@ async function readJson(req) {
     chunks.push(chunk);
   }
   if (chunks.length === 0) return {};
+  let body;
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
   } catch {
     throw new HttpError(400, 'invalid_json', 'รูปแบบข้อมูลไม่ถูกต้อง');
   }
+  // null / ตัวเลข / array ผ่าน JSON.parse ได้ แต่ทุก route คาดว่าเป็น object
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    throw new HttpError(400, 'invalid_json', 'รูปแบบข้อมูลไม่ถูกต้อง');
+  }
+  return body;
 }
 
 function distanceMeters(a, b) {
@@ -223,27 +243,25 @@ function publicRegistration(registration) {
   return { reviewNote: null, ...rest };
 }
 
-function requireUser(req) {
+/** session ของ request นี้จาก header "Authorization: Bearer <token>" (undefined ถ้าไม่มี/หมดอายุ) */
+function getSession(req) {
   const header = req.headers.authorization ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-  const session = token ? db.sessions.find((s) => s.tokenHash === hashToken(token)) : undefined;
-  if (!session || session.expiresAt < Date.now()) {
-    throw new HttpError(401, 'unauthorized', 'กรุณาเข้าสู่ระบบใหม่');
-  }
-  const user = db.users.find((u) => u.id === session.userId);
+  if (!token) return undefined;
+  const tokenHash = hashToken(token);
+  const session = db.sessions.find((s) => s.tokenHash === tokenHash);
+  return session && session.expiresAt >= Date.now() ? session : undefined;
+}
+
+function requireUser(req) {
+  const session = getSession(req);
+  const user = session && db.users.find((u) => u.id === session.userId);
   if (!user) throw new HttpError(401, 'unauthorized', 'กรุณาเข้าสู่ระบบใหม่');
   return effectiveUser(user, session.activeRole);
 }
 
-/** session ของ request นี้ (เรียกหลัง requireUser แล้วเท่านั้น) */
-function currentSession(req) {
-  const token = (req.headers.authorization ?? '').replace('Bearer ', '');
-  return db.sessions.find((s) => s.tokenHash === hashToken(token));
-}
-
 /** หน้าที่ของผู้จัดต้องตรวจ role ที่ server เสมอ การซ่อนปุ่มในแอปอย่างเดียวไม่พอ */
-function requireOrganizer(req) {
-  const user = requireUser(req);
+function requireOrganizer(user) {
   if (user.role !== 'organizer') throw new HttpError(403, 'forbidden', 'เฉพาะผู้จัดกิจกรรมเท่านั้น');
   return user;
 }
@@ -254,8 +272,8 @@ const DEPARTMENT_LABEL = { activities: 'งานกิจกรรมนัก�
  * เจ้าหน้าที่แต่ละหน่วยงานทำได้เฉพาะงานของตัวเอง (ตรวจที่ server ทุกครั้ง)
  * activities = สร้างกิจกรรม/ตรวจหลักฐาน · facilities = รับงานแจ้งซ่อม
  */
-function requireStaff(req, department) {
-  const user = requireOrganizer(req);
+function requireStaff(user, department) {
+  requireOrganizer(user);
   if (user.department !== department) {
     throw new HttpError(403, 'forbidden', `เฉพาะเจ้าหน้าที่${DEPARTMENT_LABEL[department]}`);
   }
@@ -317,18 +335,42 @@ function validateActivityBody(body) {
 }
 
 /**
- * รูปปกกิจกรรม (ไม่บังคับ): ตรวจว่าเป็น JPEG จริงและไม่ใหญ่เกิน แล้วเก็บเป็นไฟล์
- * คืน path สำหรับเปิดรูป หรือ null ถ้าไม่ได้แนบรูปมา
+ * เก็บรูป JPEG (base64) ลงโฟลเดอร์ uploads คืน path สำหรับเปิดรูป
+ * ตรวจขนาดและ magic number ของ JPEG เอง ไม่เชื่อแค่สิ่งที่ client บอก
  */
-function saveCoverImage(base64, activityId) {
-  if (base64 === undefined || base64 === null || base64 === '') return null;
-  if (typeof base64 !== 'string' || base64.length < 100) throw new HttpError(400, 'photo_invalid', 'ไฟล์รูปปกไม่ถูกต้อง');
+function saveJpeg(base64, fileName, label) {
+  if (typeof base64 !== 'string' || base64.length < 100) throw new HttpError(400, 'photo_invalid', `ไฟล์${label}ไม่ถูกต้อง`);
   const photo = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-  if (photo.length > MAX_PHOTO_BYTES) throw new HttpError(413, 'photo_too_large', 'รูปปกใหญ่เกิน 3 MB');
-  if (photo[0] !== 0xff || photo[1] !== 0xd8) throw new HttpError(400, 'photo_invalid', 'รูปปกต้องเป็นไฟล์ JPEG');
-  const fileName = `cover-${activityId}.jpg`;
+  if (photo.length > MAX_PHOTO_BYTES) throw new HttpError(413, 'photo_too_large', `${label}ใหญ่เกิน 3 MB`);
+  if (photo[0] !== 0xff || photo[1] !== 0xd8) throw new HttpError(400, 'photo_invalid', `${label}ต้องเป็นไฟล์ JPEG`);
   writeFileSync(join(UPLOAD_DIR, fileName), photo);
   return `/uploads/${fileName}`;
+}
+
+/** รูปที่ไม่บังคับแนบ (รูปปก/โปสเตอร์): ไม่ส่งมา = null */
+function saveOptionalJpeg(base64, fileName, label) {
+  return base64 === undefined || base64 === null || base64 === '' ? null : saveJpeg(base64, fileName, label);
+}
+
+/** ส่งไฟล์รูปจากโฟลเดอร์ (ชื่อไฟล์ผ่าน regex แล้ว จึงออกนอกโฟลเดอร์ไม่ได้) */
+function serveJpeg(res, dir, name, cacheControl) {
+  const file = join(dir, name);
+  if (!existsSync(file)) throw new HttpError(404, 'not_found', 'ไม่พบรูป');
+  const stream = createReadStream(file);
+  // ไฟล์หายระหว่างอ่าน → ตอบ 404 แทนที่ error จะทำให้ server ล่ม
+  stream.on('error', () => {
+    if (!res.headersSent) send(res, 404, { code: 'not_found', message: 'ไม่พบรูป' });
+    else res.destroy();
+  });
+  stream.once('open', () => {
+    res.writeHead(200, {
+      'Content-Type': 'image/jpeg',
+      'Access-Control-Allow-Origin': '*',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': cacheControl,
+    });
+    stream.pipe(res);
+  });
 }
 
 // ---------- กันเดารหัสผ่าน: ผิด 5 ครั้งติด ล็อก 60 วินาที ----------
@@ -378,29 +420,13 @@ async function handle(req, res) {
 
   // GET /uploads/:file (รูปหลักฐานเช็กอิน)
   if (method === 'GET' && parts[0] === 'uploads' && parts.length === 2 && /^[\w-]+\.jpg$/.test(parts[1])) {
-    const file = join(UPLOAD_DIR, parts[1]);
-    if (!existsSync(file)) throw new HttpError(404, 'not_found', 'ไม่พบรูป');
-    res.writeHead(200, {
-      'Content-Type': 'image/jpeg',
-      'Access-Control-Allow-Origin': '*',
-      'X-Content-Type-Options': 'nosniff',
-      // รูปหลักฐาน/รูปปัญหา: ให้เก็บ cache เฉพาะในเครื่องผู้ใช้ ไม่ให้ proxy กลางเก็บ
-      'Cache-Control': 'private, max-age=3600',
-    });
-    return createReadStream(file).pipe(res);
+    // รูปหลักฐาน/รูปปัญหา: ให้เก็บ cache เฉพาะในเครื่องผู้ใช้ ไม่ให้ proxy กลางเก็บ
+    return serveJpeg(res, UPLOAD_DIR, parts[1], 'private, max-age=3600');
   }
 
   // GET /posters/:file (โปสเตอร์ตัวอย่างของกิจกรรม/ประกาศ ไม่ใช่ข้อมูลส่วนตัว cache ได้)
   if (method === 'GET' && parts[0] === 'posters' && parts.length === 2 && /^[\w-]+\.jpg$/.test(parts[1])) {
-    const file = join(POSTER_DIR, parts[1]);
-    if (!existsSync(file)) throw new HttpError(404, 'not_found', 'ไม่พบรูป');
-    res.writeHead(200, {
-      'Content-Type': 'image/jpeg',
-      'Access-Control-Allow-Origin': '*',
-      'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': 'public, max-age=86400',
-    });
-    return createReadStream(file).pipe(res);
+    return serveJpeg(res, POSTER_DIR, parts[1], 'public, max-age=86400');
   }
 
   // POST /auth/register (สมัครสมาชิก เลือกบทบาทเดียว: นักศึกษา / เจ้าหน้าที่กิจกรรม / เจ้าหน้าที่อาคาร)
@@ -424,9 +450,7 @@ async function handle(req, res) {
     if (typeof body.password !== 'string' || body.password.length < 8 || body.password.length > 100) {
       errors.password = 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร';
     }
-    if (Object.keys(errors).length > 0) {
-      return send(res, 400, { code: 'validation_failed', message: 'ข้อมูลไม่ถูกต้อง', fields: errors });
-    }
+    assertValid(errors);
     if (db.users.some((u) => u.studentId === body.studentId)) {
       return send(res, 409, { code: 'already_exists', message: 'รหัสนี้มีบัญชีอยู่แล้ว', fields: { studentId: 'รหัสนี้มีบัญชีอยู่แล้ว เข้าสู่ระบบแทน' } });
     }
@@ -466,8 +490,7 @@ async function handle(req, res) {
 
   // POST /auth/logout
   if (method === 'POST' && url.pathname === '/auth/logout') {
-    const token = (req.headers.authorization ?? '').replace('Bearer ', '');
-    const ended = token ? db.sessions.find((s) => s.tokenHash === hashToken(token)) : undefined;
+    const ended = getSession(req);
     db.sessions = db.sessions.filter((s) => s !== ended);
     // ออกจากระบบ = เครื่องนี้ไม่ควรได้แจ้งเตือนของบัญชีนี้อีก
     if (ended) db.pushTokens = db.pushTokens.filter((t) => t.sessionHash !== ended.tokenHash);
@@ -480,7 +503,10 @@ async function handle(req, res) {
     const user = requireUser(req);
     const body = await readJson(req);
     if (!user.roles.includes(body.role)) throw new HttpError(403, 'forbidden', 'บัญชีนี้ไม่มีบทบาทนี้');
-    currentSession(req).activeRole = body.role;
+    // อ่าน session ใหม่หลัง await: ถ้า logout ไประหว่างนั้นให้ตอบ 401 ไม่ใช่ 500
+    const session = getSession(req);
+    if (!session) throw new HttpError(401, 'unauthorized', 'กรุณาเข้าสู่ระบบใหม่');
+    session.activeRole = body.role;
     persist();
     return send(res, 200, publicUser(effectiveUser(db.users.find((u) => u.id === user.id), body.role)));
   }
@@ -488,7 +514,7 @@ async function handle(req, res) {
   // POST /me/push-token (เครื่องนี้รับ push ของบัญชีนี้) · DELETE (เลิกรับ)
   if (url.pathname === '/me/push-token' && (method === 'POST' || method === 'DELETE')) {
     const user = requireUser(req);
-    const sessionHash = hashToken((req.headers.authorization ?? '').replace('Bearer ', ''));
+    const sessionHash = getSession(req).tokenHash;
     const body = await readJson(req);
     if (!isExpoPushToken(body.token)) throw new HttpError(400, 'invalid_push_token', 'push token ไม่ถูกต้อง');
     // เครื่องหนึ่งผูกกับบัญชีเดียว: login บัญชีอื่นบนเครื่องเดิม → ย้ายไปบัญชีใหม่
@@ -511,12 +537,9 @@ async function handle(req, res) {
 
   // POST /activities (ผู้จัดสร้างกิจกรรม)
   if (method === 'POST' && url.pathname === '/activities') {
-    const organizer = requireStaff(req, 'activities');
+    const organizer = requireStaff(requireUser(req), 'activities');
     const body = await readJson(req);
-    const errors = validateActivityBody(body);
-    if (Object.keys(errors).length > 0) {
-      return send(res, 400, { code: 'validation_failed', message: 'ข้อมูลไม่ถูกต้อง', fields: errors });
-    }
+    assertValid(validateActivityBody(body));
     const id = randomUUID();
     const activity = {
       id,
@@ -536,7 +559,7 @@ async function handle(req, res) {
       baseRegistered: 0,
       organizerId: organizer.id,
       hours: hoursBetween(body.startsAt, body.endsAt),
-      imageUrl: saveCoverImage(body.coverBase64, id),
+      imageUrl: saveOptionalJpeg(body.coverBase64, `cover-${id}.jpg`, 'รูปปก'),
     };
     db.activities.push(activity);
     db.customActivities.push(activity);
@@ -546,7 +569,7 @@ async function handle(req, res) {
 
   // GET /organizer/activities (กิจกรรมที่ฉันจัด + ตัวเลขสรุป)
   if (method === 'GET' && url.pathname === '/organizer/activities') {
-    const organizer = requireStaff(req, 'activities');
+    const organizer = requireStaff(requireUser(req), 'activities');
     const list = db.activities
       .filter((a) => a.organizerId === organizer.id)
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
@@ -556,7 +579,7 @@ async function handle(req, res) {
 
   // GET /activities/:id/attendees (ผู้จัดของกิจกรรมนั้นเท่านั้น)
   if (method === 'GET' && parts[0] === 'activities' && parts[2] === 'attendees' && parts.length === 3) {
-    const organizer = requireStaff(req, 'activities');
+    const organizer = requireStaff(requireUser(req), 'activities');
     const activity = findOwnActivity(organizer, parts[1]);
     const list = activeRegistrations(activity.id)
       .sort((a, b) => a.registeredAt.localeCompare(b.registeredAt))
@@ -576,16 +599,13 @@ async function handle(req, res) {
       return send(res, 200, list);
     }
     if (method === 'POST') {
-      const organizer = requireStaff(req, 'activities');
+      const organizer = requireStaff(requireUser(req), 'activities');
       const activity = findOwnActivity(organizer, parts[1]);
       const body = await readJson(req);
       const message = typeof body.message === 'string' ? body.message.trim() : '';
       if (message.length < 1 || message.length > 200) {
-        return send(res, 400, {
-          code: 'validation_failed',
-          message: 'ข้อความต้องยาว 1–200 ตัวอักษร',
-          fields: { message: 'ข้อความต้องยาว 1–200 ตัวอักษร' },
-        });
+        const error = 'ข้อความต้องยาว 1–200 ตัวอักษร';
+        throw new HttpError(400, 'validation_failed', error, { message: error });
       }
       const announcement = { id: randomUUID(), activityId: activity.id, message, createdAt: new Date().toISOString() };
       db.announcements.push(announcement);
@@ -630,10 +650,7 @@ async function handle(req, res) {
       if (previous) return send(res, 200, publicRegistration(previous));
     }
 
-    const errors = validateRegistrationBody(body);
-    if (Object.keys(errors).length > 0) {
-      return send(res, 400, { code: 'validation_failed', message: 'ข้อมูลไม่ถูกต้อง', fields: errors });
-    }
+    assertValid(validateRegistrationBody(body));
     if (new Date(activity.endsAt).getTime() < Date.now()) {
       throw new HttpError(409, 'activity_ended', 'กิจกรรมนี้จบไปแล้ว');
     }
@@ -711,10 +728,6 @@ async function handle(req, res) {
     if (typeof photoBase64 !== 'string' || photoBase64.length < 100) {
       throw new HttpError(400, 'photo_required', 'ต้องมีรูปถ่ายเป็นหลักฐาน');
     }
-    const photo = Buffer.from(photoBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-    if (photo.length > MAX_PHOTO_BYTES) throw new HttpError(413, 'photo_too_large', 'รูปใหญ่เกิน 3 MB');
-    // ตรวจ magic number ของ JPEG ไม่เชื่อแค่สิ่งที่ client บอก
-    if (photo[0] !== 0xff || photo[1] !== 0xd8) throw new HttpError(400, 'photo_invalid', 'ไฟล์รูปต้องเป็น JPEG');
     // ไม่บังคับตำแหน่งและเวลา (ผู้ใช้ตัดสินใจ แชทที่ 3): บันทึกไว้ให้เจ้าหน้าที่ดูประกอบการตรวจ
     const hasLocation = Number.isFinite(latitude) && Number.isFinite(longitude);
     const distance = hasLocation ? distanceMeters({ latitude, longitude }, activity.location) : null;
@@ -722,10 +735,9 @@ async function handle(req, res) {
     let taken = new Date(takenAt).getTime();
     if (!Number.isFinite(taken) || taken > Date.now() + 2 * 60 * 1000) taken = Date.now();
 
-    const fileName = `${registration.id}.jpg`;
-    writeFileSync(join(UPLOAD_DIR, fileName), photo);
+    const photoUrl = saveJpeg(photoBase64, `${registration.id}.jpg`, 'รูป');
     registration.checkIn = {
-      photoUrl: `/uploads/${fileName}`,
+      photoUrl,
       photoSource,
       latitude: hasLocation ? latitude : null,
       longitude: hasLocation ? longitude : null,
@@ -758,28 +770,25 @@ async function handle(req, res) {
   if (method === 'POST' && parts[0] === 'registrations' && parts[2] === 'photos' && parts.length === 3) {
     const user = requireUser(req);
     const registration = findOwnRegistration(user, parts[1]);
+    const body = await readJson(req);
+    // ตรวจสถานะหลังอ่าน body เสร็จ: ระหว่างรออัปโหลด ผู้จัดอาจตรวจไม่ผ่านไปแล้ว หรืออีกคำขอแนบรูปครบแล้ว
     if (!registration.checkIn || (registration.status !== 'pending_review' && registration.status !== 'checked_in')) {
       throw new HttpError(409, 'not_submitted', 'ส่งหลักฐานการเข้าร่วมก่อน แล้วค่อยแนบรูปเพิ่ม');
     }
     const extras = registration.checkIn.extraPhotos ?? [];
     if (extras.length >= MAX_EXTRA_PHOTOS) throw new HttpError(409, 'too_many_photos', `แนบรูปเพิ่มได้ไม่เกิน ${MAX_EXTRA_PHOTOS} รูป`);
-    const body = await readJson(req);
     if (typeof body.photoBase64 !== 'string' || body.photoBase64.length < 100) {
       throw new HttpError(400, 'photo_required', 'ต้องมีรูปถ่าย');
     }
-    const photo = Buffer.from(body.photoBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-    if (photo.length > MAX_PHOTO_BYTES) throw new HttpError(413, 'photo_too_large', 'รูปใหญ่เกิน 3 MB');
-    if (photo[0] !== 0xff || photo[1] !== 0xd8) throw new HttpError(400, 'photo_invalid', 'ไฟล์รูปต้องเป็น JPEG');
-    const fileName = `${registration.id}-${randomUUID().slice(0, 8)}.jpg`;
-    writeFileSync(join(UPLOAD_DIR, fileName), photo);
-    registration.checkIn.extraPhotos = [...extras, `/uploads/${fileName}`];
+    const photoUrl = saveJpeg(body.photoBase64, `${registration.id}-${randomUUID().slice(0, 8)}.jpg`, 'รูป');
+    registration.checkIn.extraPhotos = [...extras, photoUrl];
     persist();
     return send(res, 200, publicRegistration(registration));
   }
 
   // POST /registrations/:id/review (ผู้จัดตรวจหลักฐานใบเซ็นชื่อ)
   if (method === 'POST' && parts[0] === 'registrations' && parts[2] === 'review' && parts.length === 3) {
-    const organizer = requireStaff(req, 'activities');
+    const organizer = requireStaff(requireUser(req), 'activities');
     const registration = db.registrations.find((r) => r.id === parts[1]);
     if (!registration) throw new HttpError(404, 'registration_not_found', 'ไม่พบการลงทะเบียนนี้');
     findOwnActivity(organizer, registration.activityId);
@@ -794,7 +803,7 @@ async function handle(req, res) {
     } else if (body.approve === false) {
       const note = typeof body.note === 'string' ? body.note.trim() : '';
       if (note.length < 3 || note.length > 200) {
-        return send(res, 400, { code: 'validation_failed', message: 'กรุณาระบุเหตุผล', fields: { note: 'กรุณาระบุเหตุผลที่ไม่ผ่าน' } });
+        throw new HttpError(400, 'validation_failed', 'กรุณาระบุเหตุผล', { note: 'กรุณาระบุเหตุผลที่ไม่ผ่าน' });
       }
       // ไม่ผ่าน → กลับไปสถานะลงทะเบียน นักศึกษาส่งหลักฐานใหม่ได้ (ถ้ายังอยู่ในเวลางาน)
       registration.status = 'registered';
@@ -804,22 +813,13 @@ async function handle(req, res) {
       throw new HttpError(400, 'invalid_decision', 'ต้องระบุว่าผ่านหรือไม่ผ่าน');
     }
     const reviewed = findActivity(registration.activityId);
-    notify(
-      [registration.userId],
-      body.approve
-        ? {
-            kind: 'registration',
-            targetId: registration.id,
-            title: 'ตรวจหลักฐานผ่านแล้ว ✓',
-            body: `${reviewed.title} ถูกนับเป็นชั่วโมงกิจกรรมแล้ว (+${reviewed.hours} ชม.)`,
-          }
-        : {
-            kind: 'registration',
-            targetId: registration.id,
-            title: 'หลักฐานไม่ผ่าน กรุณาส่งใหม่',
-            body: `${reviewed.title}: ${registration.reviewNote}`,
-          },
-    );
+    notify([registration.userId], {
+      kind: 'registration',
+      targetId: registration.id,
+      ...(body.approve
+        ? { title: 'ตรวจหลักฐานผ่านแล้ว ✓', body: `${reviewed.title} ถูกนับเป็นชั่วโมงกิจกรรมแล้ว (+${reviewed.hours} ชม.)` }
+        : { title: 'หลักฐานไม่ผ่าน กรุณาส่งใหม่', body: `${reviewed.title}: ${registration.reviewNote}` }),
+    });
     persist();
     return send(res, 200, publicRegistration(registration));
   }
@@ -828,16 +828,6 @@ async function handle(req, res) {
   if (await ticketRoutes(req, res, { url, parts, method })) return;
 
   throw new HttpError(404, 'not_found', 'ไม่พบ endpoint นี้');
-}
-
-/** เก็บรูป JPEG (base64) ลงโฟลเดอร์ uploads ตรวจขนาดและ magic number คืน path สำหรับเปิดรูป */
-function saveJpeg(base64, fileName, label) {
-  if (typeof base64 !== 'string' || base64.length < 100) throw new HttpError(400, 'photo_invalid', `ไฟล์${label}ไม่ถูกต้อง`);
-  const photo = Buffer.from(base64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
-  if (photo.length > MAX_PHOTO_BYTES) throw new HttpError(413, 'photo_too_large', `${label}ใหญ่เกิน 3 MB`);
-  if (photo[0] !== 0xff || photo[1] !== 0xd8) throw new HttpError(400, 'photo_invalid', `${label}ต้องเป็นไฟล์ JPEG`);
-  writeFileSync(join(UPLOAD_DIR, fileName), photo);
-  return `/uploads/${fileName}`;
 }
 
 const ticketRoutes = registerTicketRoutes({
@@ -851,6 +841,7 @@ const ticketRoutes = registerTicketRoutes({
   requireOrganizer,
   requireStaff,
   saveJpeg,
+  saveOptionalJpeg,
   publicUserName: (id) => db.users.find((u) => u.id === id)?.fullName ?? null,
 });
 
@@ -858,7 +849,7 @@ export function startServer(port = PORT) {
   const server = createServer((req, res) => {
     handle(req, res).catch((error) => {
       if (error instanceof HttpError) {
-        send(res, error.status, { code: error.code, message: error.message });
+        send(res, error.status, { code: error.code, message: error.message, ...(error.fields ? { fields: error.fields } : {}) });
       } else {
         console.error('[api]', error);
         send(res, 500, { code: 'server_error', message: 'เกิดข้อผิดพลาดที่ server' });
