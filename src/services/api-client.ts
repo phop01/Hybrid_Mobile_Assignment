@@ -1,6 +1,7 @@
 import { API_URL } from './api-config';
 
-const TIMEOUT_MS = 12000;
+// 30 วิ: ผ่าน tunnel ตอนเน็ตช้าหรือส่งรูปใหญ่ 12 วิไม่พอ
+const TIMEOUT_MS = 30000;
 
 /**
  * error ที่หน้าจอใช้ตัดสินใจได้

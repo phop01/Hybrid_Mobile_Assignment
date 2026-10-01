@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import '@/lib/ignore-font-timeout';
 import { InboxToast } from '@/components/inbox-toast';
 import { PhoneFrame } from '@/components/phone-frame';
 import { Colors } from '@/constants/theme';
