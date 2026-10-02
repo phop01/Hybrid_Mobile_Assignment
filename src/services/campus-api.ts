@@ -123,7 +123,8 @@ export async function addEvidencePhoto(token: string, registrationId: string, ph
 
 /** ลบรูปที่แนบเพิ่ม (รูปหลักลบไม่ได้) photoUrl = ค่าใน extraPhotos เช่น /uploads/x.jpg */
 export async function deleteEvidencePhoto(token: string, registrationId: string, photoUrl: string): Promise<Registration> {
-  const file = photoUrl.split('/').pop() ?? '';
+  // ลิงก์รูปมีลายเซ็นต่อท้าย (?exp=…&sig=…) ตัดออกก่อน เหลือแค่ชื่อไฟล์
+  const file = photoUrl.split('?')[0].split('/').pop() ?? '';
   const payload = await apiRequest(
     `/registrations/${encodeURIComponent(registrationId)}/photos/${encodeURIComponent(file)}`,
     { method: 'DELETE', token },

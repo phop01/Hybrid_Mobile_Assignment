@@ -7,7 +7,7 @@
 //   (ไม่เชื่อค่าระยะที่แอปคำนวณ เพราะแอปถูกแก้ไขได้)
 
 import { createServer } from 'node:http';
-import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync, createReadStream } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -250,12 +250,41 @@ const INTEREST_KEYS = ['academic', 'volunteer', 'sport', 'culture'];
 function publicUser(user) {
   const { passwordHash, ...rest } = user;
   const profile = db.profiles[user.id] ?? {};
-  return { ...rest, interests: profile.interests ?? [], avatarUrl: profile.avatarUrl ?? null };
+  return { ...rest, interests: profile.interests ?? [], avatarUrl: signUploadUrl(profile.avatarUrl ?? null) };
 }
 
 function publicRegistration(registration) {
   const { idempotencyKey, userId, ...rest } = registration;
-  return { reviewNote: null, ...rest };
+  // รูปหลักฐานเป็นข้อมูลส่วนตัว: ลิงก์ที่ส่งให้เจ้าของ/ผู้จัดกิจกรรมเท่านั้นมีลายเซ็น (หมดอายุใน 2 ชม.)
+  const checkIn = rest.checkIn
+    ? { ...rest.checkIn, photoUrl: signUploadUrl(rest.checkIn.photoUrl), extraPhotos: (rest.checkIn.extraPhotos ?? []).map(signUploadUrl) }
+    : rest.checkIn;
+  return { reviewNote: null, ...rest, checkIn };
+}
+
+// ---------- ลิงก์รูปที่มีลายเซ็น ----------
+// เปิดรูปผ่าน <img> ได้ทั้งมือถือและเว็บโดยไม่ต้องแนบ header: server เซ็นลิงก์ (HMAC) ตอนส่งข้อมูลให้คนที่มีสิทธิ์เท่านั้น
+// รูปปกกิจกรรม/โปสเตอร์ประกาศเป็นข้อมูลสาธารณะ (ทุกคนเห็นอยู่แล้ว) ไม่ต้องเซ็น · รูปอื่นทั้งหมด "ปฏิเสธเป็นค่าเริ่มต้น"
+const URL_SECRET = randomBytes(32);
+const SIGNED_URL_TTL_MS = 2 * 60 * 60 * 1000;
+const isPublicUpload = (file) => file.startsWith('cover-') || file.startsWith('broadcast-');
+const uploadSignature = (file, exp) => createHmac('sha256', URL_SECRET).update(`${file}.${exp}`).digest('hex').slice(0, 32);
+
+function signUploadUrl(path) {
+  if (typeof path !== 'string' || !path.startsWith('/uploads/')) return path;
+  const file = path.slice('/uploads/'.length);
+  if (isPublicUpload(file)) return path;
+  const exp = Date.now() + SIGNED_URL_TTL_MS;
+  return `${path}?exp=${exp}&sig=${uploadSignature(file, exp)}`;
+}
+
+function canOpenUpload(file, params) {
+  if (isPublicUpload(file)) return true;
+  const exp = Number(params.get('exp'));
+  const sig = params.get('sig') ?? '';
+  if (!Number.isFinite(exp) || exp < Date.now() || sig.length !== 32) return false;
+  const expected = uploadSignature(file, exp);
+  return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
 }
 
 /** session ของ request นี้จาก header "Authorization: Bearer <token>" (undefined ถ้าไม่มี/หมดอายุ) */
@@ -447,10 +476,12 @@ async function handle(req, res) {
     return send(res, 200, { ok: true });
   }
 
-  // GET /uploads/:file (รูปหลักฐานเช็กอิน)
+  // GET /uploads/:file (รูปหลักฐานเช็กอิน/รูปโปรไฟล์ ต้องมีลายเซ็นที่ถูกต้อง · รูปปกและโปสเตอร์เปิดได้เลย)
   if (method === 'GET' && parts[0] === 'uploads' && parts.length === 2 && /^[\w-]+\.jpg$/.test(parts[1])) {
-    // รูปหลักฐาน/รูปปัญหา: ให้เก็บ cache เฉพาะในเครื่องผู้ใช้ ไม่ให้ proxy กลางเก็บ
-    return serveJpeg(res, UPLOAD_DIR, parts[1], 'private, max-age=3600');
+    // ไม่มีลายเซ็น/หมดอายุ/ผิด → 404 เหมือนไม่มีไฟล์ (ไม่บอกว่าไฟล์นี้มีอยู่จริงหรือไม่)
+    if (!canOpenUpload(parts[1], url.searchParams)) throw new HttpError(404, 'not_found', 'ไม่พบรูป');
+    // รูปหลักฐาน: ให้เก็บ cache เฉพาะในเครื่องผู้ใช้ ไม่ให้ proxy กลางเก็บ
+    return serveJpeg(res, UPLOAD_DIR, parts[1], isPublicUpload(parts[1]) ? 'public, max-age=3600' : 'private, max-age=3600');
   }
 
   // GET /posters/:file (โปสเตอร์ตัวอย่างของกิจกรรม/ประกาศ ไม่ใช่ข้อมูลส่วนตัว cache ได้)

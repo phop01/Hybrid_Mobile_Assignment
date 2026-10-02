@@ -49,9 +49,10 @@ check('unknown interest 400', r.status === 400);
 r = await call('PUT', '/me/profile', s1, { avatarBase64: Buffer.alloc(200, 7).toString('base64') });
 check('non-JPEG avatar 400', r.status === 400);
 r = await call('PUT', '/me/profile', s1, { avatarBase64: JPEG });
-check('set avatar keeps interests', r.status === 200 && /^\/uploads\/avatar-.+\.jpg$/.test(r.body.avatarUrl ?? '') && r.body.interests.length === 2, JSON.stringify(r.body));
+check('set avatar keeps interests', r.status === 200 && /^\/uploads\/avatar-.+\.jpg\?exp=\d+&sig=[0-9a-f]{32}$/.test(r.body.avatarUrl ?? '') && r.body.interests.length === 2, JSON.stringify(r.body));
 const avatarRes = await fetch(BASE + r.body.avatarUrl);
-check('avatar image served', avatarRes.status === 200);
+check('avatar image served with signature', avatarRes.status === 200);
+check('avatar without signature 404', (await fetch(BASE + r.body.avatarUrl.split('?')[0])).status === 404);
 const oldAvatar = r.body.avatarUrl;
 r = await call('PUT', '/me/profile', s1, { avatarBase64: JPEG });
 check('new avatar gets a new url', r.status === 200 && r.body.avatarUrl !== oldAvatar);
@@ -150,16 +151,28 @@ check('add extra evidence photo', r.status === 200 && r.body.checkIn.extraPhotos
 r = await call('POST', `/registrations/${myReg}/photos`, s2, { photoBase64: JPEG });
 check('cannot add photo to another user registration 404', r.status === 404, String(r.status));
 r = await call('POST', `/registrations/${myReg}/photos`, s1, { photoBase64: JPEG });
-const extraFile = r.body.checkIn.extraPhotos[1].split('/').pop();
-const mainFile = r.body.checkIn.photoUrl.split('/').pop();
+const fileOf = (url) => url.split('?')[0].split('/').pop();
+const extraFile = fileOf(r.body.checkIn.extraPhotos[1]);
+const mainFile = fileOf(r.body.checkIn.photoUrl);
+const signedMain = r.body.checkIn.photoUrl;
+const signedExtra = r.body.checkIn.extraPhotos[1];
+// ---- รูปหลักฐานต้องมีลายเซ็น ----
+check('evidence url is signed', /\?exp=\d+&sig=[0-9a-f]{32}$/.test(signedMain), signedMain);
+check('signed evidence photo opens', (await fetch(BASE + signedMain)).status === 200);
+check('evidence photo without signature 404', (await fetch(BASE + '/uploads/' + mainFile)).status === 404);
+const tampered = signedMain.slice(0, -1) + (signedMain.endsWith('0') ? '1' : '0');
+check('tampered signature 404', (await fetch(BASE + tampered)).status === 404);
+check('signature of another file 404', (await fetch(BASE + '/uploads/' + extraFile + signedMain.slice(signedMain.indexOf('?')))).status === 404);
+check('expired signature 404', (await fetch(BASE + '/uploads/' + mainFile + '?exp=1000&sig=' + 'a'.repeat(32))).status === 404);
+r = await call('GET', `/registrations/${myReg}`, s2);
+check('other user cannot get evidence links 404', r.status === 404, String(r.status));
 r = await call('DELETE', `/registrations/${myReg}/photos/${extraFile}`, s2);
 check('cannot delete photo of another user 404', r.status === 404, String(r.status));
 r = await call('DELETE', `/registrations/${myReg}/photos/${mainFile}`, s1);
 check('main evidence photo cannot be deleted 404', r.status === 404, String(r.status));
 r = await call('DELETE', `/registrations/${myReg}/photos/${extraFile}`, s1);
 check('delete extra photo', r.status === 200 && r.body.checkIn.extraPhotos.length === 1 && !r.body.checkIn.extraPhotos[0].endsWith(extraFile), JSON.stringify(r.body));
-r = await call('GET', `/uploads/${extraFile}`, s1);
-check('deleted photo file is gone 404', r.status === 404, String(r.status));
+check('deleted photo file is gone 404', (await fetch(BASE + signedExtra)).status === 404);
 
 // ---- เจ้าหน้าที่: ตรวจหลักฐาน / ไม่รับการลงทะเบียน / ยกเลิกกิจกรรม ----
 r = await call('POST', `/registrations/${myReg}/review`, org, { approve: true });
