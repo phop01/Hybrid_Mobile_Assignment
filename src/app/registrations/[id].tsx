@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import { EvidenceCard } from '@/components/evidence-card';
 import { ReminderControl } from '@/components/reminder-control';
@@ -14,6 +14,7 @@ import { formatDateRange } from '@/lib/format';
 import { confirmAction } from '@/lib/platform-actions';
 import { useActivities } from '@/state/activities-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
+import { Text } from '@/components/app-text';
 
 export default function RegistrationDetailScreen() {
   const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);

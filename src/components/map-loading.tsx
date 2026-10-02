@@ -1,6 +1,7 @@
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { Colors, Spacing } from '@/constants/theme';
+import { Text } from '@/components/app-text';
 
 /** ทับแผนที่ไว้จนกว่าจะโหลดเสร็จ ผู้ใช้จะไม่เห็นกรอบเทาว่าง ๆ แล้วคิดว่าแผนที่พัง */
 export function MapLoading() {

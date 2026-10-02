@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ActivityCard } from '@/components/activity-card';
 import { BroadcastCard } from '@/components/broadcast-card';
@@ -13,6 +13,7 @@ import { isEnded } from '@/lib/filter-activities';
 import { useActivities } from '@/state/activities-context';
 import { useBroadcasts } from '@/state/broadcasts-context';
 import { useFavorites } from '@/state/favorites-context';
+import { Text } from '@/components/app-text';
 
 type Layer = 'all' | 'activity' | 'broadcast';
 

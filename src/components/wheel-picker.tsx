@@ -2,9 +2,10 @@
 // ใช้ได้ทั้งมือถือและเว็บ (เว็บไม่มี snapToInterval → เลื่อนเสร็จแล้วจัดให้ตรงแถวเอง)
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import { Colors, Radius } from '@/constants/theme';
+import { Text } from '@/components/app-text';
 
 export const WHEEL_ITEM_HEIGHT = 36;
 const VISIBLE_ROWS = 5;

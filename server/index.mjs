@@ -82,6 +82,8 @@ function buildDb(saved) {
     announcements: Array.isArray(saved.announcements) ? saved.announcements : [],
     // ประกาศทั่ววิทยาเขตจากเจ้าหน้าที่ เช่น ปิดน้ำ ปิดถนน
     broadcasts: Array.isArray(saved.broadcasts) ? saved.broadcasts : buildBroadcasts(),
+    // รูปโปรไฟล์ + ความสนใจ แยกจากตัวบัญชี เพื่อให้บัญชีตัวอย่างที่สร้างใหม่ทุกครั้งยังเก็บค่าที่ผู้ใช้ตั้งไว้
+    profiles: saved.profiles && typeof saved.profiles === 'object' && !Array.isArray(saved.profiles) ? saved.profiles : {},
     // กล่องแจ้งเตือนของทุกคน: server ตัดสินว่าใครควรรู้เรื่องอะไร แอปแค่ดึงของตัวเองไปเด้ง
     notifications: Array.isArray(saved.notifications) ? saved.notifications : [],
     // Expo push token ของเครื่องที่ login อยู่ (ผูกกับ session: logout แล้วลบ ไม่เด้งหาคนที่ออกไปแล้ว)
@@ -95,13 +97,13 @@ const MAX_NOTIFICATIONS = 1000;
 
 function persist() {
   if (db.notifications.length > MAX_NOTIFICATIONS) db.notifications = db.notifications.slice(-MAX_NOTIFICATIONS);
-  const { registrations, sessions, customActivities, registeredUsers, announcements, broadcasts, notifications, pushTokens } = db;
+  const { registrations, sessions, customActivities, registeredUsers, announcements, broadcasts, profiles, notifications, pushTokens } = db;
   // เขียนลงไฟล์ชั่วคราวแล้ว rename: ถ้า process ตายกลางทาง db.json เดิมยังอยู่ครบ
   const tmp = `${DB_FILE}.tmp`;
   writeFileSync(
     tmp,
     JSON.stringify(
-      { registrations, sessions, customActivities, users: registeredUsers, announcements, broadcasts, notifications, pushTokens },
+      { registrations, sessions, customActivities, users: registeredUsers, announcements, broadcasts, profiles, notifications, pushTokens },
       null,
       2,
     ),
@@ -243,9 +245,12 @@ function findActivity(id) {
   return activity;
 }
 
+const INTEREST_KEYS = ['academic', 'volunteer', 'sport', 'culture'];
+
 function publicUser(user) {
   const { passwordHash, ...rest } = user;
-  return rest;
+  const profile = db.profiles[user.id] ?? {};
+  return { ...rest, interests: profile.interests ?? [], avatarUrl: profile.avatarUrl ?? null };
 }
 
 function publicRegistration(registration) {
@@ -431,7 +436,7 @@ async function handle(req, res) {
   if (method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type,Authorization,Idempotency-Key',
     });
     return res.end();
@@ -546,6 +551,33 @@ async function handle(req, res) {
     session.activeRole = body.role;
     persist();
     return send(res, 200, publicUser(effectiveUser(db.users.find((u) => u.id === user.id), body.role)));
+  }
+
+  // PUT /me/profile { interests?: string[], avatarBase64?: string | null }
+  // ความสนใจเลือกจากหมวดกิจกรรม (ไม่เกิน 4) · รูปเป็น JPEG ไม่เกิน 3 MB · avatarBase64: null = ลบรูป
+  if (method === 'PUT' && url.pathname === '/me/profile') {
+    const user = requireUser(req);
+    const body = await readJson(req);
+    const profile = db.profiles[user.id] ?? { interests: [], avatarUrl: null };
+    if (body.interests !== undefined) {
+      const ok =
+        Array.isArray(body.interests) &&
+        body.interests.length <= INTEREST_KEYS.length &&
+        new Set(body.interests).size === body.interests.length &&
+        body.interests.every((k) => INTEREST_KEYS.includes(k));
+      if (!ok) throw new HttpError(400, 'validation_failed', 'ข้อมูลไม่ถูกต้อง', { interests: 'เลือกความสนใจจากหมวดที่มีให้' });
+      profile.interests = body.interests;
+    }
+    if (body.avatarBase64 !== undefined) {
+      const previous = profile.avatarUrl;
+      // ชื่อไฟล์ใหม่ทุกครั้ง: แอปกับเบราว์เซอร์ cache รูปตาม URL จึงไม่เห็นรูปเก่า
+      profile.avatarUrl = body.avatarBase64 === null ? null : saveJpeg(body.avatarBase64, `avatar-${user.id}-${Date.now()}.jpg`, 'รูปโปรไฟล์');
+      if (previous) rmSync(join(UPLOAD_DIR, previous.split('/').pop()), { force: true });
+    }
+    db.profiles[user.id] = profile;
+    persist();
+    const session = getSession(req);
+    return send(res, 200, publicUser(effectiveUser(db.users.find((u) => u.id === user.id), session.activeRole)));
   }
 
   // POST /me/push-token (เครื่องนี้รับ push ของบัญชีนี้) · DELETE (เลิกรับ)

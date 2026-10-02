@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
-import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ActivityMap } from '@/components/activity-map';
 import { CheckInCamera } from '@/components/check-in-camera';
@@ -17,6 +17,7 @@ import { getCurrentCoordinates } from '@/services/location';
 import { pickPhotoFromLibrary, preparePhotoForUpload } from '@/services/photo';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import type { Activity, PhotoSource, Registration } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 type LocationState =
   | { status: 'locating' }

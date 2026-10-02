@@ -1,21 +1,32 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Avatar } from '@/components/avatar';
+import { ProgressRing } from '@/components/progress-ring';
 import { RoleSwitcher } from '@/components/role-switcher';
 import { LoginPrompt } from '@/components/login-prompt';
-import { Banner, Button, Card, Screen, SectionTitle } from '@/components/ui';
+import { Banner, Button, Card, Chip, Screen, SectionTitle } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { REQUIRED_HOURS, summarizeAttendance } from '@/lib/attendance';
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
 import { formatDate } from '@/lib/format';
 import { confirmAction } from '@/lib/platform-actions';
+import { pickAvatarImage, preparePhotoForUpload } from '@/services/photo';
 import { useActivities } from '@/state/activities-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { useAuthenticatedSession, useSession } from '@/state/session-context';
+import { TEXT_SCALES, useTextScale } from '@/state/text-scale';
+import type { Category } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 export default function ProfileScreen() {
   const session = useAuthenticatedSession();
-  const { signOut } = useSession();
+  const { signOut, updateProfile } = useSession();
+  const { scaleKey, setScaleKey } = useTextScale();
+  const [saving, setSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const { registrations } = useMyRegistrations();
   const { activities, getById } = useActivities();
 
@@ -42,6 +53,34 @@ export default function ProfileScreen() {
     .filter((x) => x.activity)
     .sort((a, b) => b.activity!.startsAt.localeCompare(a.activity!.startsAt));
 
+  const interests = user.interests ?? [];
+
+  const saveProfile = async (input: Parameters<typeof updateProfile>[0]) => {
+    setSaving(true);
+    setProfileError(null);
+    try {
+      await updateProfile(input);
+    } catch (e) {
+      setProfileError(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changeAvatar = async () => {
+    try {
+      const uri = await pickAvatarImage();
+      if (uri) await saveProfile({ avatarBase64: (await preparePhotoForUpload(uri)).base64 });
+    } catch (e) {
+      setProfileError(e instanceof Error ? e.message : 'ใช้รูปนี้ไม่ได้ ลองเลือกรูปอื่น');
+    }
+  };
+
+  // กำลังบันทึกอยู่ไม่รับแตะซ้ำ: ไม่งั้นการแตะสองหมวดติดกันจะอ่านรายการเดิมทั้งคู่ แล้วหมวดแรกหายไป
+  const toggleInterest = (category: Category) =>
+    !saving &&
+    saveProfile({ interests: interests.includes(category) ? interests.filter((c) => c !== category) : [...interests, category] });
+
   const onSignOut = async () => {
     const ok = await confirmAction(
       'ออกจากระบบ',
@@ -55,12 +94,16 @@ export default function ProfileScreen() {
     <Screen>
       <RoleSwitcher />
       <Card style={styles.identity}>
-        {/* ตัวอักษรในวงกลมเป็นของตกแต่ง: ซ่อนจาก screen reader และจำกัดการขยายไม่ให้ล้นวงกลม */}
-        <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <Text style={styles.avatarText} maxFontSizeMultiplier={1.3}>
-            {user.fullName.slice(0, 1)}
-          </Text>
-        </View>
+        <Pressable
+          onPress={changeAvatar}
+          disabled={saving}
+          accessibilityRole="button"
+          accessibilityLabel={user.avatarUrl ? 'เปลี่ยนรูปโปรไฟล์' : 'ตั้งรูปโปรไฟล์'}>
+          <Avatar name={user.fullName} url={user.avatarUrl} size={72} />
+          <View style={styles.cameraBadge}>
+            <Ionicons name="camera" size={14} color={Colors.onPrimary} />
+          </View>
+        </Pressable>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={styles.name}>{user.fullName}</Text>
           <Text style={styles.muted}>
@@ -68,6 +111,19 @@ export default function ProfileScreen() {
           </Text>
           <Text style={styles.muted}>{user.faculty}</Text>
         </View>
+      </Card>
+
+      {profileError ? <Banner tone="danger">{profileError}</Banner> : null}
+
+      <Card>
+        <SectionTitle>ความสนใจ</SectionTitle>
+        <Text style={styles.muted}>เลือกหมวดที่ชอบ หน้า “วันนี้” จะแนะนำกิจกรรมตามที่เลือก</Text>
+        <View style={styles.chips}>
+          {CATEGORY_ORDER.map((c) => (
+            <Chip key={c} label={CATEGORIES[c].label} color={CATEGORIES[c].color} selected={interests.includes(c)} onPress={() => toggleInterest(c)} />
+          ))}
+        </View>
+        {user.avatarUrl ? <Button title="ลบรูปโปรไฟล์" icon="trash-outline" variant="ghost" onPress={() => saveProfile({ avatarBase64: null })} /> : null}
       </Card>
 
       {isOrganizer ? (
@@ -82,24 +138,21 @@ export default function ProfileScreen() {
             <SectionTitle>ชั่วโมงกิจกรรม</SectionTitle>
             <View style={styles.hoursHero}>
               <View
-                style={styles.totalRow}
+                style={styles.heroRow}
                 accessible
                 accessibilityLabel={`สะสม ${summary.hours} จาก ${REQUIRED_HOURS} ชั่วโมง จาก ${summary.total} กิจกรรม`}>
-                <Text style={styles.total}>{summary.hours}</Text>
-                <Text style={styles.totalLabel}>/ {REQUIRED_HOURS} ชั่วโมง</Text>
+                <ProgressRing progress={summary.progress} label="ของเป้าหมาย" />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <View style={styles.totalRow}>
+                    <Text style={styles.total}>{summary.hours}</Text>
+                    <Text style={styles.totalLabel}>/ {REQUIRED_HOURS} ชม.</Text>
+                  </View>
+                  <Text style={styles.heroText}>จาก {summary.total} กิจกรรม</Text>
+                  <Text style={styles.heroText}>
+                    {summary.hours >= REQUIRED_HOURS ? 'ครบตามเป้าหมายแล้ว 🎉' : `อีก ${REQUIRED_HOURS - summary.hours} ชม. จะครบเป้าหมาย`}
+                  </Text>
+                </View>
               </View>
-              <View
-                style={styles.progressTrack}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants">
-                <View style={[styles.progressFill, { width: `${summary.progress * 100}%` }]} />
-              </View>
-              <Text style={styles.heroText}>
-                จาก {summary.total} กิจกรรม ·{' '}
-                {summary.hours >= REQUIRED_HOURS
-                  ? 'ครบตามเป้าหมายแล้ว 🎉'
-                  : `อีก ${REQUIRED_HOURS - summary.hours} ชั่วโมงจะครบเป้าหมาย`}
-              </Text>
             </View>
             {summary.pendingReview > 0 ? (
               <Banner tone="warning" icon="hourglass">
@@ -160,6 +213,16 @@ export default function ProfileScreen() {
       )}
 
       <Card>
+        <SectionTitle>ขนาดตัวอักษร</SectionTitle>
+        <View style={styles.chips}>
+          {TEXT_SCALES.map((o) => (
+            <Chip key={o.key} label={o.label} selected={scaleKey === o.key} onPress={() => setScaleKey(o.key)} />
+          ))}
+        </View>
+        <Text style={styles.muted}>ตัวอย่าง: กิจกรรมจิตอาสาปลูกป่า วันเสาร์ 8:00 น.</Text>
+      </Card>
+
+      <Card>
         <SectionTitle>ทางลัด</SectionTitle>
         {isOrganizer ? null : (
           <>
@@ -177,15 +240,21 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.primarySoft,
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.primary,
+    borderWidth: 2,
+    borderColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 28, fontWeight: '700', color: Colors.primary },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
   name: { fontSize: 20, fontWeight: '700', color: Colors.text },
   muted: { fontSize: 14, color: Colors.textMuted, lineHeight: 20 },
   totalRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.sm },
@@ -199,8 +268,6 @@ const styles = StyleSheet.create({
   barTrack: { flex: 1, height: 10, backgroundColor: Colors.background, borderRadius: Radius.pill, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: Radius.pill },
   barCount: { minWidth: 56, textAlign: 'right', fontWeight: '700', color: Colors.text },
-  progressTrack: { height: 14, backgroundColor: Colors.primaryDark, borderRadius: Radius.pill, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: Colors.onPrimary, borderRadius: Radius.pill },
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, minHeight: 44, paddingVertical: 4 },
   historyDot: { width: 10, height: 10, borderRadius: 5 },
   historyTitle: { fontSize: 15, fontWeight: '600', color: Colors.text },

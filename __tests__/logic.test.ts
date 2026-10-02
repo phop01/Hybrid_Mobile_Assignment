@@ -1,5 +1,5 @@
 import { summarizeAttendance } from '@/lib/attendance';
-import { filterActivities, sortForBrowsing } from '@/lib/filter-activities';
+import { browseActivities, filterActivities, sortForBrowsing } from '@/lib/filter-activities';
 import { regionFor } from '@/lib/geo';
 import { hasErrors, validateRegistration } from '@/lib/validate-registration';
 import { favoritesReducer, initialFavorites } from '@/state/favorites-reducer';
@@ -134,5 +134,31 @@ describe('regionFor (แผนที่รวมกิจกรรม)', () => {
     const r = regionFor([{ latitude: 17.8066, longitude: 102.7463 }])!;
     expect(r.latitudeDelta).toBe(0.01);
     expect(r.longitudeDelta).toBe(0.01);
+  });
+});
+
+describe('browseActivities', () => {
+  const now = new Date('2026-10-01T10:00:00+07:00').getTime();
+  const day = 24 * 3600e3;
+  const at = (offset: number) => new Date(now + offset).toISOString();
+  const mk = (id: string, startOffset: number, capacity: number, registeredCount: number) =>
+    makeActivity({ id, startsAt: at(startOffset), endsAt: at(startOffset + 3600e3), capacity, registeredCount });
+  const list = [mk('soon-full', 2 * day, 10, 10), mk('soon-open', 3 * day, 50, 10), mk('later-open', 20 * day, 100, 0), mk('past', -2 * day, 50, 0)];
+  const base = { query: '', category: 'all' as const, availability: 'all' as const, sort: 'date' as const };
+
+  it('keeps ended activities last when sorting by date', () => {
+    expect(browseActivities(list, base, now).map((a) => a.id)).toEqual(['soon-full', 'soon-open', 'later-open', 'past']);
+  });
+
+  it('week filter keeps only activities starting within 7 days and not ended', () => {
+    expect(browseActivities(list, { ...base, availability: 'week' }, now).map((a) => a.id)).toEqual(['soon-full', 'soon-open']);
+  });
+
+  it('open filter drops full and ended activities', () => {
+    expect(browseActivities(list, { ...base, availability: 'open' }, now).map((a) => a.id)).toEqual(['soon-open', 'later-open']);
+  });
+
+  it('sorts by seats left, most first, ended last', () => {
+    expect(browseActivities(list, { ...base, sort: 'seats' }, now).map((a) => a.id)).toEqual(['later-open', 'soon-open', 'soon-full', 'past']);
   });
 });

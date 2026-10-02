@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Colors, Radius } from '@/constants/theme';
 import type { RegistrationStatus } from '@/types/models';
 
 import type { IconName } from './ui';
+import { Text } from '@/components/app-text';
 
 export type DisplayStatus = RegistrationStatus | 'queued';
 

@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { CameraView, useCameraPermissions, type CameraType } from 'expo-camera';
 import { useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { Banner, Button, Screen, StateView } from '@/components/ui';
 import { Radius, Spacing } from '@/constants/theme';
+import { Text } from '@/components/app-text';
 
 /**
  * กล้องเต็มจอสำหรับถ่ายหลักฐานการเข้าร่วม

@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { LoginPrompt } from '@/components/login-prompt';
 import { Banner, Button, StateView, type IconName } from '@/components/ui';
@@ -13,6 +13,7 @@ import { enableWebNotifications, webNotificationStatus } from '@/services/remind
 import { useInbox } from '@/state/inbox-context';
 import { useAuthenticatedSession } from '@/state/session-context';
 import type { InboxItem, InboxKind } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 const ICONS: Record<InboxKind, IconName> = {
   activity: 'megaphone',

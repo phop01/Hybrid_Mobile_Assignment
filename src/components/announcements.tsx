@@ -3,13 +3,14 @@
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { formatDate, formatTime } from '@/lib/format';
 import type { Announcement } from '@/types/models';
 
 import { Banner, Button, Chip, TextField } from './ui';
+import { Text } from '@/components/app-text';
 
 const TEMPLATES = [
   'เริ่มกิจกรรมแล้ว ส่งหลักฐานการเข้าร่วมในแอปได้เลย',

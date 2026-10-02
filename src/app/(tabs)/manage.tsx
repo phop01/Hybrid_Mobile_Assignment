@@ -2,7 +2,7 @@
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { LoginPrompt } from '@/components/login-prompt';
 import { Banner, Button, Card, Screen, SectionTitle, StateView } from '@/components/ui';
@@ -13,6 +13,7 @@ import { CATEGORIES } from '@/lib/categories';
 import { formatDateRange } from '@/lib/format';
 import { useOrganizerSession } from '@/state/session-context';
 import type { OrganizerActivity } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 export default function ManageScreen() {
   const session = useOrganizerSession();

@@ -13,6 +13,7 @@ import { BroadcastsProvider } from '@/state/broadcasts-context';
 import { FavoritesProvider } from '@/state/favorites-context';
 import { InboxProvider } from '@/state/inbox-context';
 import { MyRegistrationsProvider } from '@/state/my-registrations-context';
+import { TextScaleProvider } from '@/state/text-scale-context';
 import { isActivitiesStaff } from '@/lib/roles';
 import { consumePostLoginRedirect, SessionProvider, useSession } from '@/state/session-context';
 
@@ -23,6 +24,7 @@ export const unstable_settings = { anchor: '(tabs)' };
 
 export default function RootLayout() {
   return (
+    <TextScaleProvider>
     <SessionProvider>
       <InboxProvider>
         <ActivitiesProvider>
@@ -41,6 +43,7 @@ export default function RootLayout() {
         </ActivitiesProvider>
       </InboxProvider>
     </SessionProvider>
+    </TextScaleProvider>
   );
 }
 

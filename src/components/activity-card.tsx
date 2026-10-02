@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { CATEGORIES } from '@/lib/categories';
@@ -11,6 +11,7 @@ import { toAbsoluteUrl } from '@/services/api-config';
 import type { Activity } from '@/types/models';
 
 import { StatusBadge, type DisplayStatus } from './status-badge';
+import { Text } from '@/components/app-text';
 
 type ActivityCardProps = {
   activity: Activity;

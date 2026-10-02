@@ -1,8 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Card, Screen } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { WEEKS } from '@/lib/weeks';
+import { Text } from '@/components/app-text';
 
 /** สรุปว่าเนื้อหาสัปดาห์ 1–14 ถูกใช้ตรงไหนในแอป (ใช้ประกอบการนำเสนอ) */
 export default function AboutScreen() {

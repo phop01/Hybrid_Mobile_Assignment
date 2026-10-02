@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ActivityMap } from '@/components/activity-map';
 import { AnnouncementList } from '@/components/announcements';
@@ -19,6 +19,7 @@ import { toAbsoluteUrl } from '@/services/api-config';
 import { useFavorites } from '@/state/favorites-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { useAuthenticatedSession } from '@/state/session-context';
+import { Text } from '@/components/app-text';
 
 export default function ActivityDetailScreen() {
   const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);

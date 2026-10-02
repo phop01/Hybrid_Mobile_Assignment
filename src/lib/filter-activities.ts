@@ -36,3 +36,33 @@ export function sortForBrowsing(activities: Activity[], now = Date.now()): Activ
     return endedDiff !== 0 ? endedDiff : a.startsAt.localeCompare(b.startsAt);
   });
 }
+
+export type AvailabilityFilter = 'all' | 'open' | 'week';
+export type SortMode = 'date' | 'seats';
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type BrowseOptions = {
+  query: string;
+  category: CategoryFilter;
+  /** open = ยังไม่จบและมีที่นั่งว่าง · week = ยังไม่จบและเริ่มภายใน 7 วัน */
+  availability: AvailabilityFilter;
+  /** date = ใกล้ถึงก่อน · seats = ที่นั่งว่างมากก่อน */
+  sort: SortMode;
+};
+
+/** ค้นหา + กรองประเภท + กรองความพร้อม + เรียง ในที่เดียว (ฟังก์ชันล้วน ทดสอบได้) */
+export function browseActivities(activities: Activity[], options: BrowseOptions, now = Date.now()): Activity[] {
+  let list = filterActivities(activities, options.query, options.category);
+  if (options.availability === 'open') list = list.filter((a) => !isEnded(a, now) && seatsLeft(a) > 0);
+  if (options.availability === 'week') {
+    list = list.filter((a) => !isEnded(a, now) && new Date(a.startsAt).getTime() <= now + WEEK_MS);
+  }
+  const byDate = sortForBrowsing(list, now);
+  if (options.sort === 'date') return byDate;
+  // ที่นั่งว่างมากก่อน (เท่ากันเรียงตามวัน) กิจกรรมที่จบแล้วอยู่ท้ายเสมอ
+  return byDate.sort((a, b) => {
+    const endedDiff = Number(isEnded(a, now)) - Number(isEnded(b, now));
+    return endedDiff !== 0 ? endedDiff : seatsLeft(b) - seatsLeft(a);
+  });
+}

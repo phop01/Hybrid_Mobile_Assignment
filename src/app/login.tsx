@@ -1,6 +1,6 @@
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import { Banner, Button, Card, Screen, SectionTitle, TextField } from '@/components/ui';
 import { safeNext } from '@/lib/auth-validation';
@@ -8,6 +8,7 @@ import { ROLE_INFO } from '@/lib/roles';
 import { Colors, Spacing } from '@/constants/theme';
 import { setPostLoginRedirect, useSession } from '@/state/session-context';
 import type { AccountRole } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 /** บัญชีตัวอย่างในข้อมูลเริ่มต้นของ server (server/seed.mjs) บทบาทละ 1 บัญชี กดแล้วเติมรหัสให้ */
 const SAMPLE_ACCOUNTS: { role: AccountRole; studentId: string; password: string }[] = [

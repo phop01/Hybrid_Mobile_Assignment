@@ -39,6 +39,30 @@ const since2 = new Date().toISOString();
 r = await call('POST', '/me/presence', s2, { helper: true, latitude: 17.8095, longitude: 102.7505 });
 check('presence endpoint removed 404', r.status === 404);
 
+// ---- โปรไฟล์: ความสนใจ + รูป ----
+r = await call('PUT', '/me/profile', s1, { interests: ['sport', 'volunteer'] });
+check('set interests', r.status === 200 && r.body.interests.join(',') === 'sport,volunteer', JSON.stringify(r.body));
+r = await call('PUT', '/me/profile', s1, { interests: ['sport', 'sport'] });
+check('duplicate interests 400', r.status === 400 && r.body.fields?.interests);
+r = await call('PUT', '/me/profile', s1, { interests: ['cooking'] });
+check('unknown interest 400', r.status === 400);
+r = await call('PUT', '/me/profile', s1, { avatarBase64: Buffer.alloc(200, 7).toString('base64') });
+check('non-JPEG avatar 400', r.status === 400);
+r = await call('PUT', '/me/profile', s1, { avatarBase64: JPEG });
+check('set avatar keeps interests', r.status === 200 && /^\/uploads\/avatar-.+\.jpg$/.test(r.body.avatarUrl ?? '') && r.body.interests.length === 2, JSON.stringify(r.body));
+const avatarRes = await fetch(BASE + r.body.avatarUrl);
+check('avatar image served', avatarRes.status === 200);
+const oldAvatar = r.body.avatarUrl;
+r = await call('PUT', '/me/profile', s1, { avatarBase64: JPEG });
+check('new avatar gets a new url', r.status === 200 && r.body.avatarUrl !== oldAvatar);
+check('old avatar file removed', (await fetch(BASE + oldAvatar)).status === 404);
+r = await call('PUT', '/me/profile', s1, { avatarBase64: null });
+check('remove avatar', r.status === 200 && r.body.avatarUrl === null);
+r = await call('GET', '/me', s1);
+check('/me includes profile', Array.isArray(r.body.interests) && r.body.avatarUrl === null);
+r = await call('PUT', '/me/profile', null, { interests: [] });
+check('profile needs login 401', r.status === 401);
+
 // ---- ประกาศ ----
 r = await call('POST', '/broadcasts', s1, { message: 'ทดสอบประกาศ', location: { name: 'x', latitude: 1, longitude: 1 }, hours: 2 });
 check('student broadcast 403', r.status === 403);

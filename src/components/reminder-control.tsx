@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, StyleSheet, View } from 'react-native';
 
 import { Colors, Spacing } from '@/constants/theme';
 import { availableReminderLeads, countdownProblem, customLeadProblem, formatCountdown, formatLead, reminderTime } from '@/lib/check-in-rules';
@@ -15,6 +15,7 @@ import type { Activity } from '@/types/models';
 
 import { Banner, Button, Chip } from './ui';
 import { WheelGroup, WheelPicker } from './wheel-picker';
+import { Text } from '@/components/app-text';
 
 const CUSTOM = -1;
 const COUNTDOWN = -2;

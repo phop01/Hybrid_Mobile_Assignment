@@ -5,7 +5,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { Banner, Button, Card, Screen, SectionTitle, TextField } from '@/components/ui';
 import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
@@ -14,6 +14,7 @@ import { ROLE_INFO, ROLE_ORDER } from '@/lib/roles';
 import { ApiError } from '@/services/api-client';
 import { setPostLoginRedirect, useSession } from '@/state/session-context';
 import type { AccountRole } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 export default function RegisterScreen() {
   const { signUp } = useSession();

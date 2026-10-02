@@ -4,7 +4,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { BroadcastList } from '@/components/broadcast-card';
 import { Button, Card, OfflineBanner, Screen, SectionTitle, type IconName } from '@/components/ui';
@@ -19,6 +19,7 @@ import { useBroadcasts } from '@/state/broadcasts-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { useAuthenticatedSession } from '@/state/session-context';
 import type { Activity } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 const openActivity = (id: string) => router.push({ pathname: '/activities/[id]', params: { id } });
 
@@ -83,6 +84,10 @@ export default function TodayScreen() {
     .filter((x): x is { registration: typeof x.registration; activity: Activity } => !!x.activity && !isEnded(x.activity))
     .sort((a, b) => a.activity.startsAt.localeCompare(b.activity.startsAt));
   const summary = summarizeAttendance(registrations, activitiesState.activities);
+  // แนะนำกิจกรรมหมวดที่ผู้ใช้เลือกไว้ในโปรไฟล์ (เฉพาะที่ยังไม่ได้ลงทะเบียน)
+  const notRegistered = upcoming.filter((a) => !myUpcoming.some((m) => m.activity.id === a.id));
+  const recommended = notRegistered.filter((a) => user.interests?.includes(a.category)).slice(0, 3);
+  const others = notRegistered.filter((a) => !recommended.includes(a));
 
   return (
     <Screen refreshControl={refreshControl}>
@@ -133,7 +138,8 @@ export default function TodayScreen() {
         <Ionicons name="chevron-forward" size={18} color={Colors.onPrimaryMuted} />
       </Pressable>
 
-      <UpcomingActivities activities={upcoming.filter((a) => !myUpcoming.some((m) => m.activity.id === a.id)).slice(0, 3)} />
+      <UpcomingActivities title="แนะนำตามความสนใจของคุณ" activities={recommended} />
+      <UpcomingActivities activities={others.slice(0, 3)} />
     </Screen>
   );
 }
@@ -151,11 +157,11 @@ function Greeting({ name }: { name: string }) {
   );
 }
 
-function UpcomingActivities({ activities }: { activities: Activity[] }) {
+function UpcomingActivities({ activities, title = 'กิจกรรมที่กำลังจะมาถึง' }: { activities: Activity[]; title?: string }) {
   if (activities.length === 0) return null;
   return (
     <Card>
-      <SectionTitle>กิจกรรมที่กำลังจะมาถึง</SectionTitle>
+      <SectionTitle>{title}</SectionTitle>
       {activities.map((a) => (
         <Pressable
           key={a.id}

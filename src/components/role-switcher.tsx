@@ -4,12 +4,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { activeRoleOf, ROLE_INFO, ROLE_ORDER, userRoles } from '@/lib/roles';
 import { useSession } from '@/state/session-context';
 import type { AccountRole } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 export function RoleSwitcher() {
   const { session, switchRole } = useSession();

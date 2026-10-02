@@ -1,28 +1,35 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ActivityCard } from '@/components/activity-card';
 import { useAppWidth } from '@/components/phone-frame';
-import { Banner, ChipBar, OfflineBanner, StateView } from '@/components/ui';
-import { Colors, MaxContentWidth, MinTouch, Radius, Spacing } from '@/constants/theme';
+import { ActivityListSkeleton, FadeInView } from '@/components/motion';
+import { SearchBox } from '@/components/search-box';
+import { Banner, Chip, ChipBar, OfflineBanner, StateView } from '@/components/ui';
+import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useDisplayStatus } from '@/hooks/use-display-status';
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
-import { filterActivities, isEnded, sortForBrowsing, type CategoryFilter } from '@/lib/filter-activities';
+import { browseActivities, isEnded, type AvailabilityFilter, type CategoryFilter, type SortMode } from '@/lib/filter-activities';
 import { useActivities } from '@/state/activities-context';
 import { useFavorites } from '@/state/favorites-context';
 import { useAuthenticatedSession } from '@/state/session-context';
+import { Text } from '@/components/app-text';
 
 const CATEGORY_FILTERS: { key: CategoryFilter; label: string; color?: string }[] = [
   { key: 'all', label: 'ทั้งหมด' },
   ...CATEGORY_ORDER.map((c) => ({ key: c, label: CATEGORIES[c].label, color: CATEGORIES[c].color })),
+];
+
+const AVAILABILITY_FILTERS: { key: AvailabilityFilter; label: string }[] = [
+  { key: 'all', label: 'ทุกช่วงเวลา' },
+  { key: 'week', label: 'ภายใน 7 วัน' },
+  { key: 'open', label: 'ยังมีที่นั่ง' },
+];
+
+const SORTS: { key: SortMode; label: string }[] = [
+  { key: 'date', label: 'ใกล้ถึงก่อน' },
+  { key: 'seats', label: 'ที่นั่งว่างมาก' },
 ];
 
 // ประกาศนอก component: เป็นฟังก์ชันเดิมทุก render การ์ด (memo) จึงไม่ render ซ้ำ
@@ -38,9 +45,12 @@ export default function ActivitiesScreen() {
   // state ของหน้านี้เอง (ไม่ต้องแชร์กับหน้าอื่น) จึงใช้ useState ธรรมดา
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('all');
+  const [availability, setAvailability] = useState<AvailabilityFilter>('all');
+  const [sort, setSort] = useState<SortMode>('date');
 
   // คำนวณตอน render ไม่เก็บรายการที่กรองแล้วไว้ใน state อีกชุด
-  const visible = filterActivities(sortForBrowsing(activities), query, category);
+  const visible = browseActivities(activities, { query, category, availability, sort });
+  const filtering = query.trim() !== '' || category !== 'all' || availability !== 'all';
 
   // จอกว้าง (แท็บเล็ต/เว็บ) แสดง 2 คอลัมน์ คำนวณจากพื้นที่จริง ไม่ยึดขนาดเครื่องเดียว
   const width = useAppWidth();
@@ -49,6 +59,7 @@ export default function ActivitiesScreen() {
   const clearFilters = () => {
     setQuery('');
     setCategory('all');
+    setAvailability('all');
   };
 
   const header = (
@@ -58,18 +69,21 @@ export default function ActivitiesScreen() {
           {session ? `สวัสดี ${session.user.fullName.split(' ')[0]}` : 'กิจกรรมในมหาวิทยาลัย'}
         </Text>
         <Text style={styles.heroText}>มี {upcoming} กิจกรรมที่กำลังจะมาถึง เลือกเข้าร่วมเพื่อสะสมชั่วโมง</Text>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="ค้นหาชื่อกิจกรรมหรือสถานที่"
-          placeholderTextColor={Colors.textMuted}
-          accessibilityLabel="ค้นหากิจกรรม"
-          style={styles.search}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-        />
+        <SearchBox value={query} onChangeText={setQuery} placeholder="ค้นหาชื่อกิจกรรมหรือสถานที่" label="ค้นหากิจกรรม" />
       </View>
       <ChipBar options={CATEGORY_FILTERS} value={category} onChange={setCategory} />
+      <ChipBar options={AVAILABILITY_FILTERS} value={availability} onChange={setAvailability} />
+      <View style={styles.sortRow}>
+        <Text style={styles.count} accessibilityLiveRegion="polite">
+          {filtering ? `พบ ${visible.length} กิจกรรม` : `ทั้งหมด ${visible.length} กิจกรรม`}
+        </Text>
+        <View style={styles.sortChips}>
+          <Text style={styles.sortLabel}>เรียง</Text>
+          {SORTS.map((o) => (
+            <Chip key={o.key} label={o.label} selected={sort === o.key} onPress={() => setSort(o.key)} />
+          ))}
+        </View>
+      </View>
       <OfflineBanner since={offlineSince} note="ที่นั่งคงเหลืออาจไม่ตรงกับปัจจุบัน" />
       {error && status === 'ready' ? <Banner tone="danger">{error}</Banner> : null}
     </View>
@@ -77,7 +91,7 @@ export default function ActivitiesScreen() {
 
   let empty;
   if (status === 'loading') {
-    empty = <StateView kind="loading" message="กำลังโหลดกิจกรรม…" />;
+    empty = <ActivityListSkeleton />;
   } else if (status === 'error') {
     empty = (
       <StateView
@@ -107,8 +121,8 @@ export default function ActivitiesScreen() {
       data={visible}
       numColumns={columns}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <View style={styles.cell}>
+      renderItem={({ item, index }) => (
+        <FadeInView index={index} style={styles.cell}>
           <ActivityCard
             activity={item}
             isFavorite={isFavorite(item.id)}
@@ -116,7 +130,7 @@ export default function ActivitiesScreen() {
             onOpen={openActivity}
             onToggleFavorite={toggleFavorite}
           />
-        </View>
+        </FadeInView>
       )}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
@@ -137,16 +151,10 @@ const styles = StyleSheet.create({
   hero: { backgroundColor: Colors.primary, borderRadius: Radius.lg, padding: Spacing.lg, gap: Spacing.sm },
   heroTitle: { fontSize: 22, fontWeight: '800', color: Colors.onPrimary },
   heroText: { fontSize: 14, color: Colors.onPrimaryMuted, lineHeight: 20, marginBottom: Spacing.xs },
-  search: {
-    minHeight: MinTouch + 4,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    fontSize: 16,
-    color: Colors.text,
-  },
+  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: Spacing.sm },
+  sortChips: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+  sortLabel: { fontSize: 13, color: Colors.textMuted },
+  count: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
   row: { gap: Spacing.md },
   cell: { flex: 1 },
 });

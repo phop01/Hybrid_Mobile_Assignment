@@ -115,6 +115,10 @@ export type User = {
   /** บทบาททั้งหมดที่บัญชีนี้มี */
   roles?: AccountRole[];
   activeRole?: AccountRole;
+  /** ความสนใจที่เลือกเอง (หมวดกิจกรรม) ใช้แนะนำกิจกรรมในหน้า "วันนี้" */
+  interests?: Category[];
+  /** รูปโปรไฟล์ (path ที่ server) null = ยังไม่ตั้ง */
+  avatarUrl?: string | null;
 };
 
 /** ข้อมูลเช็กอินที่ถ่ายแล้วแต่ยังส่งไม่ได้ (ออฟไลน์) */

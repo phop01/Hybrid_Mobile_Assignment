@@ -4,7 +4,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import { AnnouncementComposer, AnnouncementList } from '@/components/announcements';
 import { StatusBadge } from '@/components/status-badge';
@@ -19,6 +19,7 @@ import { PHOTO_SOURCE_LABEL } from '@/lib/photo-time';
 import { toAbsoluteUrl } from '@/services/api-config';
 import { useActivities } from '@/state/activities-context';
 import type { Registration, RegistrationStatus } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 type Filter = 'all' | RegistrationStatus;
 const FILTERS: { key: Filter; label: string }[] = [

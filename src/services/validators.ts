@@ -97,11 +97,14 @@ export function isUser(v: unknown): v is User {
     (v.role === 'student' || v.role === 'organizer') &&
     (v.department === undefined || v.department === 'activities') &&
     (v.roles === undefined || (Array.isArray(v.roles) && v.roles.every((r) => ACCOUNT_ROLES.includes(r as string)))) &&
-    (v.activeRole === undefined || ACCOUNT_ROLES.includes(v.activeRole as string))
+    (v.activeRole === undefined || ACCOUNT_ROLES.includes(v.activeRole as string)) &&
+    (v.interests === undefined || (Array.isArray(v.interests) && v.interests.every((k) => INTEREST_KEYS.includes(k as string)))) &&
+    (v.avatarUrl === undefined || v.avatarUrl === null || isStr(v.avatarUrl))
   );
 }
 
 const ACCOUNT_ROLES = ['student', 'activities'];
+const INTEREST_KEYS = ['academic', 'volunteer', 'sport', 'culture'];
 
 export function parseList<T>(payload: unknown, guard: (v: unknown) => v is T, label: string): T[] {
   if (!Array.isArray(payload) || !payload.every(guard)) {

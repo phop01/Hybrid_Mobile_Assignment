@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 
 import { ActivityCard } from '@/components/activity-card';
 import { LoginPrompt } from '@/components/login-prompt';
@@ -12,6 +12,7 @@ import { useFavorites } from '@/state/favorites-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { useAuthenticatedSession } from '@/state/session-context';
 import type { Activity, Registration } from '@/types/models';
+import { Text } from '@/components/app-text';
 
 type Row = { registration: Registration; activity: Activity; status: DisplayStatus };
 

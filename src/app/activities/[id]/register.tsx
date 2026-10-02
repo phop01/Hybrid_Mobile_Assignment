@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useReducer, useRef } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, type TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, type TextInput } from 'react-native';
 
 import { ReminderControl } from '@/components/reminder-control';
 import { Banner, Button, Card, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
@@ -15,6 +15,7 @@ import { ensureNotificationPermission, supportsNotifications } from '@/services/
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { initialFormState, registrationFormReducer } from '@/state/registration-form-reducer';
 import { useAuthenticatedSession } from '@/state/session-context';
+import { Text } from '@/components/app-text';
 
 export default function RegisterScreen() {
   const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);

@@ -2,12 +2,13 @@
 // แผนที่พื้นฐานไม่มีชื่ออาคารในวิทยาเขต จึงวาดป้ายเองจาก src/data/campus-places.json
 
 import { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Marker } from 'react-native-maps';
 
 import { Colors, Radius } from '@/constants/theme';
 import { CAMPUS_PLACES } from '@/lib/campus';
 import type { Coordinates } from '@/lib/geo';
+import { Text } from '@/components/app-text';
 
 /**
  * แตะป้ายในโหมดปักหมุด = เลือกอาคารนั้น (onPick) · โหมดอื่นแตะแล้วไม่มีอะไร (ป้ายเป็นแค่ข้อมูลประกอบ)

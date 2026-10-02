@@ -4,7 +4,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { formatTime } from '@/lib/format';
@@ -12,6 +12,7 @@ import { toAbsoluteUrl } from '@/services/api-config';
 import type { Broadcast } from '@/types/models';
 
 import { Banner } from './ui';
+import { Text } from '@/components/app-text';
 
 const POSTER_BG = '#1F2230';
 

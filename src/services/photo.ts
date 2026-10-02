@@ -43,6 +43,13 @@ export async function pickCoverImage(): Promise<string | null> {
   return asset?.uri ?? null;
 }
 
+/** เลือกรูปโปรไฟล์จากคลัง: ครอปเป็นสี่เหลี่ยมจัตุรัสให้พอดีวงกลม คืน null ถ้าผู้ใช้กดยกเลิก */
+export async function pickAvatarImage(): Promise<string | null> {
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 1 });
+  const asset = result.canceled ? undefined : result.assets[0];
+  return asset?.uri ?? null;
+}
+
 /**
  * เลือกโปสเตอร์ประกาศจากคลัง: ไม่บังคับครอป เพราะโปสเตอร์มีหลายสัดส่วน (แนวตั้ง A4 / สี่เหลี่ยม)
  * คืน null ถ้าผู้ใช้กดยกเลิก

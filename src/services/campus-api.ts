@@ -4,6 +4,7 @@ import type {
   AccountRole,
   Activity,
   Announcement,
+  Category,
   NewActivityInput,
   OrganizerActivity,
   PhotoSource,
@@ -51,6 +52,14 @@ export async function signUp(input: SignUpInput) {
 /** เปลี่ยนบทบาทที่ใช้อยู่ของบัญชีนี้ (ต้องเป็นบทบาทที่บัญชีมี) คืนข้อมูลผู้ใช้ในบทบาทใหม่ */
 export async function setActiveRole(token: string, role: AccountRole): Promise<User> {
   return parseOne(await apiRequest('/me/role', { method: 'POST', token, body: { role } }), isUser, 'ผู้ใช้');
+}
+
+/** แก้โปรไฟล์: interests = หมวดที่สนใจ · avatarBase64 = รูป JPEG (null = ลบรูป) ส่งเฉพาะช่องที่เปลี่ยน */
+export async function updateProfile(
+  token: string,
+  input: { interests?: Category[]; avatarBase64?: string | null },
+): Promise<User> {
+  return parseOne(await apiRequest('/me/profile', { method: 'PUT', token, body: input }), isUser, 'ผู้ใช้');
 }
 
 export async function logout(token: string): Promise<void> {

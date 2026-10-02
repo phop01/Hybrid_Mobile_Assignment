@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
   type ScrollViewProps,
@@ -18,6 +17,7 @@ import {
 
 import { Colors, MaxContentWidth, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { formatUpdatedAt } from '@/lib/format';
+import { Text } from '@/components/app-text';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 

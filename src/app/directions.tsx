@@ -4,7 +4,7 @@
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 
 import { RouteMap } from '@/components/route-map';
 import { Banner, Button, StateView } from '@/components/ui';
@@ -14,6 +14,7 @@ import { useLiveLocation } from '@/hooks/use-live-location';
 import { formatDistance } from '@/lib/format';
 import { ARRIVED_RADIUS_M, distanceMeters, parseCoordinates, walkingMinutes } from '@/lib/geo';
 import { openDirections } from '@/lib/platform-actions';
+import { Text } from '@/components/app-text';
 
 export default function DirectionsScreen() {
   const params = useLocalSearchParams<{ lat?: string | string[]; lng?: string | string[]; name?: string | string[] }>();

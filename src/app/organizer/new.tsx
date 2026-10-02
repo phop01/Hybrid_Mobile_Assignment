@@ -3,7 +3,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { PickMap } from '@/components/pick-map';
 import { Banner, Button, Card, Chip, Screen, SectionTitle, TextField } from '@/components/ui';
@@ -25,6 +25,7 @@ import { getCurrentCoordinates } from '@/services/location';
 import { pickCoverImage, preparePhotoForUpload } from '@/services/photo';
 import { useActivities } from '@/state/activities-context';
 import { useOrganizerSession } from '@/state/session-context';
+import { Text } from '@/components/app-text';
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
 const RADII = [50, 100, 150, 300];

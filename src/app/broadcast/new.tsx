@@ -4,7 +4,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import { BroadcastCard } from '@/components/broadcast-card';
 import { PickMap } from '@/components/pick-map';
@@ -15,6 +15,7 @@ import { ApiError } from '@/services/api-client';
 import { pickPosterImage, preparePhotoForUpload, type PreparedPhoto } from '@/services/photo';
 import { useAuthenticatedSession } from '@/state/session-context';
 import { useBroadcasts } from '@/state/broadcasts-context';
+import { Text } from '@/components/app-text';
 
 const HOURS = [1, 3, 6, 12, 24];
 

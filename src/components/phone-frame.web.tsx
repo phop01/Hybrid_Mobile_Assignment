@@ -2,9 +2,10 @@
 // จอแคบ (เปิดเว็บบนมือถือ) แสดงเต็มจอเหมือนเดิม
 
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { Colors, Spacing } from '@/constants/theme';
+import { Text } from '@/components/app-text';
 
 /** กว้างกว่านี้ถึงจะแสดงกรอบ */
 const FRAME_FROM_WIDTH = 760;
