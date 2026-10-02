@@ -10,6 +10,7 @@ import { LoginPrompt } from '@/components/login-prompt';
 import { Banner, Button, Card, Chip, Screen, SectionTitle } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { REQUIRED_HOURS, summarizeAttendance } from '@/lib/attendance';
+import { computeBadges } from '@/lib/badges';
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
 import { formatDate } from '@/lib/format';
 import { confirmAction } from '@/lib/platform-actions';
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
   const isOrganizer = user.role === 'organizer';
   // ชั่วโมงมาจากการเข้าร่วมกิจกรรมเท่านั้น (จิตอาสาคือกิจกรรมหมวดจิตอาสา)
   const summary = summarizeAttendance(registrations, activities);
+  const badges = computeBadges(summary);
   const maxHours = Math.max(1, ...CATEGORY_ORDER.map((c) => summary.hoursByCategory[c]));
   // ประวัติกิจกรรมที่ได้ชั่วโมงแล้ว ใหม่สุดก่อน ใช้ทำพอร์ต/ยื่นชั่วโมงกิจกรรม
   const history = registrations
@@ -186,6 +188,27 @@ export default function ProfileScreen() {
           </Card>
 
           <Card>
+            <SectionTitle>
+              เหรียญความสำเร็จ ({badges.filter((b) => b.earned).length}/{badges.length})
+            </SectionTitle>
+            <View style={styles.badges}>
+              {badges.map((b) => (
+                <View
+                  key={b.id}
+                  style={styles.badge}
+                  accessible
+                  accessibilityLabel={`${b.label} ${b.earned ? 'ได้แล้ว' : `ยังไม่ได้: ${b.hint}`}`}>
+                  <View style={[styles.badgeIcon, b.earned && styles.badgeIconOn]}>
+                    <Ionicons name={b.icon} size={26} color={b.earned ? Colors.onPrimary : Colors.textMuted} />
+                  </View>
+                  <Text style={[styles.badgeLabel, !b.earned && { color: Colors.textMuted }]}>{b.label}</Text>
+                  {b.earned ? null : <Text style={styles.badgeHint}>{b.hint}</Text>}
+                </View>
+              ))}
+            </View>
+          </Card>
+
+          <Card>
             <SectionTitle>ประวัติกิจกรรมที่ได้ชั่วโมง</SectionTitle>
             {history.length === 0 ? (
               <Text style={styles.muted}>ยังไม่มี เมื่อเช็กอินสำเร็จหรือหลักฐานผ่าน กิจกรรมจะมาอยู่ที่นี่</Text>
@@ -253,6 +276,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  badge: { width: 96, alignItems: 'center', gap: 4 },
+  badgeIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' },
+  badgeIconOn: { backgroundColor: Colors.primary },
+  badgeHint: { fontSize: 11, color: Colors.textMuted, textAlign: 'center', lineHeight: 15 },
+  badgeLabel: { fontSize: 12, fontWeight: '700', color: Colors.text, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
   name: { fontSize: 20, fontWeight: '700', color: Colors.text },

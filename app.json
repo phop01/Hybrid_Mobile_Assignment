@@ -30,6 +30,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-calendar",
+        {
+          "calendarPermission": "KKUNK Today เพิ่มกิจกรรมลงปฏิทินของคุณเฉพาะตอนที่คุณกดปุ่ม \"เพิ่มลงปฏิทิน\""
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0F5F8C",

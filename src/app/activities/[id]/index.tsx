@@ -18,6 +18,7 @@ import { formatDateRange } from '@/lib/format';
 import { toAbsoluteUrl } from '@/services/api-config';
 import { useFavorites } from '@/state/favorites-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
+import { addToCalendar, shareActivity } from '@/services/activity-actions';
 import { useAuthenticatedSession } from '@/state/session-context';
 import { Text } from '@/components/app-text';
 
@@ -29,6 +30,7 @@ export default function ActivityDetailScreen() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { findActiveForActivity } = useMyRegistrations();
   const announcements = useActivityAnnouncements(id);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (state.status === 'loading') return <StateView kind="loading" message="กำลังโหลดรายละเอียด…" />;
   if (state.status === 'not_found') {
@@ -54,6 +56,16 @@ export default function ActivityDetailScreen() {
   const ended = isEnded(activity);
   const left = seatsLeft(activity);
   const favorite = isFavorite(activity.id);
+
+  const share = async () => {
+    const result = await shareActivity(activity);
+    setNotice(result === 'copied' ? 'คัดลอกข้อความกิจกรรมแล้ว วางส่งให้เพื่อนได้เลย' : result === 'failed' ? 'แชร์ไม่สำเร็จ ลองใหม่อีกครั้ง' : null);
+  };
+
+  const addCalendar = async () => {
+    const result = await addToCalendar(activity);
+    setNotice(result === 'failed' ? 'เพิ่มลงปฏิทินไม่สำเร็จ ลองใหม่อีกครั้ง' : null);
+  };
 
   const goRegister = () => {
     const target = `/activities/${activity.id}/register`;
@@ -113,19 +125,31 @@ export default function ActivityDetailScreen() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Ionicons
-              name={favorite ? 'star' : 'star-outline'}
-              size={24}
-              color={favorite ? Colors.star : Colors.textMuted}
-              onPress={() => toggleFavorite(activity.id)}
-              accessibilityLabel={favorite ? 'นำออกจากที่บันทึกไว้' : 'บันทึกไว้ดูทีหลัง'}
-              accessibilityRole="button"
-              style={{ padding: 8 }}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons
+                name="share-outline"
+                size={24}
+                color={Colors.textMuted}
+                onPress={share}
+                accessibilityLabel="แชร์กิจกรรมนี้"
+                accessibilityRole="button"
+                style={{ padding: 8 }}
+              />
+              <Ionicons
+                name={favorite ? 'star' : 'star-outline'}
+                size={24}
+                color={favorite ? Colors.star : Colors.textMuted}
+                onPress={() => toggleFavorite(activity.id)}
+                accessibilityLabel={favorite ? 'นำออกจากที่บันทึกไว้' : 'บันทึกไว้ดูทีหลัง'}
+                accessibilityRole="button"
+                style={{ padding: 8 }}
+              />
+            </View>
           ),
         }}
       />
       <Screen>
+        {notice ? <Banner tone="info">{notice}</Banner> : null}
         {stale ? <Banner tone="warning">ออฟไลน์ · แสดงข้อมูลที่เก็บไว้ ที่นั่งคงเหลืออาจไม่ตรงกับปัจจุบัน</Banner> : null}
 
         {activity.imageUrl ? (
@@ -164,6 +188,9 @@ export default function ActivityDetailScreen() {
         </Card>
 
         {action}
+        {!ended && !activity.cancelledAt ? (
+          <Button title="เพิ่มลงปฏิทิน" icon="calendar-outline" variant="secondary" onPress={addCalendar} />
+        ) : null}
 
         {announcements.data.length > 0 ? (
           <Card>

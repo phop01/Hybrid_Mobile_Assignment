@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 
 import '@/lib/ignore-font-timeout';
 import { InboxToast } from '@/components/inbox-toast';
+import { Onboarding } from '@/components/onboarding';
 import { PhoneFrame } from '@/components/phone-frame';
 import { Colors } from '@/constants/theme';
 import { useNotificationRouting } from '@/hooks/use-notification-routing';
@@ -36,6 +37,7 @@ export default function RootLayout() {
                 <PhoneFrame>
                   <RootNavigator />
                   <InboxToast />
+                  <Onboarding />
                 </PhoneFrame>
               </BroadcastsProvider>
             </MyRegistrationsProvider>

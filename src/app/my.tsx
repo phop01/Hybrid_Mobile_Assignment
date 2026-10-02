@@ -1,12 +1,15 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { RefreshControl, SectionList, StyleSheet, View } from 'react-native';
 
 import { ActivityCard } from '@/components/activity-card';
 import { LoginPrompt } from '@/components/login-prompt';
 import type { DisplayStatus } from '@/components/status-badge';
+import { WeekStrip } from '@/components/week-strip';
 import { Banner, OfflineBanner, StateView } from '@/components/ui';
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { isEnded } from '@/lib/filter-activities';
+import { countByDay, dayKey } from '@/lib/week-strip';
 import { useActivities } from '@/state/activities-context';
 import { useFavorites } from '@/state/favorites-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
@@ -25,6 +28,7 @@ export default function MyScreen() {
   const { registrations, loading, offlineSince, error, queuedIds, refresh } = useMyRegistrations();
   const { getById } = useActivities();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const [day, setDay] = useState<string | null>(null);
 
   if (!session) {
     return (
@@ -51,10 +55,13 @@ export default function MyScreen() {
   const attended = rows.filter((r) => r.status === 'checked_in');
   const past = rows.filter((r) => !upcoming.includes(r) && !attended.includes(r));
 
+  // แตะวันในแถบ 7 วัน → แสดงเฉพาะกิจกรรมที่กำลังจะถึงของวันนั้น
+  const shownUpcoming = day ? upcoming.filter((r) => dayKey(new Date(r.activity.startsAt)) === day) : upcoming;
+
   const sections = [
-    { title: 'กำลังจะถึง', data: upcoming },
-    { title: 'เข้าร่วมแล้ว', data: attended },
-    { title: 'ยกเลิก / ไม่ได้เข้าร่วม', data: past },
+    { title: day ? 'กิจกรรมของวันที่เลือก' : 'กำลังจะถึง', data: shownUpcoming },
+    { title: 'เข้าร่วมแล้ว', data: day ? [] : attended },
+    { title: 'ยกเลิก / ไม่ได้เข้าร่วม', data: day ? [] : past },
   ].filter((s) => s.data.length > 0);
 
   return (
@@ -68,6 +75,10 @@ export default function MyScreen() {
       ListHeaderComponent={
         <View style={{ gap: Spacing.sm }}>
           <OfflineBanner since={offlineSince} />
+          {upcoming.length > 0 ? (
+            <WeekStrip counts={countByDay(upcoming.map((r) => r.activity))} selected={day} onSelect={setDay} />
+          ) : null}
+          {day && shownUpcoming.length === 0 ? <Banner tone="info">วันนี้ที่เลือกยังไม่มีกิจกรรมที่ลงทะเบียนไว้</Banner> : null}
           {queuedIds.length > 0 ? (
             <Banner tone="warning" icon="cloud-upload">
               มีเช็กอิน {queuedIds.length} รายการรอส่ง จะส่งให้อัตโนมัติเมื่อกลับมาออนไลน์
