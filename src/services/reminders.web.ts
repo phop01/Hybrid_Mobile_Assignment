@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 
 import { formatLead } from '@/lib/check-in-rules';
 import { targetFor } from '@/lib/inbox';
-import type { Activity, InboxItem, InboxKind, Ticket } from '@/types/models';
+import type { Activity, InboxItem, InboxKind } from '@/types/models';
 
 export const supportsNotifications = webNotificationStatus() !== 'unsupported';
 
@@ -84,7 +84,6 @@ export async function presentInboxItem(item: InboxItem): Promise<void> {
     if (target) router.push(target as never);
   };
 }
-export async function syncAppointmentReminders(_tickets: Ticket[]): Promise<void> {}
 export async function clearAllReminders(): Promise<void> {
   for (const id of [...timers.keys()]) await cancelReminder(id);
 }

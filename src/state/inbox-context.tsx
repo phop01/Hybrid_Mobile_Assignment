@@ -1,5 +1,5 @@
 // กล่องแจ้งเตือน: ที่เดียวที่แอปถาม server ว่า "มีอะไรใหม่สำหรับฉันไหม"
-// server เป็นคนตัดสินว่าใครควรรู้เรื่องอะไร (เช่น มีคนรับเรื่องแจ้งซ่อม, ผลตรวจหลักฐาน)
+// server เป็นคนตัดสินว่าใครควรรู้เรื่องอะไร (เช่น ผลตรวจหลักฐาน, ประกาศ)
 // แอปแค่ poll ของตัวเองเป็นระยะแล้วเด้งแจ้งเตือนในเครื่อง (ตอนเปิดแอป) · ปิดแอปแล้ว server ส่ง push ให้ (services/push.ts)
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -8,7 +8,7 @@ import { AppState, Platform } from 'react-native';
 import { latestCreatedAt, mergeInbox, unreadCount } from '@/lib/inbox';
 import { registerForPush, type PushResult } from '@/services/push';
 import { ensureNotificationPermission, presentInboxItem } from '@/services/reminders';
-import * as ticketsApi from '@/services/tickets-api';
+import * as broadcastsApi from '@/services/broadcasts-api';
 import { isInboxItem } from '@/services/validators';
 import { INBOX_KEY } from '@/storage/keys';
 import { readJson, writeJson } from '@/storage/kv';
@@ -109,7 +109,7 @@ function UserInbox({ token, userId, children }: { token: string; userId: string;
       const current = stored.current;
       // ครั้งแรกของผู้ใช้นี้ในเครื่อง: ดึงของเก่ามาแสดงในกล่อง แต่ไม่เด้งย้อนหลังทีละหลายอัน
       const firstRun = !current;
-      const incoming = await ticketsApi.getInbox(token, current?.since ?? '');
+      const incoming = await broadcastsApi.getInbox(token, current?.since ?? '');
       const { items: merged, fresh } = mergeInbox(current?.items ?? [], incoming);
       const next: Stored = {
         userId,

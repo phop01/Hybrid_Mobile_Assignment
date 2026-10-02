@@ -24,7 +24,7 @@ export const CAMPUS_PLACES: CampusPlace[] = raw as CampusPlace[];
 /** กลางวิทยาเขต (ใช้เป็นจุดเริ่มของแผนที่) */
 export const CAMPUS_CENTER: Coordinates = { latitude: 17.8045, longitude: 102.7473 };
 
-/** อาคารที่แจ้งซ่อม/นัดกันบ่อย (ขึ้นเป็นปุ่มลัดในฟอร์ม) — ไม่รวมสระน้ำ/ประตู */
+/** อาคารที่นัดกันบ่อย (ขึ้นเป็นปุ่มลัดในฟอร์ม) — ไม่รวมสระน้ำ/ประตู */
 export const PICKABLE_PLACES = CAMPUS_PLACES.filter((p) => p.kind !== 'other' || p.id === 'carpark');
 
 /** อาคารที่ใกล้ที่สุดในระยะ maxMeters (ไม่มี → null) ใช้เดาอาคารจาก GPS */

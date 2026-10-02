@@ -21,7 +21,7 @@ jobs:
         run: npm run lint
       - name: Jest
         run: npm test -- --ci
-      - name: API smoke test (แจ้งซ่อม / ประกาศ / แจ้งเตือน)
+      - name: API smoke test (กิจกรรม / หลักฐาน / ประกาศ / แจ้งเตือน)
         run: |
           PUSH_DRY_RUN=1 npm run api &
           sleep 3

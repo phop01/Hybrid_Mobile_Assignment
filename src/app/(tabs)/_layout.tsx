@@ -2,24 +2,21 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 
 import { Colors } from '@/constants/theme';
-import { isActivitiesStaff, isFacilities } from '@/lib/tickets';
+import { isActivitiesStaff } from '@/lib/roles';
 import { useInbox } from '@/state/inbox-context';
 import { useAuthenticatedSession } from '@/state/session-context';
 
 /**
- * 6 แท็บ = เรื่องที่เปิดบ่อยที่สุด เข้าถึงได้ในแตะเดียว
- * นักศึกษา: วันนี้ · กิจกรรม · เรื่องแจ้ง · แผนที่ · แจ้งเตือน · ฉัน
+ * 5 แท็บ = เรื่องที่เปิดบ่อยที่สุด เข้าถึงได้ในแตะเดียว
+ * นักศึกษา: วันนี้ · กิจกรรม · แผนที่ · แจ้งเตือน · ฉัน
  * เจ้าหน้าที่กิจกรรม: แท็บ "กิจกรรม" เปลี่ยนเป็น "จัดการ" (สร้างกิจกรรม/ตรวจหลักฐาน)
- * เจ้าหน้าที่อาคาร: ไม่มีแท็บกิจกรรม/จัดการ แท็บ "เรื่องแจ้ง" เป็นคิวงานซ่อม
  * หน้ารายละเอียด/ฟอร์มอยู่ใน Root Stack นอกแท็บ จึงมีปุ่มย้อนกลับอัตโนมัติ
  */
 export default function TabsLayout() {
   const { unread } = useInbox();
   const user = useAuthenticatedSession()?.user;
   const isOrganizer = user?.role === 'organizer';
-  // เจ้าหน้าที่กิจกรรมเห็นแท็บ "จัดการ" · เจ้าหน้าที่อาคารไม่ยุ่งกับกิจกรรม จึงไม่เห็นทั้งสองแท็บ
   const manages = isActivitiesStaff(user);
-  const facilities = isFacilities(user);
 
   return (
     <Tabs
@@ -51,14 +48,6 @@ export default function TabsLayout() {
           href: manages ? undefined : null,
           title: 'จัดการ',
           tabBarIcon: ({ color, size }) => <Ionicons name="clipboard" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="tickets"
-        options={{
-          title: 'เรื่องแจ้ง',
-          headerTitle: facilities ? 'คิวงานแจ้งซ่อม' : isOrganizer ? 'เรื่องแจ้งในวิทยาเขต' : 'แจ้งซ่อม',
-          tabBarIcon: ({ color, size }) => <Ionicons name="construct" size={size} color={color} />,
         }}
       />
       <Tabs.Screen

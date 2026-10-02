@@ -40,20 +40,20 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "KKUNK Today ใช้กล้องเฉพาะตอนคุณกดถ่ายรูป: รูปยืนยันการเข้าร่วมกิจกรรม รูปปัญหาที่แจ้งซ่อม และรูปหลังซ่อมเสร็จ",
+          "cameraPermission": "KKUNK Today ใช้กล้องเฉพาะตอนคุณกดถ่ายรูป: รูปหลักฐานการเข้าร่วมกิจกรรม",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "KKUNK Today ใช้ตำแหน่งตอนเช็กอินกิจกรรม ตอนปักหมุดจุดที่แจ้งซ่อม และตอนดูเส้นทางในแอป ไม่ติดตามตำแหน่งเบื้องหลัง"
+          "locationWhenInUsePermission": "KKUNK Today ใช้ตำแหน่งตอนเช็กอินกิจกรรม ตอนปักหมุดสถานที่ และตอนดูเส้นทางในแอป ไม่ติดตามตำแหน่งเบื้องหลัง"
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "KKUNK Today เปิดคลังรูปเฉพาะตอนคุณกดเลือกรูป เช่น รูปปัญหาที่จะแจ้งซ่อมหรือรูปหลักฐานการเข้าร่วมกิจกรรม",
+          "photosPermission": "KKUNK Today เปิดคลังรูปเฉพาะตอนคุณกดเลือกรูป เช่น รูปหลักฐานการเข้าร่วมกิจกรรมหรือโปสเตอร์ประกาศ",
           "cameraPermission": false,
           "microphonePermission": false
         }

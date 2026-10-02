@@ -7,20 +7,19 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { BroadcastCard } from '@/components/broadcast-card';
-import type { PreparedPhoto } from '@/components/photo-field';
 import { PickMap } from '@/components/pick-map';
 import { Banner, Button, Card, Chip, Screen, SectionTitle, TextField } from '@/components/ui';
 import { Colors, DEFAULT_CENTER, Radius, Spacing } from '@/constants/theme';
 import type { Coordinates } from '@/lib/geo';
 import { ApiError } from '@/services/api-client';
-import { pickPosterImage, preparePhotoForUpload } from '@/services/photo';
+import { pickPosterImage, preparePhotoForUpload, type PreparedPhoto } from '@/services/photo';
 import { useAuthenticatedSession } from '@/state/session-context';
-import { useTickets } from '@/state/tickets-context';
+import { useBroadcasts } from '@/state/broadcasts-context';
 
 const HOURS = [1, 3, 6, 12, 24];
 
 export default function NewBroadcastScreen() {
-  const { broadcast, broadcasts, endBroadcast } = useTickets();
+  const { broadcast, broadcasts, endBroadcast } = useBroadcasts();
   const myId = useAuthenticatedSession()?.user.id;
   // ยกเลิกได้เฉพาะประกาศของตัวเอง (server ตรวจซ้ำ)
   const mine = broadcasts.filter((b) => b.byId === myId);

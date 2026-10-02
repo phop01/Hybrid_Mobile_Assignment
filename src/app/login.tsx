@@ -13,7 +13,6 @@ import type { AccountRole } from '@/types/models';
 const SAMPLE_ACCOUNTS: { role: AccountRole; studentId: string; password: string }[] = [
   { role: 'student', studentId: '6609876543', password: 'campus1234' },
   { role: 'activities', studentId: '1000000001', password: 'organizer1234' },
-  { role: 'facilities', studentId: '1000000002', password: 'organizer1234' },
 ];
 
 export default function LoginScreen() {

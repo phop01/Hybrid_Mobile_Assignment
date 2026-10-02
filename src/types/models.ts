@@ -97,8 +97,8 @@ export type Registration = {
 /** student = นักศึกษา, organizer = บุคลากรผู้จัดกิจกรรม */
 export type Role = 'student' | 'organizer';
 
-/** หน่วยงานของเจ้าหน้าที่: activities = กิจกรรม/จิตอาสา, facilities = อาคารสถานที่ (รับงานซ่อม) */
-export type Department = 'activities' | 'facilities';
+/** หน่วยงานของเจ้าหน้าที่: activities = กิจกรรม/จิตอาสา */
+export type Department = 'activities';
 
 /** บทบาทของบัญชี: บัญชีหนึ่งมีได้หลายบทบาท ใช้งานทีละบทบาท (เลือกที่แท็บ "ฉัน") */
 export type AccountRole = 'student' | Department;
@@ -136,66 +136,7 @@ export type Announcement = {
   createdAt: string;
 };
 
-// ---------- เรื่องแจ้งซ่อม ----------
-
-/** repair = แจ้งซ่อม (เจ้าหน้าที่อาคารรับ) */
-export type TicketKind = 'repair';
-export type RepairCategory = 'electric' | 'water' | 'building' | 'road' | 'cleaning' | 'other';
-export type TicketCategory = RepairCategory;
-
-export type TicketStatus = 'open' | 'accepted' | 'done' | 'confirmed' | 'rejected' | 'cancelled';
-
-export type TicketEventType =
-  | 'created'
-  | 'accepted'
-  | 'released'
-  | 'scheduled'
-  | 'done'
-  | 'confirmed'
-  | 'reopened'
-  | 'rejected'
-  | 'cancelled';
-
-export type TicketEvent = { at: string; type: TicketEventType; byId: string; note?: string };
-
 export type Place = { name: string; latitude: number; longitude: number };
-
-export type Ticket = {
-  id: string;
-  kind: TicketKind;
-  category: TicketCategory;
-  title: string;
-  detail: string;
-  location: Place;
-  photoUrl: string | null;
-  afterPhotoUrl: string | null;
-  status: TicketStatus;
-  reporterId: string;
-  reporterName: string;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  followerCount: number;
-  /** ฉันกด "เจอเหมือนกัน" ไว้หรือไม่ */
-  following: boolean;
-  /** เวลานัดเข้าซ่อม (แจ้งซ่อมเท่านั้น) */
-  appointmentAt: string | null;
-  /** หมายเหตุล่าสุด เช่น เหตุผลที่ปฏิเสธ / สิ่งที่ทำไป */
-  note: string | null;
-  createdAt: string;
-  events: TicketEvent[];
-};
-
-export type NewTicketInput = {
-  kind: TicketKind;
-  category: TicketCategory;
-  title: string;
-  detail: string;
-  location: Place;
-  photoBase64?: string;
-};
-
-/** เรื่องที่กดส่งตอนออฟไลน์ เก็บไว้ในเครื่องแล้วส่งเองเมื่อมีเน็ต (key เดิมกันสร้างซ้ำ) */
-export type PendingTicket = { idempotencyKey: string; input: NewTicketInput; createdAt: string };
 
 // ---------- ประกาศทั่ววิทยาเขต + กล่องแจ้งเตือน ----------
 
@@ -213,8 +154,8 @@ export type Broadcast = {
 
 export type NewBroadcastInput = { message: string; location: Place; hours: number; posterBase64?: string };
 
-/** แตะแจ้งเตือนแล้วไปหน้าไหน: เรื่อง / กิจกรรม / การลงทะเบียน / หน้าตรวจหลักฐานของผู้จัด / ประกาศ */
-export type InboxKind = 'ticket' | 'activity' | 'registration' | 'manage' | 'broadcast';
+/** แตะแจ้งเตือนแล้วไปหน้าไหน: กิจกรรม / การลงทะเบียน / หน้าตรวจหลักฐานของผู้จัด / ประกาศ */
+export type InboxKind = 'activity' | 'registration' | 'manage' | 'broadcast';
 
 export type InboxItem = {
   id: string;

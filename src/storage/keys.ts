@@ -5,7 +5,7 @@
 export const USER_KEY = 'nktoday/session-user/v1';
 /** กล่องแจ้งเตือน + เวลาอ่านล่าสุด */
 export const INBOX_KEY = 'nktoday/inbox/v1';
-/** cache เรื่องแจ้งซ่อม + ประกาศ */
-export const TICKETS_CACHE_KEY = 'nktoday/tickets-cache/v1';
+/** cache ประกาศ */
+export const BROADCASTS_CACHE_KEY = 'nktoday/broadcasts-cache/v1';
 
-export const USER_DATA_KEYS = [USER_KEY, INBOX_KEY, TICKETS_CACHE_KEY];
+export const USER_DATA_KEYS = [USER_KEY, INBOX_KEY, BROADCASTS_CACHE_KEY];

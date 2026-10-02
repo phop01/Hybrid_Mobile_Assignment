@@ -12,10 +12,10 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildActivities, buildBroadcasts, buildTickets, SEED_USERS, hoursBetween } from './seed.mjs';
+import { buildActivities, buildBroadcasts, SEED_USERS, hoursBetween } from './seed.mjs';
 import { isExpoPushToken, pushMessages, sendPush } from './push.mjs';
 import { effectiveUser, rolesOf, ROLES } from './roles.mjs';
-import { registerTicketRoutes } from './tickets.mjs';
+import { registerBroadcastRoutes } from './broadcasts.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(HERE, '.data');
@@ -80,8 +80,6 @@ function buildDb(saved) {
     sessions: Array.isArray(saved.sessions) ? saved.sessions : [],
     // ประกาศที่ผู้จัดส่งถึงผู้ลงทะเบียน แอปนักศึกษาดึงไปแสดงเป็นแจ้งเตือนในเครื่อง
     announcements: Array.isArray(saved.announcements) ? saved.announcements : [],
-    // เรื่องแจ้งซ่อม: ครั้งแรกใช้ข้อมูลตัวอย่าง หลังจากนั้นเก็บถาวร (npm run reset-data เพื่อเริ่มใหม่)
-    tickets: Array.isArray(saved.tickets) ? saved.tickets : buildTickets(),
     // ประกาศทั่ววิทยาเขตจากเจ้าหน้าที่ เช่น ปิดน้ำ ปิดถนน
     broadcasts: Array.isArray(saved.broadcasts) ? saved.broadcasts : buildBroadcasts(),
     // กล่องแจ้งเตือนของทุกคน: server ตัดสินว่าใครควรรู้เรื่องอะไร แอปแค่ดึงของตัวเองไปเด้ง
@@ -97,13 +95,13 @@ const MAX_NOTIFICATIONS = 1000;
 
 function persist() {
   if (db.notifications.length > MAX_NOTIFICATIONS) db.notifications = db.notifications.slice(-MAX_NOTIFICATIONS);
-  const { registrations, sessions, customActivities, registeredUsers, announcements, tickets, broadcasts, notifications, pushTokens } = db;
+  const { registrations, sessions, customActivities, registeredUsers, announcements, broadcasts, notifications, pushTokens } = db;
   // เขียนลงไฟล์ชั่วคราวแล้ว rename: ถ้า process ตายกลางทาง db.json เดิมยังอยู่ครบ
   const tmp = `${DB_FILE}.tmp`;
   writeFileSync(
     tmp,
     JSON.stringify(
-      { registrations, sessions, customActivities, users: registeredUsers, announcements, tickets, broadcasts, notifications, pushTokens },
+      { registrations, sessions, customActivities, users: registeredUsers, announcements, broadcasts, notifications, pushTokens },
       null,
       2,
     ),
@@ -278,12 +276,9 @@ function requireOrganizer(user) {
   return user;
 }
 
-const DEPARTMENT_LABEL = { activities: 'งานกิจกรรมนักศึกษา', facilities: 'งานอาคารสถานที่' };
+const DEPARTMENT_LABEL = { activities: 'งานกิจกรรมนักศึกษา' };
 
-/**
- * เจ้าหน้าที่แต่ละหน่วยงานทำได้เฉพาะงานของตัวเอง (ตรวจที่ server ทุกครั้ง)
- * activities = สร้างกิจกรรม/ตรวจหลักฐาน · facilities = รับงานแจ้งซ่อม
- */
+/** เจ้าหน้าที่กิจกรรม (activities) = สร้างกิจกรรม/ตรวจหลักฐาน/ประกาศ ตรวจที่ server ทุกครั้ง */
 function requireStaff(user, department) {
   requireOrganizer(user);
   if (user.department !== department) {
@@ -939,13 +934,13 @@ async function handle(req, res) {
     return send(res, 200, publicActivity(activity));
   }
 
-  // แจ้งซ่อม / ประกาศ / กล่องแจ้งเตือน (แยกไฟล์ server/tickets.mjs)
-  if (await ticketRoutes(req, res, { url, parts, method })) return;
+  // ประกาศ / กล่องแจ้งเตือน (แยกไฟล์ server/broadcasts.mjs)
+  if (await broadcastRoutes(req, res, { url, parts, method })) return;
 
   throw new HttpError(404, 'not_found', 'ไม่พบ endpoint นี้');
 }
 
-const ticketRoutes = registerTicketRoutes({
+const broadcastRoutes = registerBroadcastRoutes({
   db,
   notify,
   persist,
@@ -954,8 +949,6 @@ const ticketRoutes = registerTicketRoutes({
   HttpError,
   requireUser,
   requireOrganizer,
-  requireStaff,
-  saveJpeg,
   saveOptionalJpeg,
   publicUserName: (id) => db.users.find((u) => u.id === id)?.fullName ?? null,
 });

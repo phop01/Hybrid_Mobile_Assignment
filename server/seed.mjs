@@ -189,76 +189,10 @@ export const SEED_USERS = [
     fullName: 'อ.วิภา จัดเก่ง',
     faculty: 'งานกิจการนักศึกษา มข. วิทยาเขตหนองคาย',
     role: 'organizer',
-    // หน่วยงาน: activities = กิจกรรม/จิตอาสา, facilities = อาคารสถานที่ (รับงานซ่อม)
+    // หน่วยงาน: activities = กิจกรรม/จิตอาสา
     department: 'activities',
   },
-  {
-    // เจ้าหน้าที่อาคารสถานที่: รับเรื่องแจ้งซ่อม
-    id: 'staff2',
-    studentId: '1000000002',
-    password: 'organizer1234',
-    fullName: 'นายช่าง ประจำอาคาร',
-    faculty: 'งานอาคารสถานที่ มข. วิทยาเขตหนองคาย',
-    role: 'organizer',
-    department: 'facilities',
-  },
 ];
-
-/**
- * เรื่องแจ้งซ่อมตัวอย่าง (สร้างใหม่ทุกครั้งที่เปิด server เวลาจึงเป็นปัจจุบันเสมอ)
- * ไม่มีรูปแนบ (photoUrl: null) เพราะไม่อยากเก็บรูปตัวอย่างไว้ใน repo
- */
-export function buildTickets() {
-  const t = (id, fields) => ({
-    id,
-    photoUrl: null,
-    afterPhotoUrl: null,
-    assigneeId: null,
-    followerIds: [],
-    appointmentAt: null,
-    note: null,
-    ...fields,
-    events: [{ at: fields.createdAt, type: 'created', byId: fields.reporterId }],
-  });
-  const spot = (id, name, dLat = 0, dLng = 0) => {
-    const { radiusM, ...point } = at_(id, name, 0, dLat, dLng);
-    return point;
-  };
-  return [
-    t('demo-repair-light', {
-      kind: 'repair',
-      category: 'electric',
-      title: 'ไฟทางเดินดับ หน้าอาคารเรียนรวม 1',
-      detail: 'หลอดไฟทางเดินดับ 3 ดวงติดกัน ตอนค่ำมืดมาก เดินกลับหอแล้วน่ากลัว',
-      location: spot('classroom-1', 'ทางเดินหน้าอาคารเรียนรวม 1 (อครเก่า)', 0.0003, 0.0002),
-      status: 'open',
-      reporterId: 'u2',
-      createdAt: at(-26 * HOUR, false),
-    }),
-    t('demo-repair-water', {
-      kind: 'repair',
-      category: 'water',
-      title: 'ก๊อกน้ำห้องน้ำชายชั้น 2 รั่ว',
-      detail: 'ก๊อกอ่างล้างมือตัวที่สองจากประตูปิดไม่สนิท น้ำไหลตลอด',
-      location: spot('classroom-1', 'ห้องน้ำชาย ชั้น 2 อาคารเรียนรวม 1 (อครเก่า)'),
-      status: 'accepted',
-      reporterId: 'u2',
-      assigneeId: 'staff2',
-      appointmentAt: dayAt(1, 10),
-      createdAt: at(-5 * HOUR, false),
-    }),
-    t('demo-repair-road', {
-      kind: 'repair',
-      category: 'road',
-      title: 'ทางเท้าหน้าคอมเพล็กซ์เป็นหลุม',
-      detail: 'แผ่นปูนแตกเป็นหลุมลึก ฝนตกแล้วน้ำขัง มีคนสะดุดแล้ว',
-      location: spot('complex', 'ทางเท้าหน้าคอมเพล็กซ์ (Compak NKC)', 0.0002, 0),
-      status: 'open',
-      reporterId: 'u2',
-      createdAt: at(-50 * MINUTE, false),
-    }),
-  ];
-}
 
 /** ประกาศตัวอย่างจากเจ้าหน้าที่ (ยังไม่หมดอายุ) มีทั้งแบบข้อความล้วนและแบบมีโปสเตอร์ */
 export function buildBroadcasts() {
@@ -278,7 +212,7 @@ export function buildBroadcasts() {
       message: 'ปิดน้ำประปาอาคารเรียนรวม 1 (อครเก่า) ชั่วคราวระหว่างซ่อมท่อ ใช้ห้องน้ำอาคารเรียนรวม 2 แทน ขออภัยในความไม่สะดวก',
       location: point('classroom-1', 'อาคารเรียนรวม 1 (อครเก่า)'),
       imageUrl: null,
-      byId: 'staff2',
+      byId: 'org1',
       createdAt: at(-30 * MINUTE, false),
       expiresAt: at(8 * HOUR, false),
     },

@@ -28,7 +28,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
         <View style={styles.side} accessible={false}>
           <Text style={styles.brand}>KKUNK Today</Text>
           <Text style={styles.tagline}>
-            ทุกเรื่องใน มข. วิทยาเขตหนองคาย{'\n'}กิจกรรม · จิตอาสา · แจ้งซ่อม ·
+            ทุกเรื่องใน มข. วิทยาเขตหนองคาย{'\n'}กิจกรรม · จิตอาสา ·
             ประกาศ
           </Text>
         </View>

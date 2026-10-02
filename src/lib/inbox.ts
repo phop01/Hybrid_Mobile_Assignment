@@ -31,7 +31,6 @@ export function unreadCount(items: InboxItem[], readUntil: string | null): numbe
 const ID_PATTERN = /^[\w-]{1,64}$/;
 
 export type InboxTarget =
-  | { pathname: '/tickets/[id]'; params: { id: string } }
   | { pathname: '/activities/[id]'; params: { id: string } }
   | { pathname: '/registrations/[id]'; params: { id: string } }
   | { pathname: '/organizer/[id]'; params: { id: string } }
@@ -43,8 +42,6 @@ export function targetFor(kind: unknown, targetId: unknown): InboxTarget | null 
   if (typeof targetId !== 'string' || !ID_PATTERN.test(targetId)) return null;
   const params = { id: targetId };
   switch (kind) {
-    case 'ticket':
-      return { pathname: '/tickets/[id]', params };
     case 'activity':
       return { pathname: '/activities/[id]', params };
     case 'registration':

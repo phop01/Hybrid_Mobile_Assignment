@@ -1,6 +1,6 @@
 // การแจ้งเตือนในเครื่อง (local notification) ใช้ได้ใน Expo Go ทุกเครื่อง
 // มี 3 แบบ และทุกแบบเกิดจากเหตุการณ์จริง ไม่มีปุ่มทดสอบ:
-// 1) เตือนก่อนกิจกรรมตามเวลาที่ผู้ใช้เลือก  2) เตือนก่อนเวลานัดซ่อม (จากเวลาในข้อมูล)
+// 1) เตือนก่อนกิจกรรมตามเวลาที่ผู้ใช้เลือก
 // 3) เรื่องใหม่ในกล่องแจ้งเตือน (อีกฝั่งทำอะไรบางอย่าง → server ใส่กล่อง → แอป poll แล้วเด้ง)
 //    ถ้าเครื่องรับ push ได้ (services/push.ts) server ส่ง push แทน เด้งได้แม้ปิดแอป
 
@@ -10,7 +10,7 @@ import { formatLead } from '@/lib/check-in-rules';
 import { Notifications } from '@/services/notifications-module';
 import { isPushActive } from '@/services/push';
 import { readJson, removeKeys, writeJson } from '@/storage/kv';
-import type { Activity, InboxItem, InboxKind, Ticket } from '@/types/models';
+import type { Activity, InboxItem, InboxKind } from '@/types/models';
 
 export const supportsNotifications = Notifications !== null;
 
@@ -120,7 +120,7 @@ async function presentNow(content: { title: string; body: string; data: Notifica
 
 /**
  * เด้งแจ้งเตือนจากกล่องแจ้งเตือน (server เป็นคนตัดสินว่าใครควรรู้เรื่องอะไร เช่น
- * มีคนรับเรื่องแจ้งซ่อม, หลักฐานผ่าน, ประกาศจากเจ้าหน้าที่)
+ * หลักฐานผ่าน, ประกาศจากเจ้าหน้าที่)
  * payload เก็บแค่ประเภทกับ ID หน้าปลายทางโหลดข้อมูลล่าสุดเอง
  */
 export async function presentInboxItem(item: InboxItem): Promise<void> {
@@ -129,53 +129,7 @@ export async function presentInboxItem(item: InboxItem): Promise<void> {
   await presentNow({ title: item.title, body: item.body, data: { type: 'inbox', kind: item.kind, targetId: item.targetId } });
 }
 
-// ---------- เตือนก่อนเวลานัดซ่อม (ตั้งจากเวลาในข้อมูล ไม่มีปุ่มทดสอบ) ----------
-
-const APPOINTMENT_KEY = 'nktoday/appointment-reminders/v1';
-/** เตือนก่อนเวลานัด 1 ชั่วโมง: ผู้แจ้งมีเวลาไปเปิดห้อง/รอช่าง */
-const APPOINTMENT_LEAD_MS = 60 * 60 * 1000;
-
-type AppointmentMap = Record<string, ScheduledReminder>;
-
-/**
- * ให้ตรงกับเวลานัดล่าสุดของเรื่อง: ยังไม่ตั้ง → ตั้ง, เวลานัดเปลี่ยน → ตั้งใหม่, เวลาผ่านไปแล้ว → ไม่ตั้ง
- * ไม่ขอสิทธิ์เอง (ผู้ใช้ไม่ได้กดอะไร) ถ้ายังไม่เคยอนุญาตก็ข้ามไป
- */
-export async function syncAppointmentReminders(tickets: Ticket[]): Promise<void> {
-  if (!Notifications) return;
-  const current = await Notifications.getPermissionsAsync();
-  if (!current.granted) return;
-  const map = await readJson(APPOINTMENT_KEY, isMap, {} as AppointmentMap);
-  const next: AppointmentMap = {};
-  const wanted = new Map<string, { ticket: Ticket; at: Date }>();
-  for (const t of tickets) {
-    if (t.status !== 'accepted' || !t.appointmentAt) continue;
-    const at = new Date(Date.parse(t.appointmentAt) - APPOINTMENT_LEAD_MS);
-    if (at.getTime() > Date.now()) wanted.set(t.id, { ticket: t, at });
-  }
-  // ยกเลิกอันที่ไม่ต้องการแล้วหรือเวลาเปลี่ยน
-  for (const [id, reminder] of Object.entries(map)) {
-    const want = wanted.get(id);
-    if (want && want.at.toISOString() === reminder.at) {
-      next[id] = reminder;
-      wanted.delete(id);
-    } else {
-      await Notifications.cancelScheduledNotificationAsync(reminder.notificationId).catch(() => undefined);
-    }
-  }
-  await ensureChannel();
-  for (const [id, { ticket, at }] of wanted) {
-    const data: NotificationData = { type: 'inbox', kind: 'ticket', targetId: id };
-    const notificationId = await Notifications.scheduleNotificationAsync({
-      content: { title: 'อีก 1 ชั่วโมงถึงเวลานัดซ่อม', body: `${ticket.title} · ${ticket.location.name}`, data },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at, channelId: CHANNEL_ID },
-    });
-    next[id] = { notificationId, at: at.toISOString() };
-  }
-  await writeJson(APPOINTMENT_KEY, next);
-}
-
 export async function clearAllReminders(): Promise<void> {
   await Notifications?.cancelAllScheduledNotificationsAsync().catch(() => undefined);
-  await removeKeys([MAP_KEY, APPOINTMENT_KEY]);
+  await removeKeys([MAP_KEY]);
 }

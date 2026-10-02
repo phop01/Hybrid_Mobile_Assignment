@@ -15,7 +15,6 @@ import { useAuthenticatedSession } from '@/state/session-context';
 import type { InboxItem, InboxKind } from '@/types/models';
 
 const ICONS: Record<InboxKind, IconName> = {
-  ticket: 'construct',
   activity: 'megaphone',
   registration: 'ribbon',
   manage: 'document-text',

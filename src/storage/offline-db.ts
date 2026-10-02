@@ -5,7 +5,7 @@
 
 import * as SQLite from 'expo-sqlite';
 
-import type { PendingCheckIn, PendingTicket, Registration } from '@/types/models';
+import type { PendingCheckIn, Registration } from '@/types/models';
 import { isRegistration } from '@/services/validators';
 
 const SCHEMA_VERSION = 1;
@@ -26,12 +26,6 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
         );
         CREATE TABLE IF NOT EXISTS checkin_queue (
           registration_id TEXT PRIMARY KEY NOT NULL,
-          payload TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS ticket_queue (
-          idempotency_key TEXT PRIMARY KEY NOT NULL,
-          user_id TEXT NOT NULL,
           payload TEXT NOT NULL,
           created_at TEXT NOT NULL
         );
@@ -98,43 +92,10 @@ export async function removeQueuedCheckIn(registrationId: string): Promise<void>
   await db.runAsync('DELETE FROM checkin_queue WHERE registration_id = ?', registrationId);
 }
 
-// ---------- คิวเรื่องแจ้งซ่อมที่กดส่งตอนออฟไลน์ (มีรูป จึงเก็บแยกแถว) ----------
-
-export async function enqueueTicket(userId: string, item: PendingTicket): Promise<void> {
-  const db = await getDb();
-  await db.runAsync(
-    'INSERT OR REPLACE INTO ticket_queue (idempotency_key, user_id, payload, created_at) VALUES (?, ?, ?, ?)',
-    item.idempotencyKey,
-    userId,
-    JSON.stringify(item),
-    item.createdAt,
-  );
-}
-
-export async function listQueuedTickets(userId: string): Promise<PendingTicket[]> {
-  const db = await getDb();
-  const rows = await db.getAllAsync<{ payload: string }>(
-    'SELECT payload FROM ticket_queue WHERE user_id = ? ORDER BY created_at',
-    userId,
-  );
-  return rows.flatMap((row) => {
-    try {
-      return [JSON.parse(row.payload) as PendingTicket];
-    } catch {
-      return [];
-    }
-  });
-}
-
-export async function removeQueuedTicket(idempotencyKey: string): Promise<void> {
-  const db = await getDb();
-  await db.runAsync('DELETE FROM ticket_queue WHERE idempotency_key = ?', idempotencyKey);
-}
-
 /** ล้างข้อมูลของผู้ใช้ตอน logout: เครื่องอาจใช้ร่วมกัน คนต่อไปต้องไม่เห็นหรือส่งข้อมูลของเรา */
 export async function clearOfflineData(): Promise<void> {
   const db = await getDb();
   await db.execAsync(
-    `DELETE FROM registrations; DELETE FROM checkin_queue; DELETE FROM ticket_queue; DELETE FROM meta WHERE key LIKE 'registrations_updated_at:%';`,
+    `DELETE FROM registrations; DELETE FROM checkin_queue; DELETE FROM meta WHERE key LIKE 'registrations_updated_at:%';`,
   );
 }

@@ -18,7 +18,7 @@ flowchart TB
   subgraph C["component ที่ใช้ซ้ำ src/components"]
     C1["ActivityCard, ActivitiesMap, ActivityMap"]
     C2["CheckInCamera, PhotoField, PickMap"]
-    C3["TicketCard, AppointmentPicker, InboxToast"]
+    C3["BroadcastCard, ActivityCard, InboxToast"]
   end
   subgraph H["state + hook (แหล่งข้อมูลจริงที่เดียว)"]
     H1["ActivitiesContext<br>รายการกิจกรรม"]
@@ -27,10 +27,10 @@ flowchart TB
     H4["MyRegistrationsContext<br>การลงทะเบียน + คิวออฟไลน์"]
     H5["useDemoRelocate, useActivity, useDisplayStatus"]
     H6["InboxContext<br>กล่องแจ้งเตือน (poll + เด้ง)"]
-    H7["TicketsContext<br>เรื่องแจ้ง + ประกาศ + คิวออฟไลน์"]
+    H7["BroadcastsContext<br>ประกาศ + cache ออฟไลน์"]
   end
   subgraph SV["service src/services"]
-    V1["campus-api, tickets-api + api-client<br>(REST, ตรวจรูปแบบข้อมูล)"]
+    V1["campus-api, broadcasts-api + api-client<br>(REST, ตรวจรูปแบบข้อมูล)"]
     V2["location, photo<br>(ตำแหน่ง, คลังรูป, ย่อรูป)"]
     V3["reminders<br>(แจ้งเตือน)"]
   end
@@ -39,7 +39,7 @@ flowchart TB
     T2["SQLite: การลงทะเบียน, คิวเช็กอิน, คิวแจ้งเรื่อง"]
     T3["SecureStore: token"]
   end
-  L["lib: กฎล้วน ไม่มี side effect<br>tickets, ticket-form, inbox, check-in-rules, geo, attendance"]
+  L["lib: กฎล้วน ไม่มี side effect<br>inbox, check-in-rules, geo, attendance"]
 
   UI --> C
   UI --> H

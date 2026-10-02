@@ -113,7 +113,7 @@ describe('สมัครสมาชิกและความปลอดภ�
     expect(validateSignUp({ ...base, roles: ['activities'] })).toEqual({});
     expect(validateSignUp({ ...base, roles: ['student', 'activities'] }).roles).toBe('เลือกบทบาท 1 บทบาท');
     expect(validateSignUp({ ...base, roles: [] }).roles).toBe('เลือกบทบาท 1 บทบาท');
-    const staff = validateSignUp({ ...base, studentId: '1', faculty: '', roles: ['facilities'] });
+    const staff = validateSignUp({ ...base, studentId: '1', faculty: '', roles: ['activities'] });
     expect(staff.studentId).toBe('รหัสนักศึกษา/บุคลากรต้องเป็นตัวเลข 10 หลัก');
     expect(staff.faculty).toBe('กรุณากรอกคณะ/หน่วยงาน');
   });

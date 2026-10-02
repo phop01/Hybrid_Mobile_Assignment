@@ -1,6 +1,6 @@
-// smoke test ของ API ส่วนแจ้งซ่อม/ประกาศ/กล่องแจ้งเตือน
+// smoke test ของ API: สมัคร/ล็อกอิน, กิจกรรม, ลงทะเบียน, หลักฐาน, ประกาศ, กล่องแจ้งเตือน
 // วิธีใช้: เปิด server ก่อน (npm run api หรือ npm start) แล้วรัน npm run smoke
-// สคริปต์สร้างเรื่องทดสอบของตัวเองจริงในฐานข้อมูล แล้วจบด้วยการล้างข้อมูลทั้งหมด (/admin/reset)
+// สคริปต์สร้างข้อมูลทดสอบของตัวเองจริงในฐานข้อมูล แล้วจบด้วยการล้างข้อมูลทั้งหมด (/admin/reset)
 // → อย่ารันกับ server ที่มีข้อมูลที่อยากเก็บไว้ · รันซ้ำได้เลย ไม่ต้อง reset-data
 const BASE = process.env.API_URL ?? 'http://localhost:3001';
 const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 1)]).toString('base64');
@@ -27,63 +27,15 @@ const s1 = (
   await call('POST', '/auth/register', null, { studentId: `66${String(Date.now()).slice(-8)}`, fullName: 'ทดสอบ นักศึกษา', faculty: 'คณะสหวิทยาการ', password: 'test12345' })
 ).body.token;
 const s2 = await login('6609876543', 'campus1234');
-const staff = await login('1000000002', 'organizer1234');
 const org = await login('1000000001', 'organizer1234');
 const since = new Date(Date.now() - 1000).toISOString();
 
-// ---- แจ้งซ่อม ----
-let r = await call('POST', '/tickets', s1, { kind: 'repair', category: 'electric', title: 'ไฟ', location: {} });
-check('validation 400', r.status === 400 && r.body.fields.title && r.body.fields.photo, JSON.stringify(r.body));
-const repairBody = {
-  kind: 'repair',
-  category: 'electric',
-  title: 'ปลั๊กไฟห้อง 101 ช็อต',
-  detail: 'มีประกายไฟ',
-  location: { name: 'ห้อง 101', latitude: 17.8091, longitude: 102.7498 },
-  photoBase64: JPEG,
-};
-r = await call('POST', '/tickets', s1, repairBody, { 'Idempotency-Key': 'k-1' });
-check('create repair 201', r.status === 201, JSON.stringify(r.body));
-const repair = r.body;
-r = await call('POST', '/tickets', s1, repairBody, { 'Idempotency-Key': 'k-1' });
-check('idempotent 200 same id', r.status === 200 && r.body.id === repair.id);
-r = await call('POST', `/tickets/${repair.id}/follow`, s2);
-check('follow', r.status === 200 && r.body.following && r.body.followerCount === 1);
-r = await call('POST', `/tickets/${repair.id}/accept`, s2);
-check('student accept repair 403', r.status === 403);
-r = await call('GET', `/me/inbox?since=${since}`, staff);
-check('facilities staff got new repair', r.body.some((n) => n.targetId === repair.id && n.kind === 'ticket'), JSON.stringify(r.body));
-r = await call('GET', `/me/inbox?since=${since}`, org);
-check('activities staff not notified of repair', !r.body.some((n) => n.targetId === repair.id));
-r = await call('POST', `/tickets/${repair.id}/accept`, org);
-check('activities staff accept repair 403', r.status === 403);
-const appt = new Date(Date.now() + 3 * 3600e3).toISOString();
-r = await call('POST', `/tickets/${repair.id}/accept`, staff, { appointmentAt: appt });
-check('staff accept', r.status === 200 && r.body.status === 'accepted' && r.body.appointmentAt);
-r = await call('POST', `/tickets/${repair.id}/accept`, staff);
-check('second accept 409', r.status === 409);
-r = await call('POST', `/tickets/${repair.id}/done`, staff, { note: 'เปลี่ยนปลั๊กแล้ว' });
-check('done without photo (optional)', r.status === 200 && r.body.status === 'done' && r.body.afterPhotoUrl === null);
-r = await call('POST', `/tickets/${repair.id}/reopen`, s1, { note: 'ยังมีกลิ่นไหม้' });
-check('reopen', r.status === 200 && r.body.status === 'accepted');
-r = await call('POST', `/tickets/${repair.id}/done`, staff, { photoBase64: JPEG });
-check('done with after photo', r.status === 200 && r.body.afterPhotoUrl);
-r = await call('POST', `/tickets/${repair.id}/confirm`, s2);
-check('non-reporter confirm 403', r.status === 403);
-r = await call('POST', `/tickets/${repair.id}/confirm`, s1);
-check('confirm', r.status === 200 && r.body.status === 'confirmed' && r.body.events.length >= 6);
-r = await call('GET', `/me/inbox?since=${since}`, s2);
-check('follower got updates', r.body.filter((n) => n.targetId === repair.id).length >= 3, JSON.stringify(r.body.map((n) => n.title)));
-
-// ---- ขอความช่วยเหลือถูกเอาออกแล้ว ----
+// ---- เรื่องแจ้งซ่อม / ขอความช่วยเหลือ ถูกเอาออกแล้ว ----
+let r = await call('POST', '/tickets', s1, { kind: 'repair', category: 'electric', title: 'ไฟดับ' });
+check('tickets endpoint removed 404', r.status === 404, String(r.status));
+r = await call('GET', '/tickets', s1);
+check('tickets list removed 404', r.status === 404, String(r.status));
 const since2 = new Date().toISOString();
-r = await call('POST', '/tickets', s1, {
-  kind: 'help',
-  category: 'escort',
-  title: 'ข้อเท้าพลิก ช่วยพาไปห้องพยาบาล',
-  location: { name: 'สนามบาส', latitude: 17.81, longitude: 102.751 },
-});
-check('help kind rejected 400', r.status === 400 && r.body.fields.kind, JSON.stringify(r.body));
 r = await call('POST', '/me/presence', s2, { helper: true, latitude: 17.8095, longitude: 102.7505 });
 check('presence endpoint removed 404', r.status === 404);
 
@@ -91,7 +43,7 @@ check('presence endpoint removed 404', r.status === 404);
 r = await call('POST', '/broadcasts', s1, { message: 'ทดสอบประกาศ', location: { name: 'x', latitude: 1, longitude: 1 }, hours: 2 });
 check('student broadcast 403', r.status === 403);
 const bLoc = { name: 'หน้าหอพัก', latitude: 17.806, longitude: 102.746 };
-r = await call('POST', '/broadcasts', staff, { message: 'ปิดถนนหน้าหอพักชั่วคราว', location: bLoc, hours: 3 });
+r = await call('POST', '/broadcasts', org, { message: 'ปิดถนนหน้าหอพักชั่วคราว', location: bLoc, hours: 3 });
 check('broadcast without poster 201', r.status === 201 && r.body.imageUrl === null, JSON.stringify(r.body));
 r = await call('POST', '/broadcasts', org, { message: 'ตลาดนัดนักศึกษาเย็นนี้', location: bLoc, hours: 3, posterBase64: JPEG });
 check('broadcast with poster 201', r.status === 201 && /^\/uploads\/broadcast-.+\.jpg$/.test(r.body.imageUrl ?? ''), JSON.stringify(r.body));
@@ -108,20 +60,8 @@ r = await call('GET', `/me/inbox?since=${since2}`, s1);
 check('everyone got broadcast', r.body.some((n) => n.kind === 'broadcast'));
 r = await call('GET', '/broadcasts', s1);
 check('list broadcasts', r.status === 200 && r.body.length >= 1);
-r = await call('GET', '/tickets', s1);
-check('list tickets', r.status === 200 && r.body.length >= 4);
-r = await call('GET', '/tickets', null);
-check('tickets need login 401', r.status === 401);
-
-// ---- หน่วยงานเจ้าหน้าที่ ----
-r = await call('POST', '/activities', staff, { title: 'x' });
-check('facilities staff create activity 403', r.status === 403);
-r = await call('GET', '/organizer/activities', staff);
-check('facilities staff manage list 403', r.status === 403);
-
-// ---- ความปลอดภัย ----
-r = await call('GET', '/tickets/nope-123', s1);
-check('unknown ticket 404', r.status === 404);
+r = await call('GET', '/broadcasts', null);
+check('broadcasts need login 401', r.status === 401);
 
 const start = new Date(Date.now() + 2 * 3600e3);
 r = await call('POST', '/activities', org, {
@@ -138,16 +78,11 @@ check('organizer creates activity', r.status === 201, JSON.stringify(r.body));
 r = await call('POST', '/demo/activities/mobile-dev-seminar/relocate', s1, { latitude: 17.8066, longitude: 102.7463 });
 check('no relocate shortcut (404)', r.status === 404);
 
-const spam = { kind: 'repair', category: 'other', title: 'ทดสอบส่งถี่ ๆ', location: { name: 'ลานกิจกรรม', latitude: 17.8, longitude: 102.74 }, photoBase64: JPEG };
-const statuses = [];
-for (let i = 0; i < 6; i++) statuses.push((await call('POST', '/tickets', s2, spam)).status);
-check('rate limit 429 after 5', statuses.slice(0, 5).every((s) => s === 201) && statuses[5] === 429, statuses.join(','));
-
 // ---- push notification (เด้งแม้ปิดแอป) ----
 const { isExpoPushToken, pushMessages, chunk } = await import('../server/push.mjs');
 check('push token format', isExpoPushToken('ExponentPushToken[abc-123]') && !isExpoPushToken('abc') && !isExpoPushToken('ExponentPushToken[<x>]'));
-const [msg] = pushMessages(['ExponentPushToken[a]'], { kind: 'ticket', targetId: 't1', title: 'หัวข้อ', body: 'รายละเอียด' });
-check('push payload routes like local notification', msg.data.type === 'inbox' && msg.data.kind === 'ticket' && msg.data.targetId === 't1' && msg.sound === 'default');
+const [msg] = pushMessages(['ExponentPushToken[a]'], { kind: 'activity', targetId: 'a1', title: 'หัวข้อ', body: 'รายละเอียด' });
+check('push payload routes like local notification', msg.data.type === 'inbox' && msg.data.kind === 'activity' && msg.data.targetId === 'a1' && msg.sound === 'default');
 check('push batches of 100', chunk(Array.from({ length: 250 }, (_, i) => i)).map((c) => c.length).join(',') === '100,100,50');
 r = await call('POST', '/me/push-token', null, { token: 'ExponentPushToken[smoke]' });
 check('push token needs login 401', r.status === 401);
@@ -162,8 +97,10 @@ check('unregister push token 200', r.status === 200);
 // ---- บทบาท: สมัครได้บทบาทเดียว ----
 r = await call('GET', '/me', s1);
 check('student account has one role', r.body.role === 'student' && r.body.roles?.length === 1, JSON.stringify(r.body));
-r = await call('POST', '/me/role', s2, { role: 'facilities' });
+r = await call('POST', '/me/role', s2, { role: 'activities' });
 check('cannot switch to a role you do not have 403', r.status === 403);
+r = await call('POST', '/auth/register', null, { studentId: `8${String(Date.now()).slice(-9)}`, fullName: 'ทดสอบ อาคาร', faculty: 'งานอาคาร', password: 'test12345', roles: ['facilities'] });
+check('facilities role removed 400', r.status === 400 && r.body.fields?.roles, JSON.stringify(r.body));
 r = await call('POST', '/auth/register', null, { studentId: `8${String(Date.now()).slice(-9)}`, fullName: 'บุคลากร สองบทบาท', faculty: 'งานกิจการนักศึกษา', password: 'test12345', roles: ['activities', 'student'] });
 check('sign up with two roles 400', r.status === 400 && r.body.fields?.roles, JSON.stringify(r.body));
 r = await call('POST', '/auth/register', null, { studentId: `8${String(Date.now()).slice(-9)}`, fullName: 'บุคลากร งานกิจกรรม', faculty: 'งานกิจการนักศึกษา', password: 'test12345', roles: ['activities'] });
@@ -210,8 +147,6 @@ r = await call('POST', `/activities/${openActivity.id}/registrations`, s3, { ful
 const regToReject = r.body.id;
 r = await call('POST', `/registrations/${regToReject}/reject`, s3, { note: 'ไม่รับตัวเอง' });
 check('student cannot reject registration 403', r.status === 403, String(r.status));
-r = await call('POST', `/registrations/${regToReject}/reject`, staff, { note: 'ไม่ใช่งานของฉัน' });
-check('facilities staff cannot reject registration 403', r.status === 403, String(r.status));
 r = await call('POST', `/registrations/${regToReject}/reject`, org, { note: 'x' });
 check('reject without reason 400', r.status === 400, String(r.status));
 r = await call('POST', `/registrations/${regToReject}/reject`, org, { note: 'คุณสมบัติไม่ตรงกับกิจกรรม' });
@@ -248,7 +183,7 @@ const { existsSync, readFileSync } = await import('node:fs');
 const dbFile = new URL('../server/.data/db.json', import.meta.url);
 if (existsSync(dbFile)) {
   const raw = readFileSync(dbFile, 'utf8');
-  check('db.json stores no raw tokens', !raw.includes(s1) && !raw.includes(staff) && !raw.includes('"token"'));
+  check('db.json stores no raw tokens', !raw.includes(s1) && !raw.includes(org) && !raw.includes('"token"'));
 }
 
 // ล้างข้อมูลขณะ server เปิด (npm run reset-live): ไม่มีในแอป ต้องใช้ token ในไฟล์ server/.data

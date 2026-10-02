@@ -91,14 +91,3 @@ export function watchCoordinates(onEvent: (event: LiveLocationEvent) => void): (
     subscription?.remove();
   };
 }
-
-/**
- * อ่านตำแหน่งเฉพาะเมื่อผู้ใช้เคยอนุญาตแล้ว (ไม่เด้งขอสิทธิ์ เพราะผู้ใช้ไม่ได้กดอะไร)
- * ใช้เตือนระยะตอนเจ้าหน้าที่ปิดงานซ่อม
- */
-export async function getCoordinatesIfPermitted(): Promise<Coordinates | null> {
-  const permission = await Location.getForegroundPermissionsAsync().catch(() => null);
-  if (!permission?.granted) return null;
-  const result = await getCurrentCoordinates();
-  return result.status === 'ok' ? result.coords : null;
-}

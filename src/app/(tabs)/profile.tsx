@@ -9,7 +9,6 @@ import { REQUIRED_HOURS, summarizeAttendance } from '@/lib/attendance';
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
 import { formatDate } from '@/lib/format';
 import { confirmAction } from '@/lib/platform-actions';
-import { isFacilities } from '@/lib/tickets';
 import { useActivities } from '@/state/activities-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { useAuthenticatedSession, useSession } from '@/state/session-context';
@@ -73,17 +72,9 @@ export default function ProfileScreen() {
 
       {isOrganizer ? (
         <Card>
-          <SectionTitle>{isFacilities(user) ? 'เจ้าหน้าที่งานอาคารสถานที่' : 'เจ้าหน้าที่งานกิจกรรมนักศึกษา'}</SectionTitle>
-          <Text style={styles.muted}>
-            {isFacilities(user)
-              ? 'รับเรื่องแจ้งซ่อม นัดเวลา และปิดงานที่แท็บ “เรื่องแจ้ง” · ส่งประกาศ (ปิดน้ำ ปิดถนน) จากหน้า “วันนี้”'
-              : 'สร้างกิจกรรมและตรวจหลักฐานใบเซ็นชื่อที่แท็บ “จัดการ” · ส่งประกาศจากหน้า “วันนี้” · แจ้งซ่อมได้เหมือนคนทั่วไป'}
-          </Text>
-          {isFacilities(user) ? (
-            <Button title="ไปคิวงานแจ้งซ่อม" icon="construct-outline" onPress={() => router.navigate('/tickets')} />
-          ) : (
-            <Button title="ไปหน้าจัดการ" icon="clipboard-outline" onPress={() => router.push('/manage')} />
-          )}
+          <SectionTitle>เจ้าหน้าที่งานกิจกรรมนักศึกษา</SectionTitle>
+          <Text style={styles.muted}>สร้างกิจกรรมและตรวจหลักฐานการเข้าร่วมที่แท็บ “จัดการ” · ส่งประกาศจากหน้า “วันนี้”</Text>
+          <Button title="ไปหน้าจัดการ" icon="clipboard-outline" onPress={() => router.push('/manage')} />
         </Card>
       ) : (
         <>

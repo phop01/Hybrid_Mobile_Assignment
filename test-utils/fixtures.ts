@@ -1,4 +1,4 @@
-import type { Activity, Registration, Ticket, User } from '@/types/models';
+import type { Activity, Registration, User } from '@/types/models';
 
 export const NOW = new Date('2026-10-01T10:00:00+07:00').getTime();
 
@@ -40,28 +40,3 @@ export const USER: User = {
   faculty: 'คณะสหวิทยาการ',
   role: 'student',
 };
-
-export function makeTicket(overrides: Partial<Ticket> = {}): Ticket {
-  return {
-    id: 't1',
-    kind: 'repair',
-    category: 'electric',
-    title: 'ไฟทางเดินดับ 3 ดวง',
-    detail: '',
-    location: { name: 'หน้าอาคารเรียนรวม', latitude: 17.8091, longitude: 102.7498 },
-    photoUrl: '/uploads/ticket-t1.jpg',
-    afterPhotoUrl: null,
-    status: 'open',
-    reporterId: 'u1',
-    reporterName: 'สมชาย ใจดี',
-    assigneeId: null,
-    assigneeName: null,
-    followerCount: 0,
-    following: false,
-    appointmentAt: null,
-    note: null,
-    createdAt: '2026-09-30T08:00:00.000Z',
-    events: [{ at: '2026-09-30T08:00:00.000Z', type: 'created', byId: 'u1' }],
-    ...overrides,
-  };
-}

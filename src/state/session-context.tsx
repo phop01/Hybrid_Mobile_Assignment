@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { isActivitiesStaff } from '@/lib/tickets';
+import { isActivitiesStaff } from '@/lib/roles';
 import { ApiError, setUnauthorizedHandler } from '@/services/api-client';
 import * as api from '@/services/campus-api';
 import { forgetPush } from '@/services/push';

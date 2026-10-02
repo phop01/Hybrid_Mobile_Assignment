@@ -9,12 +9,12 @@ import { PhoneFrame } from '@/components/phone-frame';
 import { Colors } from '@/constants/theme';
 import { useNotificationRouting } from '@/hooks/use-notification-routing';
 import { ActivitiesProvider } from '@/state/activities-context';
+import { BroadcastsProvider } from '@/state/broadcasts-context';
 import { FavoritesProvider } from '@/state/favorites-context';
 import { InboxProvider } from '@/state/inbox-context';
 import { MyRegistrationsProvider } from '@/state/my-registrations-context';
-import { isActivitiesStaff } from '@/lib/tickets';
+import { isActivitiesStaff } from '@/lib/roles';
 import { consumePostLoginRedirect, SessionProvider, useSession } from '@/state/session-context';
-import { TicketsProvider } from '@/state/tickets-context';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,14 +28,14 @@ export default function RootLayout() {
         <ActivitiesProvider>
           <FavoritesProvider>
             <MyRegistrationsProvider>
-              <TicketsProvider>
+              <BroadcastsProvider>
                 <StatusBar style="dark" />
                 {/* เว็บจอกว้าง: แสดงเป็นกรอบมือถือ · มือถือ: ไม่มีผล */}
                 <PhoneFrame>
                   <RootNavigator />
                   <InboxToast />
                 </PhoneFrame>
-              </TicketsProvider>
+              </BroadcastsProvider>
             </MyRegistrationsProvider>
           </FavoritesProvider>
         </ActivitiesProvider>
@@ -97,9 +97,6 @@ function RootNavigator() {
         <Stack.Screen name="registrations/[id]" options={{ title: 'การลงทะเบียนของฉัน' }} />
         <Stack.Screen name="check-in/[registrationId]" options={{ title: 'เช็กอิน' }} />
         <Stack.Screen name="my" options={{ title: 'กิจกรรมที่ลงทะเบียน' }} />
-        <Stack.Screen name="tickets/new" options={{ title: 'แจ้งเรื่อง' }} />
-        <Stack.Screen name="tickets/[id]/index" options={{ title: 'รายละเอียดเรื่อง' }} />
-        <Stack.Screen name="tickets/[id]/done" options={{ title: 'แจ้งว่าเสร็จแล้ว' }} />
       </Stack.Protected>
 
       {/* ฝั่งผู้จัดกิจกรรม: เฉพาะเจ้าหน้าที่งานกิจกรรม (server ตรวจซ้ำทุก request) */}

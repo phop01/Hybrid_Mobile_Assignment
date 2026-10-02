@@ -2,7 +2,7 @@
 
 ## 1. แผนผังหน้าจอ (Expo Router)
 
-แท็บหลัก 6 หน้าอยู่ใน `(tabs)` (แท็บ "กิจกรรม" ของนักศึกษาเปลี่ยนเป็น "จัดการ" สำหรับเจ้าหน้าที่) หน้ารายละเอียดและฟอร์มอยู่ใน Root Stack จึงมีปุ่มย้อนกลับอัตโนมัติ
+แท็บหลัก 5 หน้าอยู่ใน `(tabs)` (แท็บ "กิจกรรม" ของนักศึกษาเปลี่ยนเป็น "จัดการ" สำหรับเจ้าหน้าที่) หน้ารายละเอียดและฟอร์มอยู่ใน Root Stack จึงมีปุ่มย้อนกลับอัตโนมัติ
 หน้าที่มีกุญแจ 🔒 ต้อง Login ก่อน (`Stack.Protected`)
 
 ```mermaid
@@ -10,40 +10,31 @@ flowchart LR
   subgraph Tabs["แท็บหลัก (tabs)"]
     T["วันนี้<br>/"]
     A["กิจกรรม / จัดการ<br>/activities, /manage"]
-    K["เรื่องแจ้ง<br>/tickets"]
     MP["แผนที่<br>/map"]
     I["แจ้งเตือน<br>/inbox"]
     P["ฉัน<br>/profile"]
   end
-  T --> KN["🔒 แจ้งเรื่อง (3 ขั้น)<br>/tickets/new"]
-  K --> KN
-  K --> KD["🔒 รายละเอียดเรื่อง<br>/tickets/[id]"]
-  KN --> KD
-  KD --> KF["🔒 แจ้งว่าเสร็จ (+ รูปหลังซ่อม)<br>/tickets/[id]/done"]
-  MP -->|"แตะหมุด → การ์ด"| KD
-  I -->|"แตะรายการ"| KD
-  N(["แตะแจ้งเตือน / nktoday://tickets/id"]) --> KD
+  N(["แตะแจ้งเตือน / nktoday://activities/id"]) --> D
+  I -->|"แตะรายการ"| G
+  MP -->|"แตะหมุด → การ์ด"| D
   T --> B["🔒 ส่งประกาศ (เจ้าหน้าที่)<br>/broadcast/new"]
   A --> D["รายละเอียดกิจกรรม<br>/activities/[id]"]
   D --> R["🔒 ลงทะเบียน"] --> G["🔒 การลงทะเบียน<br>/registrations/[id]"] --> C["🔒 เช็กอิน"]
   P --> W["เนื้อหา W1–14<br>/about"]
 ```
 
-## 2. วงจรของเรื่องแจ้งซ่อม
+## 2. วงจรสถานะการลงทะเบียน (หลักฐานการเข้าร่วม)
 
 ```mermaid
 stateDiagram-v2
-  [*] --> open: แจ้งซ่อม (รูป + หมุด)
-  open --> accepted: เจ้าหน้าที่อาคารรับเรื่อง (+ นัดเวลา)
-  accepted --> open: คืนเรื่อง
-  accepted --> done: ทำเสร็จ (+ รูปหลังซ่อม ถ้ามี)
-  done --> confirmed: ผู้แจ้งยืนยัน
-  done --> accepted: ยังไม่เรียบร้อย + เหตุผล
-  open --> rejected: เจ้าหน้าที่ปฏิเสธ + เหตุผล
-  accepted --> rejected
-  open --> cancelled: ผู้แจ้งยกเลิก
-  accepted --> cancelled
-  confirmed --> [*]
+  [*] --> registered: ลงทะเบียน
+  registered --> pending_review: ส่งหลักฐาน (รูป + พิกัด)
+  pending_review --> checked_in: เจ้าหน้าที่ตรวจผ่าน → นับชั่วโมง
+  pending_review --> registered: เจ้าหน้าที่ไม่ผ่าน + เหตุผล (ส่งใหม่ได้)
+  registered --> rejected: เจ้าหน้าที่ไม่รับการลงทะเบียน + เหตุผล
+  registered --> cancelled: นักศึกษายกเลิก / เจ้าหน้าที่ยกเลิกกิจกรรม
+  pending_review --> cancelled
+  checked_in --> [*]
 ```
 
 ## 3. กล่องแจ้งเตือน: อีกฝั่งกด → เครื่องนี้เด้ง
@@ -52,17 +43,17 @@ stateDiagram-v2
 sequenceDiagram
   actor S as นักศึกษา (มือถือ)
   participant API as server
-  actor O as เจ้าหน้าที่ (เว็บ)
-  S->>API: POST /tickets (แจ้งซ่อม + รูป + พิกัด)
-  API->>API: notify(เจ้าหน้าที่ทุกคน)
+  actor O as เจ้าหน้าที่กิจกรรม (เว็บ)
+  S->>API: POST /registrations/:id/check-in (รูป + พิกัด)
+  API->>API: notify(เจ้าของกิจกรรม)
   O->>API: GET /me/inbox?since=… (ทุก 8 วิ)
-  API-->>O: "แจ้งซ่อมใหม่: …" → แถบแจ้งเตือนบนเว็บ
-  O->>API: POST /tickets/:id/accept {appointmentAt}
-  API->>API: ตรวจบทบาท (403) + สถานะ (409) → notify(ผู้แจ้ง + คนที่เจอเหมือนกัน)
+  API-->>O: "มีหลักฐานรอตรวจ" → แถบแจ้งเตือนบนเว็บ
+  O->>API: POST /registrations/:id/review {approve}
+  API->>API: ตรวจบทบาท (403) + สถานะ (409) → notify(นักศึกษา)
   S->>API: GET /me/inbox?since=…
-  API-->>S: "เจ้าหน้าที่รับเรื่องแล้ว · นัดเข้าซ่อม …"
-  S->>S: presentInboxItem → แจ้งเตือนในเครื่อง + ตั้งเตือนก่อนนัด 1 ชม.
-  S->>S: แตะแจ้งเตือน → targetFor(kind, id) → /tickets/[id]
+  API-->>S: "หลักฐานผ่านแล้ว · ได้ N ชั่วโมง"
+  S->>S: presentInboxItem → แจ้งเตือนในเครื่อง
+  S->>S: แตะแจ้งเตือน → targetFor(kind, id) → /registrations/[id]
 ```
 
 ## 4. ชั่วโมงกิจกรรม/จิตอาสา: มาจากการเข้าร่วมกิจกรรมเท่านั้น

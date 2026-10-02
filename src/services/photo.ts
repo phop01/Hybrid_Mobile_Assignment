@@ -65,3 +65,5 @@ export async function pickPhotoFromLibrary(): Promise<{ uri: string; takenAt: st
   // ใช้เวลาถ่ายจริงในรูป ไม่ใช่เวลาที่กดเลือก ไม่งั้นรูปเก่าจะผ่านการตรวจเวลา
   return { uri: asset.uri, takenAt: parseExifTakenAt(asset.exif) };
 }
+
+export type PreparedPhoto = { uri: string; base64: string };
