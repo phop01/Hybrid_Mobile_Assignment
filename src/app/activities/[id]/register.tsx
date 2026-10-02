@@ -16,6 +16,7 @@ import { useMyRegistrations } from '@/state/my-registrations-context';
 import { initialFormState, registrationFormReducer } from '@/state/registration-form-reducer';
 import { useAuthenticatedSession } from '@/state/session-context';
 import { Text } from '@/components/app-text';
+import { hapticError, hapticSuccess } from '@/lib/haptics';
 
 export default function RegisterScreen() {
   const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);
@@ -66,15 +67,20 @@ export default function RegisterScreen() {
   const submit = async () => {
     // กันกดซ้ำระหว่างส่ง
     if (state.phase === 'submitting') return;
-    if (hasErrors(clientErrors)) return dispatch({ type: 'invalid' });
+    if (hasErrors(clientErrors)) {
+      hapticError();
+      return dispatch({ type: 'invalid' });
+    }
     dispatch({ type: 'submit' });
     try {
       const registration = await register(activity.id, state.values, idempotencyKey);
       dispatch({ type: 'success', registration });
+      hapticSuccess();
       // ขอสิทธิ์แจ้งเตือนตอนนี้ เพราะเพิ่งลงทะเบียน ผู้ใช้เข้าใจว่าจะได้รับประกาศของกิจกรรมนี้
       // เว็บ: เบราว์เซอร์ให้ขอสิทธิ์ได้เฉพาะตอนผู้ใช้กดปุ่ม จึงไปขอตอนกด "ตั้งแจ้งเตือน" แทน
       if (supportsNotifications && Platform.OS !== 'web') ensureNotificationPermission().catch(() => undefined);
     } catch (e) {
+      hapticError();
       if (e instanceof ApiError) {
         dispatch({ type: 'failure', message: e.message, fieldErrors: e.fields });
       } else {

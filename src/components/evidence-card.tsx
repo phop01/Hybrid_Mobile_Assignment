@@ -18,6 +18,7 @@ import { pickPhotoFromLibrary, preparePhotoForUpload } from '@/services/photo';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import type { Activity, PhotoSource, Registration } from '@/types/models';
 import { Text } from '@/components/app-text';
+import { hapticError, hapticSuccess } from '@/lib/haptics';
 
 type LocationState =
   | { status: 'locating' }
@@ -120,6 +121,7 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
         createdAt: new Date().toISOString(),
       });
       setPhoto(null);
+      hapticSuccess();
       setMessage(
         outcome.kind === 'queued'
           ? 'ตอนนี้ออฟไลน์ แอปเก็บรูปไว้ในเครื่องแล้ว จะส่งให้อัตโนมัติเมื่อกลับมามีอินเทอร์เน็ต'
@@ -128,6 +130,7 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
             : 'เช็กอินสำเร็จ นับในโปรไฟล์ของคุณแล้ว',
       );
     } catch (e) {
+      hapticError();
       setError(e instanceof Error ? e.message : 'ส่งไม่สำเร็จ');
     } finally {
       setBusy(false);

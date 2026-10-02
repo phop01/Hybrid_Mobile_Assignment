@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, type ReactNode } from 'react';
 
+import { hapticSelect } from '@/lib/haptics';
 import { loadFavoriteIds, saveFavoriteIds } from '@/storage/favorites-storage';
 
 import { favoritesReducer, initialFavorites } from './favorites-reducer';
@@ -25,7 +26,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   }, [state]);
 
   // ฟังก์ชันเดิมทุก render: การ์ดที่ห่อ memo จะไม่ render ซ้ำเพราะ prop นี้เปลี่ยน
-  const toggleFavorite = useCallback((id: string) => dispatch({ type: 'toggle', id }), []);
+  const toggleFavorite = useCallback((id: string) => {
+    hapticSelect();
+    dispatch({ type: 'toggle', id });
+  }, []);
 
   const value: FavoritesContextValue = {
     favoriteIds: state.ids,

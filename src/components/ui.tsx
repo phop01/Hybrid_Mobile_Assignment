@@ -17,6 +17,7 @@ import {
 
 import { Colors, MaxContentWidth, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { formatUpdatedAt } from '@/lib/format';
+import { hapticSelect } from '@/lib/haptics';
 import { Text } from '@/components/app-text';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -92,7 +93,10 @@ export function Chip({ label, selected, onPress, color }: { label: string; selec
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
-      onPress={onPress}
+      onPress={() => {
+        hapticSelect();
+        onPress();
+      }}
       style={[styles.chip, selected && { backgroundColor: active, borderColor: active }]}>
       <Text style={[styles.chipText, selected && { color: '#FFFFFF' }]}>{label}</Text>
     </Pressable>
