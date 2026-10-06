@@ -115,7 +115,8 @@ describe('สมัครสมาชิกและความปลอดภ�
     expect(validateSignUp({ ...base, roles: [] }).roles).toBe('เลือกบทบาท 1 บทบาท');
     const staff = validateSignUp({ ...base, studentId: '1', faculty: '', roles: ['activities'] });
     expect(staff.studentId).toBe('รหัสนักศึกษา/บุคลากรต้องเป็นตัวเลข 10 หลัก');
-    expect(staff.faculty).toBe('กรุณากรอกคณะ/หน่วยงาน');
+    // เจ้าหน้าที่ไม่ต้องกรอกหน่วยงาน (มีบทบาทเดียว)
+    expect(staff.faculty).toBeUndefined();
   });
 
   it('only allows in-app paths after login', () => {

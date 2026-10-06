@@ -127,7 +127,7 @@ export default function HoursScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { backgroundColor: Colors.ink, borderRadius: Radius.xxl, padding: Spacing.xl, gap: Spacing.sm },
+  hero: { backgroundColor: Colors.ink, borderRadius: Radius.xxl, padding: Spacing.lg, gap: Spacing.sm },
   eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.6, color: Colors.highlight },
   total: { color: Colors.onPrimary, fontSize: 52, fontWeight: '800' },
   unit: { color: Colors.onPrimaryMuted, fontSize: 18, fontWeight: '600' },

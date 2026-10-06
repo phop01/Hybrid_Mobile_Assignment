@@ -10,7 +10,7 @@ import { USER_DATA_KEYS, USER_KEY } from '@/storage/keys';
 import { readJson, removeKeys, writeJson } from '@/storage/kv';
 import { clearOfflineData } from '@/storage/offline-db';
 import { clearToken, loadToken, saveToken } from '@/storage/token-storage';
-import type { AccountRole, Category, User } from '@/types/models';
+import type { AccountRole, User } from '@/types/models';
 
 export type SessionState =
   | { status: 'loading' }
@@ -24,8 +24,8 @@ type SessionContextValue = {
   signOut: () => Promise<void>;
   /** เปลี่ยนบทบาทที่ใช้อยู่ (บัญชีที่มีหลายบทบาท) */
   switchRole: (role: AccountRole) => Promise<void>;
-  /** แก้ความสนใจ / รูปโปรไฟล์ (ส่งเฉพาะช่องที่เปลี่ยน) */
-  updateProfile: (input: { interests?: Category[]; avatarBase64?: string | null }) => Promise<void>;
+  /** แก้สาขา / รูปโปรไฟล์ (ส่งเฉพาะช่องที่เปลี่ยน) */
+  updateProfile: (input: api.ProfileInput) => Promise<void>;
 };
 
 // ข้อมูลโปรไฟล์ (ไม่ใช่ความลับ) เก็บไว้ด้วย (USER_KEY) เพื่อเปิดแอปตอนไม่มีเน็ตแล้วยังเข้าระบบอยู่
@@ -109,7 +109,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile = useCallback(
-    async (input: { interests?: Category[]; avatarBase64?: string | null }) => {
+    async (input: api.ProfileInput) => {
       if (session.status !== 'authenticated') return;
       const user = await api.updateProfile(session.token, input);
       await writeJson(USER_KEY, user);

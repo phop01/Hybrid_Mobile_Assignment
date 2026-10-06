@@ -4,11 +4,9 @@
 import type {
   Activity,
   Announcement,
-  Broadcast,
   CheckInRecord,
   InboxItem,
   OrganizerActivity,
-  Place,
   Registration,
   User,
 } from '@/types/models';
@@ -94,17 +92,16 @@ export function isUser(v: unknown): v is User {
     isStr(v.studentId) &&
     isStr(v.fullName) &&
     isStr(v.faculty) &&
+    (v.major === undefined || isStr(v.major)) &&
     (v.role === 'student' || v.role === 'organizer') &&
     (v.department === undefined || v.department === 'activities') &&
     (v.roles === undefined || (Array.isArray(v.roles) && v.roles.every((r) => ACCOUNT_ROLES.includes(r as string)))) &&
     (v.activeRole === undefined || ACCOUNT_ROLES.includes(v.activeRole as string)) &&
-    (v.interests === undefined || (Array.isArray(v.interests) && v.interests.every((k) => INTEREST_KEYS.includes(k as string)))) &&
     (v.avatarUrl === undefined || v.avatarUrl === null || isStr(v.avatarUrl))
   );
 }
 
 const ACCOUNT_ROLES = ['student', 'activities'];
-const INTEREST_KEYS = ['academic', 'volunteer', 'sport', 'culture'];
 
 export function parseList<T>(payload: unknown, guard: (v: unknown) => v is T, label: string): T[] {
   if (!Array.isArray(payload) || !payload.every(guard)) {
@@ -122,32 +119,7 @@ export function isAnnouncement(v: unknown): v is Announcement {
   return isObj(v) && isStr(v.id) && isStr(v.activityId) && isStr(v.message) && isStr(v.createdAt);
 }
 
-const INBOX_KINDS = ['activity', 'registration', 'manage', 'broadcast'];
-
-export function isPlace(v: unknown): v is Place {
-  return (
-    isObj(v) &&
-    isStr(v.name) &&
-    isNum(v.latitude) &&
-    Math.abs(v.latitude) <= 90 &&
-    isNum(v.longitude) &&
-    Math.abs(v.longitude) <= 180
-  );
-}
-
-export function isBroadcast(v: unknown): v is Broadcast {
-  return (
-    isObj(v) &&
-    isStr(v.id) &&
-    isStr(v.message) &&
-    isPlace(v.location) &&
-    isStr(v.byId) &&
-    isStr(v.byName) &&
-    isStr(v.createdAt) &&
-    isStr(v.expiresAt) &&
-    (v.imageUrl === undefined || v.imageUrl === null || isStr(v.imageUrl))
-  );
-}
+const INBOX_KINDS = ['activity', 'registration', 'manage'];
 
 export function isInboxItem(v: unknown): v is InboxItem {
   return (

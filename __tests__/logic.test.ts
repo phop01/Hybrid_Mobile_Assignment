@@ -168,4 +168,10 @@ describe('browseActivities', () => {
   it('sorts by seats left, most first, ended last', () => {
     expect(browseActivities(list, { ...base, sort: 'seats' }, now).map((a) => a.id)).toEqual(['later-open', 'soon-open', 'soon-full', 'past']);
   });
+
+  it('sorts newest posted first, ended last', () => {
+    // past โพสต์ก่อนสุดแต่จบแล้ว → ท้าย · ที่เหลือเรียงตามเวลาโพสต์ใหม่สุดก่อน
+    const reversed = [...list].reverse().map((a, i) => ({ ...a, createdAt: at(-i * day) }));
+    expect(browseActivities(reversed, { ...base, sort: 'newest' }, now).map((a) => a.id)).toEqual(['later-open', 'soon-open', 'soon-full', 'past']);
+  });
 });

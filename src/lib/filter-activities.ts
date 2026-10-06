@@ -47,7 +47,7 @@ export function newestFirst(activities: Activity[]): Activity[] {
 }
 
 export type AvailabilityFilter = 'all' | 'open' | 'week';
-export type SortMode = 'date' | 'seats';
+export type SortMode = 'date' | 'seats' | 'newest';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -56,7 +56,7 @@ export type BrowseOptions = {
   category: CategoryFilter;
   /** open = ยังไม่จบและมีที่นั่งว่าง · week = ยังไม่จบและเริ่มภายใน 7 วัน */
   availability: AvailabilityFilter;
-  /** date = ใกล้ถึงก่อน · seats = ที่นั่งว่างมากก่อน */
+  /** date = ใกล้ถึงก่อน · seats = ที่นั่งว่างมากก่อน · newest = เพิ่งโพสต์ก่อน */
   sort: SortMode;
 };
 
@@ -69,6 +69,10 @@ export function browseActivities(activities: Activity[], options: BrowseOptions,
   }
   const byDate = sortForBrowsing(list, now);
   if (options.sort === 'date') return byDate;
+  if (options.sort === 'newest') {
+    // เพิ่งโพสต์ก่อน กิจกรรมที่จบแล้วอยู่ท้ายเสมอ
+    return newestFirst(byDate).sort((a, b) => Number(isEnded(a, now)) - Number(isEnded(b, now)));
+  }
   // ที่นั่งว่างมากก่อน (เท่ากันเรียงตามวัน) กิจกรรมที่จบแล้วอยู่ท้ายเสมอ
   return byDate.sort((a, b) => {
     const endedDiff = Number(isEnded(a, now)) - Number(isEnded(b, now));

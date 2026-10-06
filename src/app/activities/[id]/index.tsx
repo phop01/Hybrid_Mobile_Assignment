@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -8,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActivityMap } from '@/components/activity-map';
 import { AnnouncementList } from '@/components/announcements';
 import { NavigateButtons } from '@/components/navigate-buttons';
+import { PosterImage } from '@/components/poster-image';
 import { StatusBadge } from '@/components/status-badge';
 import { Banner, Button, Card, CircleButton, InfoGrid, SectionHeader, StatPill, StateView } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -44,7 +44,7 @@ export default function ActivityDetailScreen() {
         title="ไม่พบกิจกรรมนี้"
         message="กิจกรรมอาจถูกยกเลิกหรือลิงก์ไม่ถูกต้อง"
         actionLabel="ไปหน้ารายการกิจกรรม"
-        onAction={() => router.replace('/activities')}
+        onAction={() => router.replace('/')}
       />
     );
   }
@@ -110,7 +110,7 @@ export default function ActivityDetailScreen() {
     action = (
       <View style={{ gap: Spacing.sm }}>
         <Button title="เต็มแล้ว" disabled onPress={() => undefined} />
-        <Text style={styles.muted}>กด ☆ บันทึกไว้ แล้วกลับมาดูอีกครั้ง อาจมีคนยกเลิก</Text>
+        <Text style={styles.muted}>กด ♡ บันทึกไว้ แล้วกลับมาดูอีกครั้ง อาจมีคนยกเลิก</Text>
       </View>
     );
   } else {
@@ -124,20 +124,19 @@ export default function ActivityDetailScreen() {
       : left === 0
         ? `เต็มแล้ว (${activity.capacity} คน)`
         : `เหลือ ${left} จาก ${activity.capacity} ที่`;
-  const back = () => (router.canGoBack() ? router.back() : router.replace('/activities'));
+  const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
     <>
       {/* หน้านี้วาดหัวเองบนรูป (ปุ่มกลับ/แชร์/บันทึกเป็นวงกลมลอย) */}
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
-        {/* รูปปกเต็มความกว้าง ไม่มีอะไรทับ (ปกส่วนใหญ่เป็นโปสเตอร์มีตัวหนังสือ) · ปุ่มวงกลมลอยมุมบน */}
+        {/* รูปปก 16:9 เท่าโปสเตอร์ เห็นเต็มใบไม่ถูกตัด (รูปสัดส่วนอื่นเติมขอบด้วยภาพเบลอ) · ปุ่มวงกลมลอยมุมบน */}
         <View style={[styles.hero, { paddingTop: insets.top }]}>
           {activity.imageUrl ? (
-            <Image
-              source={{ uri: toAbsoluteUrl(activity.imageUrl) }}
+            <PosterImage
+              uri={toAbsoluteUrl(activity.imageUrl)}
               style={StyleSheet.absoluteFill}
-              contentFit="cover"
               accessibilityLabel={`รูปปกกิจกรรม ${activity.title}`}
             />
           ) : (
@@ -150,8 +149,8 @@ export default function ActivityDetailScreen() {
             <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
               <CircleButton icon="share-outline" label="แชร์กิจกรรมนี้" onPress={share} />
               <CircleButton
-                icon={favorite ? 'star' : 'star-outline'}
-                color={favorite ? Colors.star : Colors.text}
+                icon={favorite ? 'heart' : 'heart-outline'}
+                color={favorite ? Colors.heart : Colors.text}
                 label={favorite ? 'นำออกจากที่บันทึกไว้' : 'บันทึกไว้ดูทีหลัง'}
                 onPress={() => toggleFavorite(activity.id)}
               />
@@ -231,7 +230,7 @@ export default function ActivityDetailScreen() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.background },
   pageContent: { paddingBottom: Spacing.xxl },
-  hero: { width: '100%', aspectRatio: 16 / 10, maxHeight: 460, backgroundColor: Colors.ink },
+  hero: { width: '100%', aspectRatio: 16 / 9, maxHeight: 460, backgroundColor: Colors.ink },
   heroPlain: { alignItems: 'flex-end', justifyContent: 'center', paddingRight: Spacing.lg },
   heroTop: { position: 'absolute', left: Spacing.lg, right: Spacing.lg, flexDirection: 'row', justifyContent: 'space-between' },
   category: {

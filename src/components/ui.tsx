@@ -19,6 +19,7 @@ import { Colors, MaxContentWidth, MinTouch, Radius, Spacing } from '@/constants/
 import { formatUpdatedAt } from '@/lib/format';
 import { hapticSelect } from '@/lib/haptics';
 import { Text } from '@/components/app-text';
+import { HScroll } from './h-scroll';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -174,11 +175,11 @@ export function ChipBar<K extends string>({
   onChange: (key: K) => void;
 }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipBar}>
+    <HScroll contentContainerStyle={styles.chipBar}>
       {options.map((o) => (
         <Chip key={o.key} label={o.label} color={o.color} selected={value === o.key} onPress={() => onChange(o.key)} />
       ))}
-    </ScrollView>
+    </HScroll>
   );
 }
 
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
-    padding: Spacing.lg + 2,
+    padding: Spacing.lg,
     gap: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,

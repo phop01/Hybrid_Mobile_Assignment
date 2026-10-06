@@ -12,10 +12,10 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildActivities, buildBroadcasts, SEED_USERS, hoursBetween } from './seed.mjs';
+import { buildActivities, MAJORS, SEED_USERS, hoursBetween } from './seed.mjs';
 import { isExpoPushToken, pushMessages, sendPush } from './push.mjs';
 import { effectiveUser, rolesOf, ROLES } from './roles.mjs';
-import { registerBroadcastRoutes } from './broadcasts.mjs';
+import { registerInboxRoutes } from './inbox.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(HERE, '.data');
@@ -80,8 +80,6 @@ function buildDb(saved) {
     sessions: Array.isArray(saved.sessions) ? saved.sessions : [],
     // ประกาศที่ผู้จัดส่งถึงผู้ลงทะเบียน แอปนักศึกษาดึงไปแสดงเป็นแจ้งเตือนในเครื่อง
     announcements: Array.isArray(saved.announcements) ? saved.announcements : [],
-    // ประกาศทั่ววิทยาเขตจากเจ้าหน้าที่ เช่น ปิดน้ำ ปิดถนน
-    broadcasts: Array.isArray(saved.broadcasts) ? saved.broadcasts : buildBroadcasts(),
     // รูปโปรไฟล์ + ความสนใจ แยกจากตัวบัญชี เพื่อให้บัญชีตัวอย่างที่สร้างใหม่ทุกครั้งยังเก็บค่าที่ผู้ใช้ตั้งไว้
     profiles: saved.profiles && typeof saved.profiles === 'object' && !Array.isArray(saved.profiles) ? saved.profiles : {},
     // กล่องแจ้งเตือนของทุกคน: server ตัดสินว่าใครควรรู้เรื่องอะไร แอปแค่ดึงของตัวเองไปเด้ง
@@ -94,16 +92,18 @@ function buildDb(saved) {
 const db = loadDb();
 
 const MAX_NOTIFICATIONS = 1000;
+/** หน่วยงานของบัญชีเจ้าหน้าที่ที่สมัครเอง (มีบทบาทเดียว: งานกิจกรรมนักศึกษา) */
+const STAFF_UNIT = 'งานกิจการนักศึกษา มข. วิทยาเขตหนองคาย';
 
 function persist() {
   if (db.notifications.length > MAX_NOTIFICATIONS) db.notifications = db.notifications.slice(-MAX_NOTIFICATIONS);
-  const { registrations, sessions, customActivities, registeredUsers, announcements, broadcasts, profiles, notifications, pushTokens } = db;
+  const { registrations, sessions, customActivities, registeredUsers, announcements, profiles, notifications, pushTokens } = db;
   // เขียนลงไฟล์ชั่วคราวแล้ว rename: ถ้า process ตายกลางทาง db.json เดิมยังอยู่ครบ
   const tmp = `${DB_FILE}.tmp`;
   writeFileSync(
     tmp,
     JSON.stringify(
-      { registrations, sessions, customActivities, users: registeredUsers, announcements, broadcasts, profiles, notifications, pushTokens },
+      { registrations, sessions, customActivities, users: registeredUsers, announcements, profiles, notifications, pushTokens },
       null,
       2,
     ),
@@ -245,12 +245,13 @@ function findActivity(id) {
   return activity;
 }
 
-const INTEREST_KEYS = ['academic', 'volunteer', 'sport', 'culture'];
 
 function publicUser(user) {
   const { passwordHash, ...rest } = user;
   const profile = db.profiles[user.id] ?? {};
-  return { ...rest, interests: profile.interests ?? [], avatarUrl: signUploadUrl(profile.avatarUrl ?? null) };
+  // สาขาที่แก้ทีหลังเก็บใน profiles (บัญชีตัวอย่างถูกสร้างใหม่ทุกครั้งที่เปิด server)
+  const major = profile.major !== undefined ? profile.major : user.major;
+  return { ...rest, major: major ?? undefined, avatarUrl: signUploadUrl(profile.avatarUrl ?? null) };
 }
 
 function publicRegistration(registration) {
@@ -264,10 +265,10 @@ function publicRegistration(registration) {
 
 // ---------- ลิงก์รูปที่มีลายเซ็น ----------
 // เปิดรูปผ่าน <img> ได้ทั้งมือถือและเว็บโดยไม่ต้องแนบ header: server เซ็นลิงก์ (HMAC) ตอนส่งข้อมูลให้คนที่มีสิทธิ์เท่านั้น
-// รูปปกกิจกรรม/โปสเตอร์ประกาศเป็นข้อมูลสาธารณะ (ทุกคนเห็นอยู่แล้ว) ไม่ต้องเซ็น · รูปอื่นทั้งหมด "ปฏิเสธเป็นค่าเริ่มต้น"
+// รูปปกกิจกรรมเป็นข้อมูลสาธารณะ (ทุกคนเห็นอยู่แล้ว) ไม่ต้องเซ็น · รูปอื่นทั้งหมด "ปฏิเสธเป็นค่าเริ่มต้น"
 const URL_SECRET = randomBytes(32);
 const SIGNED_URL_TTL_MS = 2 * 60 * 60 * 1000;
-const isPublicUpload = (file) => file.startsWith('cover-') || file.startsWith('broadcast-');
+const isPublicUpload = (file) => file.startsWith('cover-');
 const uploadSignature = (file, exp) => createHmac('sha256', URL_SECRET).update(`${file}.${exp}`).digest('hex').slice(0, 32);
 
 function signUploadUrl(path) {
@@ -504,8 +505,12 @@ async function handle(req, res) {
     if (typeof body.fullName !== 'string' || body.fullName.trim().length < 4 || body.fullName.length > 80) {
       errors.fullName = 'กรุณากรอกชื่อ-นามสกุล';
     }
-    if (typeof body.faculty !== 'string' || body.faculty.trim().length < 2 || body.faculty.length > 100) {
-      errors.faculty = staff ? 'กรุณากรอกคณะ/หน่วยงาน' : 'กรุณากรอกคณะ';
+    // เจ้าหน้าที่มีบทบาทเดียว (งานกิจกรรมนักศึกษา) จึงไม่ต้องกรอกหน่วยงาน
+    const facultyOk = typeof body.faculty === 'string' && body.faculty.trim().length >= 2 && body.faculty.length <= 100;
+    if (!staff && !facultyOk) errors.faculty = 'กรุณากรอกคณะ';
+    // สาขา: ไม่บังคับ (บุคลากรไม่มีสาขา) · ต้องเป็นสาขาที่มีในคณะ
+    if (body.major !== undefined && !MAJORS.includes(body.major)) {
+      errors.major = 'เลือกสาขาจากรายการ';
     }
     if (typeof body.password !== 'string' || body.password.length < 8 || body.password.length > 100) {
       errors.password = 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร';
@@ -520,7 +525,8 @@ async function handle(req, res) {
       id: randomUUID(),
       studentId: body.studentId,
       fullName: body.fullName.trim(),
-      faculty: body.faculty.trim(),
+      faculty: facultyOk ? body.faculty.trim() : STAFF_UNIT,
+      ...(body.major ? { major: body.major } : {}),
       roles: ordered,
       passwordHash: hashPassword(body.password),
     };
@@ -584,20 +590,18 @@ async function handle(req, res) {
     return send(res, 200, publicUser(effectiveUser(db.users.find((u) => u.id === user.id), body.role)));
   }
 
-  // PUT /me/profile { interests?: string[], avatarBase64?: string | null }
-  // ความสนใจเลือกจากหมวดกิจกรรม (ไม่เกิน 4) · รูปเป็น JPEG ไม่เกิน 3 MB · avatarBase64: null = ลบรูป
+  // PUT /me/profile { major?: string | null, avatarBase64?: string | null }
+  // สาขาต้องอยู่ในรายการของคณะ (null = ไม่ระบุ) · รูปเป็น JPEG ไม่เกิน 3 MB · avatarBase64: null = ลบรูป
   if (method === 'PUT' && url.pathname === '/me/profile') {
     const user = requireUser(req);
     const body = await readJson(req);
-    const profile = db.profiles[user.id] ?? { interests: [], avatarUrl: null };
-    if (body.interests !== undefined) {
-      const ok =
-        Array.isArray(body.interests) &&
-        body.interests.length <= INTEREST_KEYS.length &&
-        new Set(body.interests).size === body.interests.length &&
-        body.interests.every((k) => INTEREST_KEYS.includes(k));
-      if (!ok) throw new HttpError(400, 'validation_failed', 'ข้อมูลไม่ถูกต้อง', { interests: 'เลือกความสนใจจากหมวดที่มีให้' });
-      profile.interests = body.interests;
+    // ความสนใจ (interests) เลิกใช้แล้ว: ไม่เก็บต่อ
+    const { interests, ...profile } = db.profiles[user.id] ?? { avatarUrl: null };
+    if (body.major !== undefined) {
+      if (body.major !== null && !MAJORS.includes(body.major)) {
+        throw new HttpError(400, 'validation_failed', 'ข้อมูลไม่ถูกต้อง', { major: 'เลือกสาขาจากรายการ' });
+      }
+      profile.major = body.major;
     }
     if (body.avatarBase64 !== undefined) {
       const previous = profile.avatarUrl;
@@ -998,24 +1002,13 @@ async function handle(req, res) {
     return send(res, 200, publicActivity(activity));
   }
 
-  // ประกาศ / กล่องแจ้งเตือน (แยกไฟล์ server/broadcasts.mjs)
-  if (await broadcastRoutes(req, res, { url, parts, method })) return;
+  // กล่องแจ้งเตือน (แยกไฟล์ server/inbox.mjs)
+  if (await inboxRoutes(req, res, { url, method })) return;
 
   throw new HttpError(404, 'not_found', 'ไม่พบ endpoint นี้');
 }
 
-const broadcastRoutes = registerBroadcastRoutes({
-  db,
-  notify,
-  persist,
-  send,
-  readJson,
-  HttpError,
-  requireUser,
-  requireOrganizer,
-  saveOptionalJpeg,
-  publicUserName: (id) => db.users.find((u) => u.id === id)?.fullName ?? null,
-});
+const inboxRoutes = registerInboxRoutes({ db, send, requireUser });
 
 export function startServer(port = PORT) {
   const server = createServer((req, res) => {

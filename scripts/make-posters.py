@@ -49,22 +49,6 @@ ACTIVITIES = [
     ('demo-blood-donation', 'volunteer', '🩸', 'บริจาคโลหิต<br>กู้วิกฤติคลังเลือด', 'ร่วมบริจาคโลหิตกับสภากาชาดไทย', 'โถงชั้น 1 อาคารเรียนรวม 1', 'ชั่วโมงจิตอาสา', 'ใบเซ็นชื่อ'),
 ]
 
-# โปสเตอร์ประกาศ (id ตรงกับ buildBroadcasts ใน server/seed.mjs)
-BROADCASTS = [
-    {
-        'id': 'demo-broadcast-market',
-        'kicker': 'ประกาศจากงานกิจการนักศึกษา',
-        'emoji': '🛍️',
-        'title': 'NK Market<br>ตลาดนัดนักศึกษา',
-        'lines': ['ของกิน ของมือสอง งานแฮนด์เมดจากเพื่อน ๆ', 'ดนตรีสดหน้าเวที'],
-        'time': '16:00 – 20:00 น.',
-        'place': 'ลานหน้าห้องสมุดช่อวายุภักษ์',
-        'notice': 'ถนนหน้าห้องสมุดปิดชั่วคราว กรุณาใช้เส้นทางข้างอาคารเรียนรวม 2',
-        'from': '#F59E0B',
-        'to': '#B45309',
-    },
-]
-
 BASE_CSS = """
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { width: 100%; height: 100%; }
@@ -108,39 +92,6 @@ h1 {{ font-size: 74px; line-height: 1.12; font-weight: 800; letter-spacing: -0.5
 </div>
 <div class="art"><span class="emoji">{emoji}</span></div>
 <div class="footer"><div class="brand"><span class="dot">NK</span> KKUNK Today · มข. วิทยาเขตหนองคาย</div><div style="font-size:22px;opacity:.85">ลงทะเบียนในแอป</div></div>
-</body></html>"""
-
-
-def broadcast_html(b):
-    lines = ''.join(f'<p class="line">{html.escape(x)}</p>' for x in b['lines'])
-    return f"""<!doctype html><html><head><meta charset="utf-8"><style>{BASE_CSS}
-body {{ background: linear-gradient(170deg, {b['from']} 0%, {b['to']} 100%); position: relative;
-  display: flex; flex-direction: column; align-items: center; padding: 56px 64px 44px; gap: 30px; }}
-.top {{ width: 100%; display: flex; justify-content: space-between; align-items: center; position: relative; }}
-.hero .ring {{ width: 270px; height: 270px; border-radius: 50%; background: rgba(255,255,255,0.18); border: 8px solid rgba(255,255,255,0.35);
-  display: flex; align-items: center; justify-content: center; }}
-.hero .emoji {{ font-size: 150px; }}
-.content {{ text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; position: relative; }}
-h1 {{ font-size: 78px; line-height: 1.12; font-weight: 800; text-shadow: 0 4px 18px rgba(0,0,0,0.25); }}
-.line {{ font-size: 29px; line-height: 1.35; opacity: 0.96; }}
-.time {{ margin-top: 8px; background: #fff; color: {b['to']}; border-radius: 20px; padding: 12px 34px; font-size: 46px; font-weight: 800; }}
-.place {{ margin-top: 4px; font-size: 30px; font-weight: 700; }}
-.notice {{ width: 100%; margin-top: auto; background: rgba(0,0,0,0.28); border-radius: 22px;
-  padding: 20px 26px; font-size: 26px; line-height: 1.45; display: flex; gap: 14px; align-items: flex-start; }}
-.footer {{ display: flex; justify-content: center; }}
-</style></head><body>
-<div class="circle" style="width:420px;height:420px;left:-150px;top:-120px"></div>
-<div class="circle" style="width:360px;height:360px;right:-140px;top:420px"></div>
-<div class="top"><span class="pill"><span class="emoji">📢</span> ประกาศ</span><span style="font-size:22px;opacity:.9">{html.escape(b['kicker'])}</span></div>
-<div class="hero"><div class="ring"><span class="emoji">{b['emoji']}</span></div></div>
-<div class="content">
-  <h1>{b['title']}</h1>
-  {lines}
-  <div class="time">{html.escape(b['time'])}</div>
-  <p class="place"><span class="emoji">📍</span> {html.escape(b['place'])}</p>
-</div>
-<div class="notice"><span class="emoji">⚠️</span><span>{html.escape(b['notice'])}</span></div>
-<div class="footer"><div class="brand"><span class="dot">NK</span> KKUNK Today · มข. วิทยาเขตหนองคาย</div></div>
 </body></html>"""
 
 
@@ -196,8 +147,6 @@ def main():
                 print(f'ข้าม {activity_id}.jpg (มีรูปอยู่แล้ว)')
                 continue
             render(chrome, work, activity_id, activity_html(cat, emoji, title, tagline, place, hours, badge), 1280, 720)
-        for b in BROADCASTS:
-            render(chrome, work, b['id'], broadcast_html(b), 900, 1200)
 
 
 if __name__ == '__main__':

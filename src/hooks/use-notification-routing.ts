@@ -12,7 +12,7 @@ function openFromResponse(response: NotificationResponse | null) {
   if (!Notifications || !response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
   const data = response.notification.request.content.data as Record<string, unknown> | undefined;
 
-  // จากกล่องแจ้งเตือน (กิจกรรม / ผลตรวจหลักฐาน / ประกาศ)
+  // จากกล่องแจ้งเตือน (กิจกรรม / ผลตรวจหลักฐาน / งานตรวจของผู้จัด)
   if (data?.type === 'inbox') {
     const target = targetFor(data.kind, data.targetId);
     if (target) router.push(target as never);

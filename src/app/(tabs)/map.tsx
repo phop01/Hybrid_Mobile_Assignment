@@ -9,7 +9,7 @@ import { PickMap } from '@/components/pick-map';
 import { TopBar } from '@/components/top-bar';
 import { Card, ChipBar, OfflineBanner, Screen, SectionHeader, StateView } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
-import { BROADCAST_COLOR, MAP_LAYERS, useCampusMarkers, type MapLayer } from '@/hooks/use-campus-markers';
+import { MAP_LAYERS, useCampusMarkers, type MapLayer } from '@/hooks/use-campus-markers';
 import { useLocateMe } from '@/hooks/use-locate-me';
 import { CATEGORIES } from '@/lib/categories';
 import { formatDistance } from '@/lib/format';
@@ -17,7 +17,7 @@ import { nearestActivities } from '@/lib/nearby';
 import { useActivities } from '@/state/activities-context';
 
 /**
- * แผนที่รวมทุกเรื่องในวิทยาเขต: กิจกรรมที่ยังไม่จบ และประกาศ
+ * แผนที่กิจกรรมในวิทยาเขต: กิจกรรมที่ยังไม่จบ กรองตามหมวดได้
  * การ์ดแผนที่ในหน้า + ปุ่ม "ขยายแผนที่" เปิดแบบเต็มจอ · แตะหมุดหรือรายการ → การ์ดรายละเอียดใต้แผนที่
  * ตำแหน่งของฉัน: ขอสิทธิ์เฉพาะตอนกดปุ่ม แล้วแสดงกิจกรรมที่ใกล้ที่สุด
  */
@@ -38,8 +38,6 @@ export default function MapScreen() {
     return <StateView kind="error" title="โหลดข้อมูลไม่สำเร็จ" message={error ?? undefined} actionLabel="ลองใหม่" onAction={refresh} />;
   }
 
-  const activityCount = markers.filter((m) => m.id.startsWith('a:')).length;
-  const broadcastCount = markers.length - activityCount;
   const openFull = () => router.push({ pathname: '/map-full', params: { layer, ...(selectedId ? { selected: selectedId } : {}) } });
 
   return (
@@ -47,7 +45,7 @@ export default function MapScreen() {
       <TopBar
         eyebrow="CAMPUS MAP · แผนที่"
         title="แผนที่วิทยาเขต"
-        subtitle={`กิจกรรม ${activityCount} จุด · ประกาศ ${broadcastCount} จุด`}
+        subtitle={`กิจกรรม ${markers.length} จุด`}
       />
       <ChipBar
         options={MAP_LAYERS}
@@ -76,11 +74,7 @@ export default function MapScreen() {
         <View pointerEvents="none" style={styles.mapLabel}>
           <Text style={styles.mapLabelEyebrow}>{selection ? 'SELECTED' : 'KKU NONG KHAI'}</Text>
           <Text style={styles.mapLabelName} numberOfLines={1}>
-            {selection?.kind === 'activity'
-              ? selection.activity.title
-              : selection?.kind === 'broadcast'
-                ? 'ประกาศ'
-                : 'มข. วิทยาเขตหนองคาย'}
+            {selection ? selection.activity.title : 'มข. วิทยาเขตหนองคาย'}
           </Text>
         </View>
         <View style={styles.mapButtons}>
@@ -128,15 +122,14 @@ export default function MapScreen() {
           <SectionHeader eyebrow="ON THE MAP" title={`จุดบนแผนที่ ${markers.length} จุด`} />
           {/* แผนที่ใช้กับ screen reader ได้ยาก จึงมีรายการเดียวกันให้แตะเลือกได้ */}
           {markers.map((m) => {
-            const isActivity = m.id.startsWith('a:');
-            const a = isActivity ? activities.find((x) => x.id === m.id.slice(2)) : undefined;
+            const a = activities.find((x) => x.id === m.id.slice(2));
             return (
               <PlaceRow
                 key={m.id}
-                color={isActivity ? m.color : BROADCAST_COLOR}
-                icon={a ? CATEGORIES[a.category].icon : 'megaphone'}
-                title={isActivity ? m.title : m.subtitle ?? 'ประกาศ'}
-                sub={isActivity ? m.subtitle ?? '' : 'ประกาศ'}
+                color={m.color}
+                icon={a ? CATEGORIES[a.category].icon : 'calendar'}
+                title={m.title}
+                sub={m.subtitle ?? ''}
                 selected={selectedId === m.id}
                 onPress={() => setSelectedId(selectedId === m.id ? null : m.id)}
               />

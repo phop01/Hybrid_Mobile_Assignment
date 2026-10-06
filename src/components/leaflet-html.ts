@@ -50,7 +50,7 @@ ${body}
 </script></body></html>`;
 }
 
-/** แผนที่หมุดหลายจุด + โหมดปักหมุด (แท็บแผนที่, ฟอร์มสร้างกิจกรรม/ประกาศ) */
+/** แผนที่หมุดหลายจุด + โหมดปักหมุด (แท็บแผนที่, ฟอร์มสร้างกิจกรรม) */
 export function pickMapHtml(props: {
   markers: MapMarker[];
   pickable: boolean;
@@ -69,11 +69,13 @@ export function pickMapHtml(props: {
   // ปุ่มซูมอยู่ซ้ายล่าง: มุมบนเป็นที่ของป้าย/ปุ่มที่หน้าแอปวางทับ
   L.control.zoom({ position: 'bottomleft' }).addTo(map);
   addTiles(map);
+  // หมุดกิจกรรมอยู่ชั้นบนสุด: ป้ายชื่ออาคารเป็น marker (ชั้น 600) จะทับจุดวงกลม (ชั้น 400) จนมองไม่เห็น
+  map.createPane('dots').style.zIndex = 650;
   var bounds = [];
   markers.forEach(function (m) {
     var label = document.createElement('span');
     label.textContent = m.title + (m.subtitle ? ' · ' + m.subtitle : ''); // textContent ไม่ตีความเป็น HTML
-    L.circleMarker([m.latitude, m.longitude], { radius: 11, color: '#fff', weight: 2, fillColor: m.color, fillOpacity: 1 })
+    L.circleMarker([m.latitude, m.longitude], { pane: 'dots', radius: 11, color: '#fff', weight: 2, fillColor: m.color, fillOpacity: 1 })
       .addTo(map).bindTooltip(label)
       .on('click', function (e) {
         L.DomEvent.stopPropagation(e);
@@ -88,7 +90,7 @@ export function pickMapHtml(props: {
     bounds.push([m.latitude, m.longitude]);
   });
   if (user) {
-    L.circleMarker([user.latitude, user.longitude], { radius: 8, color: '#fff', weight: 2, fillColor: '#2563EB', fillOpacity: 1 })
+    L.circleMarker([user.latitude, user.longitude], { pane: 'dots', radius: 8, color: '#fff', weight: 2, fillColor: '#2563EB', fillOpacity: 1 })
       .addTo(map).bindTooltip('ตำแหน่งของคุณ');
     bounds.push([user.latitude, user.longitude]);
   }
@@ -118,9 +120,27 @@ export function pickMapHtml(props: {
   onHost = function (data) {
     if (data.type === '${HOST_SET_PICKED}') setPicked(data, true);
   };
-  if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
-  else if (bounds.length === 1) map.setView(bounds[0], 16);
-  else map.setView([${DEFAULT_CENTER.latitude}, ${DEFAULT_CENTER.longitude}], 16); // ซูม 16 = เห็นชื่ออาคาร
+  // จัดมุมมองให้เห็นทุกหมุด ทำเฉพาะตอนแผนที่มีขนาดจริงแล้ว
+  // (การ์ดแผนที่ตอนเปิดหน้ายังกว้าง/สูงเกือบ 0 ถ้าจัดตอนนั้น Leaflet จะซูมสุดจนไม่เห็นหมุด)
+  var fitted = false, userMoved = false;
+  map.on('dragstart', function () { userMoved = true; });
+  map.getContainer().addEventListener('wheel', function () { userMoved = true; }, { passive: true });
+  function fitAll() {
+    if (fitted || userMoved) return;
+    map.invalidateSize();
+    var size = map.getSize();
+    if (size.x < 50 || size.y < 50) return;
+    // เผื่อขอบบน/ล่างมากกว่า: หน้าแอปวางป้ายชื่อไว้มุมบน และปุ่มไว้มุมล่าง
+    if (bounds.length > 1) map.fitBounds(bounds, { paddingTopLeft: [40, 80], paddingBottomRight: [40, 70], maxZoom: 17 });
+    else if (bounds.length === 1) map.setView(bounds[0], 16);
+    else map.setView([${DEFAULT_CENTER.latitude}, ${DEFAULT_CENTER.longitude}], 16); // ซูม 16 = เห็นชื่ออาคาร
+    fitted = true;
+  }
+  // Leaflet ต้องมีมุมมองเริ่มต้นก่อนวาด tile → ตั้งไว้ก่อน แล้วค่อยจัดให้พอดีเมื่อรู้ขนาด
+  map.setView([${DEFAULT_CENTER.latitude}, ${DEFAULT_CENTER.longitude}], 15);
+  fitAll();
+  if (window.ResizeObserver) new ResizeObserver(function () { map.invalidateSize(); fitAll(); }).observe(map.getContainer());
+  window.addEventListener('resize', fitAll);
   ${props.campusLabels ? campusLabelsScript(`if (pickable) { setPicked(p, false); send({ type: '${MSG_PICK}', latitude: p.latitude, longitude: p.longitude }); }`) : ''}`,
   );
 }

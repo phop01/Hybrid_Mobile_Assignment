@@ -4,7 +4,6 @@ import type {
   AccountRole,
   Activity,
   Announcement,
-  Category,
   NewActivityInput,
   OrganizerActivity,
   PhotoSource,
@@ -40,6 +39,7 @@ export type SignUpInput = {
   studentId: string;
   fullName: string;
   faculty: string;
+  major?: string;
   password: string;
   /** บทบาทของบัญชี (เลือกได้มากกว่า 1) ไม่ส่ง = นักศึกษา */
   roles?: AccountRole[];
@@ -54,10 +54,12 @@ export async function setActiveRole(token: string, role: AccountRole): Promise<U
   return parseOne(await apiRequest('/me/role', { method: 'POST', token, body: { role } }), isUser, 'ผู้ใช้');
 }
 
-/** แก้โปรไฟล์: interests = หมวดที่สนใจ · avatarBase64 = รูป JPEG (null = ลบรูป) ส่งเฉพาะช่องที่เปลี่ยน */
+export type ProfileInput = { major?: string | null; avatarBase64?: string | null };
+
+/** แก้โปรไฟล์: major = สาขา (null = ไม่ระบุ) · avatarBase64 = รูป JPEG (null = ลบรูป) ส่งเฉพาะช่องที่เปลี่ยน */
 export async function updateProfile(
   token: string,
-  input: { interests?: Category[]; avatarBase64?: string | null },
+  input: ProfileInput,
 ): Promise<User> {
   return parseOne(await apiRequest('/me/profile', { method: 'PUT', token, body: input }), isUser, 'ผู้ใช้');
 }

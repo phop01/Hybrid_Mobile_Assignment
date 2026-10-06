@@ -122,7 +122,7 @@ export default function MyScreen() {
             title="ยังไม่ได้ลงทะเบียนกิจกรรม"
             message="เลือกกิจกรรมที่สนใจแล้วกดลงทะเบียน"
             actionLabel="ไปดูกิจกรรม"
-            onAction={() => router.navigate('/activities')}
+            onAction={() => router.navigate('/')}
           />
         )
       }
@@ -133,9 +133,9 @@ export default function MyScreen() {
 const styles = StyleSheet.create({
   list: { padding: Spacing.lg, gap: Spacing.md, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   sectionTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 0.4, color: Colors.textMuted, marginTop: Spacing.sm },
-  summary: { backgroundColor: Colors.ink, borderRadius: Radius.xxl, padding: Spacing.xl, gap: Spacing.sm },
+  summary: { backgroundColor: Colors.ink, borderRadius: Radius.xxl, padding: Spacing.lg, gap: Spacing.sm },
   eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.6, color: Colors.highlight },
-  summaryTitle: { fontSize: 40, fontWeight: '800', color: Colors.onPrimary },
+  summaryTitle: { fontSize: 32, fontWeight: '800', color: Colors.onPrimary },
   summaryUnit: { fontSize: 16, fontWeight: '600', color: Colors.onPrimaryMuted },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
 });

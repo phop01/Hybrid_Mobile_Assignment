@@ -9,6 +9,8 @@ import { readFileSync } from 'node:fs';
 
 // อาคารจริงของ มข. วิทยาเขตหนองคาย (ไฟล์เดียวกับที่แอปใช้วาดป้ายบนแผนที่)
 const CAMPUS_PLACES = JSON.parse(readFileSync(new URL('../src/data/campus-places.json', import.meta.url), 'utf8'));
+/** สาขาของคณะสหวิทยาการ (ใช้ร่วมกับแอป) */
+export const MAJORS = JSON.parse(readFileSync(new URL('../src/data/majors.json', import.meta.url), 'utf8'));
 
 // กลางวิทยาเขต (ถ.มิตรภาพ ต.หนองกอมเกาะ อ.เมืองหนองคาย) ใช้กับสถานที่นอกวิทยาเขตที่ตั้งใจให้อยู่ไกล
 const CAMPUS = { latitude: 17.8045, longitude: 102.7473 };
@@ -181,6 +183,7 @@ export const SEED_USERS = [
     password: 'campus1234',
     fullName: 'สมหญิง รักเรียน',
     faculty: 'คณะสหวิทยาการ มข. วิทยาเขตหนองคาย',
+    major: 'วิทยาการคอมพิวเตอร์และสารสนเทศ',
     role: 'student',
   },
   {
@@ -195,28 +198,3 @@ export const SEED_USERS = [
     department: 'activities',
   },
 ];
-
-/** ประกาศตัวอย่างจากเจ้าหน้าที่ (ยังไม่หมดอายุ) มีทั้งแบบข้อความล้วนและแบบมีโปสเตอร์ */
-export function buildBroadcasts() {
-  const point = (id, name) => (({ radiusM, ...p }) => p)(at_(id, name));
-  return [
-    {
-      id: 'demo-broadcast-market',
-      message: 'NK Market ตลาดนัดนักศึกษา 16:00–20:00 น. ลานหน้าห้องสมุด · ถนนหน้าห้องสมุดปิดชั่วคราว ใช้เส้นทางข้างอาคารเรียนรวม 2',
-      location: point('library', 'ลานหน้าห้องสมุดช่อวายุภักษ์'),
-      imageUrl: '/posters/demo-broadcast-market.jpg',
-      byId: 'org1',
-      createdAt: at(-10 * MINUTE, false),
-      expiresAt: at(10 * HOUR, false),
-    },
-    {
-      id: 'demo-broadcast-water',
-      message: 'ปิดน้ำประปาอาคารเรียนรวม 1 (อครเก่า) ชั่วคราวระหว่างซ่อมท่อ ใช้ห้องน้ำอาคารเรียนรวม 2 แทน ขออภัยในความไม่สะดวก',
-      location: point('classroom-1', 'อาคารเรียนรวม 1 (อครเก่า)'),
-      imageUrl: null,
-      byId: 'org1',
-      createdAt: at(-30 * MINUTE, false),
-      expiresAt: at(8 * HOUR, false),
-    },
-  ];
-}

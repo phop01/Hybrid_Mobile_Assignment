@@ -15,6 +15,8 @@ export type SignUpValues = {
   studentId: string;
   fullName: string;
   faculty: string;
+  /** สาขาวิชา (นักศึกษา ไม่บังคับ) */
+  major?: string;
   password: string;
   confirm: string;
   /** บทบาทของบัญชี (เลือกได้บทบาทเดียว) ไม่ระบุ = นักศึกษา */
@@ -29,7 +31,8 @@ export function validateSignUp(v: SignUpValues): SignUpErrors {
   if (roles.length !== 1) errors.roles = 'เลือกบทบาท 1 บทบาท';
   if (!/^\d{10}$/.test(v.studentId)) errors.studentId = `${staff ? 'รหัสนักศึกษา/บุคลากร' : 'รหัสนักศึกษา'}ต้องเป็นตัวเลข 10 หลัก`;
   if (v.fullName.trim().length < 4) errors.fullName = 'กรุณากรอกชื่อ-นามสกุล';
-  if (v.faculty.trim().length < 2) errors.faculty = staff ? 'กรุณากรอกคณะ/หน่วยงาน' : 'กรุณากรอกคณะ';
+  // เจ้าหน้าที่ไม่ต้องกรอกหน่วยงาน (มีบทบาทเดียว server ใส่ให้)
+  if (!staff && v.faculty.trim().length < 2) errors.faculty = 'กรุณากรอกคณะ';
   if (v.password.length < 8) errors.password = 'รหัสผ่านอย่างน้อย 8 ตัวอักษร';
   if (v.confirm !== v.password) errors.confirm = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน';
   return errors;

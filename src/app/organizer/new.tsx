@@ -3,7 +3,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import { PickMap } from '@/components/pick-map';
 import { Banner, Button, Card, Chip, Screen, SectionTitle, TextField } from '@/components/ui';
@@ -26,6 +26,7 @@ import { pickCoverImage, preparePhotoForUpload } from '@/services/photo';
 import { useActivities } from '@/state/activities-context';
 import { useOrganizerSession } from '@/state/session-context';
 import { Text } from '@/components/app-text';
+import { HScroll } from '@/components/h-scroll';
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
 const RADII = [50, 100, 150, 300];
@@ -159,11 +160,11 @@ export default function NewActivityScreen() {
 
         <Card>
           <SectionTitle>วันและเวลา</SectionTitle>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollRow}>
+          <HScroll contentContainerStyle={styles.scrollRow}>
             {DAYS.map((d) => (
               <Chip key={d} label={dayLabel(d)} selected={values.dayOffset === d} onPress={() => set('dayOffset', d)} />
             ))}
-          </ScrollView>
+          </HScroll>
           <View style={styles.row}>
             <View style={styles.flex}>
               <TextField label="เริ่ม (HH:MM)" value={values.startTime} onChangeText={(t) => set('startTime', t)} error={errors.startTime} maxLength={5} />

@@ -48,7 +48,7 @@ export function HeroCard({
           <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.scrim }]} />
         </>
       ) : (
-        <Ionicons name="sparkles" size={150} color={Colors.primary} style={styles.deco} />
+        <Ionicons name="sparkles" size={120} color={Colors.primary} style={styles.deco} />
       )}
       {tag ? (
         <View style={styles.tag}>
@@ -72,7 +72,7 @@ export function HeroCard({
               accessibilityRole="button"
               accessibilityLabel={actionLabel ?? title}
               style={({ pressed }) => [styles.arrow, pressed && { opacity: 0.85 }]}>
-              <Ionicons name="arrow-forward" size={24} color={Colors.ink} style={{ transform: [{ rotate: '-45deg' }] }} />
+              <Ionicons name="arrow-forward" size={20} color={Colors.ink} style={{ transform: [{ rotate: '-45deg' }] }} />
             </Pressable>
           ) : null}
         </View>
@@ -83,16 +83,16 @@ export function HeroCard({
 
 const styles = StyleSheet.create({
   hero: {
-    minHeight: 250,
+    minHeight: 165,
     borderRadius: Radius.xxl,
     overflow: 'hidden',
-    padding: Spacing.xl - 2,
+    padding: Spacing.lg,
     justifyContent: 'space-between',
-    gap: Spacing.xl,
+    gap: Spacing.lg,
     backgroundColor: Colors.ink,
   },
   // ไม่มีป้ายด้านบน → ชิดล่าง ไม่เหลือช่องว่างกลางการ์ด
-  noTag: { minHeight: 190, justifyContent: 'flex-end' },
+  noTag: { minHeight: 130, justifyContent: 'flex-end' },
   deco: { position: 'absolute', right: -24, top: -16, opacity: 0.4 },
   tag: {
     flexDirection: 'row',
@@ -106,14 +106,14 @@ const styles = StyleSheet.create({
   },
   tagText: { fontSize: 12, fontWeight: '600', color: Colors.text },
   eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 2, color: Colors.highlight },
-  title: { fontSize: 27, lineHeight: 37, fontWeight: '800', color: Colors.onPrimary },
+  title: { fontSize: 20, lineHeight: 28, fontWeight: '800', color: Colors.onPrimary },
   subtitle: { fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.88)' },
   bottom: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.md },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   arrow: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.highlight,
     alignItems: 'center',
     justifyContent: 'center',

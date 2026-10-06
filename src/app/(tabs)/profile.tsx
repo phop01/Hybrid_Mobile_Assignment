@@ -1,25 +1,26 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/app-text';
 import { Avatar } from '@/components/avatar';
 import { HoursCard } from '@/components/hours-card';
 import { LoginPrompt } from '@/components/login-prompt';
 import { RoleSwitcher } from '@/components/role-switcher';
+import { SelectField } from '@/components/select-field';
 import { TopBar } from '@/components/top-bar';
-import { Banner, Button, Card, Chip, Screen, SectionHeader, StatPill, type IconName } from '@/components/ui';
+import { Banner, Button, Card, Screen, SectionHeader, StatPill, type IconName } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { summarizeAttendance } from '@/lib/attendance';
 import { computeBadges } from '@/lib/badges';
-import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
+import { MAJORS } from '@/lib/majors';
 import { confirmAction } from '@/lib/platform-actions';
 import { pickAvatarImage, preparePhotoForUpload } from '@/services/photo';
 import { useActivities } from '@/state/activities-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 import { useAuthenticatedSession, useSession } from '@/state/session-context';
-import type { Category } from '@/types/models';
+import { HScroll } from '@/components/h-scroll';
 
 export default function ProfileScreen() {
   const session = useAuthenticatedSession();
@@ -46,7 +47,15 @@ export default function ProfileScreen() {
   const summary = summarizeAttendance(registrations, activities);
   const badges = computeBadges(summary);
   const earnedCount = badges.filter((b) => b.earned).length;
-  const interests = user.interests ?? [];
+  // กิจกรรมที่เข้าร่วมแล้วล่าสุด แสดงในการ์ดชั่วโมงตอนกางดู
+  const recent = registrations
+    .filter((r) => r.status === 'checked_in')
+    .flatMap((r) => {
+      const activity = activities.find((a) => a.id === r.activityId);
+      return activity ? [activity] : [];
+    })
+    .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
+    .slice(0, 3);
 
   const saveProfile = async (input: Parameters<typeof updateProfile>[0]) => {
     setSaving(true);
@@ -63,16 +72,14 @@ export default function ProfileScreen() {
   const changeAvatar = async () => {
     try {
       const uri = await pickAvatarImage();
-      if (uri) await saveProfile({ avatarBase64: (await preparePhotoForUpload(uri)).base64 });
+      if (uri)
+        await saveProfile({
+          avatarBase64: (await preparePhotoForUpload(uri)).base64,
+        });
     } catch (e) {
       setProfileError(e instanceof Error ? e.message : 'ใช้รูปนี้ไม่ได้ ลองเลือกรูปอื่น');
     }
   };
-
-  // กำลังบันทึกอยู่ไม่รับแตะซ้ำ: ไม่งั้นการแตะสองหมวดติดกันจะอ่านรายการเดิมทั้งคู่ แล้วหมวดแรกหายไป
-  const toggleInterest = (category: Category) =>
-    !saving &&
-    saveProfile({ interests: interests.includes(category) ? interests.filter((c) => c !== category) : [...interests, category] });
 
   const onSignOut = async () => {
     const ok = await confirmAction(
@@ -108,6 +115,7 @@ export default function ProfileScreen() {
               {isOrganizer ? 'เจ้าหน้าที่ · รหัสบุคลากร' : 'รหัสนักศึกษา'} {user.studentId}
             </Text>
             <Text style={styles.idText}>{user.faculty}</Text>
+            {user.major ? <Text style={styles.idText}>สาขา{user.major}</Text> : null}
           </View>
         </View>
         {isOrganizer ? (
@@ -137,35 +145,31 @@ export default function ProfileScreen() {
 
       {profileError ? <Banner tone="danger">{profileError}</Banner> : null}
 
+      {isOrganizer ? null : (
+        <Card>
+          <SelectField
+            label="สาขาวิชา"
+            value={user.major ?? ''}
+            options={MAJORS}
+            onChange={(major) => !saving && saveProfile({ major: major || null })}
+            placeholder="แตะเพื่อเลือกสาขา"
+          />
+        </Card>
+      )}
+
       {isOrganizer ? (
         <Card>
           <SectionHeader eyebrow="ORGANIZER" title="เจ้าหน้าที่งานกิจกรรมนักศึกษา" />
-          <Text style={styles.muted}>สร้างกิจกรรมและตรวจหลักฐานการเข้าร่วมที่แท็บ “จัดการ” · ส่งประกาศจากหน้า “วันนี้”</Text>
+          <Text style={styles.muted}>สร้างกิจกรรมและตรวจหลักฐานการเข้าร่วมที่แท็บ “จัดการ”</Text>
           <Button title="ไปหน้าจัดการ" icon="clipboard-outline" onPress={() => router.push('/manage')} />
         </Card>
       ) : (
         <>
-          <Card>
-            <SectionHeader eyebrow="INTERESTS" title="ความสนใจ" />
-            <Text style={styles.muted}>เลือกได้หลายหมวด หน้า “วันนี้” จะแนะนำกิจกรรมใหม่ล่าสุดในหมวดที่เลือก</Text>
-            <View style={styles.chips}>
-              {CATEGORY_ORDER.map((c) => (
-                <Chip
-                  key={c}
-                  label={CATEGORIES[c].label}
-                  color={CATEGORIES[c].color}
-                  selected={interests.includes(c)}
-                  onPress={() => toggleInterest(c)}
-                />
-              ))}
-            </View>
-          </Card>
-
-          <HoursCard summary={summary} />
+          <HoursCard summary={summary} recent={recent} />
 
           <View style={{ gap: Spacing.md }}>
             <SectionHeader eyebrow="BADGES" title={`เหรียญความสำเร็จ ${earnedCount}/${badges.length}`} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.badges}>
+            <HScroll contentContainerStyle={styles.badges}>
               {badges.map((b) => (
                 <View
                   key={b.id}
@@ -179,7 +183,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.badgeHint, b.earned && { color: Colors.highlight }]}>{b.earned ? 'ได้แล้ว' : b.hint}</Text>
                 </View>
               ))}
-            </ScrollView>
+            </HScroll>
           </View>
         </>
       )}
@@ -189,7 +193,6 @@ export default function ProfileScreen() {
         {isOrganizer ? null : (
           <>
             <LinkRow icon="ticket" label="กิจกรรมที่ลงทะเบียน / เช็กอิน" onPress={() => router.push('/my')} />
-            <LinkRow icon="star" label="กิจกรรมที่บันทึกไว้" onPress={() => router.push('/saved')} />
             <LinkRow icon="time" label="ชั่วโมงกิจกรรมแยกตามหมวด" onPress={() => router.push('/hours')} />
           </>
         )}
@@ -218,9 +221,19 @@ function LinkRow({ icon, label, onPress }: { icon: IconName; label: string; onPr
 }
 
 const styles = StyleSheet.create({
-  identity: { backgroundColor: Colors.ink, borderRadius: Radius.xxl, padding: Spacing.xl, gap: Spacing.lg },
+  identity: {
+    backgroundColor: Colors.ink,
+    borderRadius: Radius.xxl,
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
-  avatarRing: { borderRadius: 42, borderWidth: 2, borderColor: Colors.highlight, padding: 2 },
+  avatarRing: {
+    borderRadius: 42,
+    borderWidth: 2,
+    borderColor: Colors.highlight,
+    padding: 2,
+  },
   cameraBadge: {
     position: 'absolute',
     right: -2,
@@ -237,10 +250,18 @@ const styles = StyleSheet.create({
   name: { fontSize: 21, fontWeight: '800', color: Colors.onPrimary },
   idText: { fontSize: 13, color: Colors.onPrimaryMuted, lineHeight: 19 },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  removePhoto: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
-  removePhotoText: { fontSize: 12, color: Colors.onPrimaryMuted, textDecorationLine: 'underline' },
+  removePhoto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  removePhotoText: {
+    fontSize: 12,
+    color: Colors.onPrimaryMuted,
+    textDecorationLine: 'underline',
+  },
   muted: { fontSize: 13, color: Colors.textMuted, lineHeight: 19 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   badges: { gap: Spacing.md, paddingRight: Spacing.lg },
   badge: {
     width: 116,
@@ -253,11 +274,33 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   badgeOn: { backgroundColor: Colors.ink, borderColor: Colors.ink },
-  medal: { width: 54, height: 54, borderRadius: 27, backgroundColor: Colors.background, alignItems: 'center', justifyContent: 'center' },
+  medal: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   medalOn: { backgroundColor: Colors.highlight },
-  badgeLabel: { fontSize: 13, fontWeight: '800', color: Colors.text, textAlign: 'center' },
-  badgeHint: { fontSize: 11, color: Colors.textMuted, textAlign: 'center', lineHeight: 15 },
-  linkRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: 48 },
+  badgeLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  badgeHint: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 15,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    minHeight: 48,
+  },
   linkIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   linkLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
 });

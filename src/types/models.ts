@@ -110,6 +110,8 @@ export type User = {
   studentId: string;
   fullName: string;
   faculty: string;
+  /** สาขาวิชา (นักศึกษา ไม่บังคับ) */
+  major?: string;
   /** บทบาทที่ใช้อยู่ตอนนี้ (server ตั้งตาม activeRole) */
   role: Role;
   /** มีเฉพาะตอนใช้บทบาทเจ้าหน้าที่ */
@@ -117,8 +119,6 @@ export type User = {
   /** บทบาททั้งหมดที่บัญชีนี้มี */
   roles?: AccountRole[];
   activeRole?: AccountRole;
-  /** ความสนใจที่เลือกเอง (หมวดกิจกรรม) ใช้แนะนำกิจกรรมในหน้า "วันนี้" */
-  interests?: Category[];
   /** รูปโปรไฟล์ (path ที่ server) null = ยังไม่ตั้ง */
   avatarUrl?: string | null;
 };
@@ -144,24 +144,10 @@ export type Announcement = {
 
 export type Place = { name: string; latitude: number; longitude: number };
 
-// ---------- ประกาศทั่ววิทยาเขต + กล่องแจ้งเตือน ----------
+// ---------- กล่องแจ้งเตือน ----------
 
-export type Broadcast = {
-  id: string;
-  message: string;
-  location: Place;
-  /** โปสเตอร์ประกอบประกาศ (ไม่บังคับ) */
-  imageUrl?: string | null;
-  byId: string;
-  byName: string;
-  createdAt: string;
-  expiresAt: string;
-};
-
-export type NewBroadcastInput = { message: string; location: Place; hours: number; posterBase64?: string };
-
-/** แตะแจ้งเตือนแล้วไปหน้าไหน: กิจกรรม / การลงทะเบียน / หน้าตรวจหลักฐานของผู้จัด / ประกาศ */
-export type InboxKind = 'activity' | 'registration' | 'manage' | 'broadcast';
+/** แตะแจ้งเตือนแล้วไปหน้าไหน: กิจกรรม / การลงทะเบียน / หน้าตรวจหลักฐานของผู้จัด */
+export type InboxKind = 'activity' | 'registration' | 'manage';
 
 export type InboxItem = {
   id: string;

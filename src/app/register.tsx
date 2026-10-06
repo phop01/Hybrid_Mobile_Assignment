@@ -8,9 +8,11 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { HeroCard } from '@/components/hero-card';
+import { SelectField } from '@/components/select-field';
 import { Banner, Button, Card, Screen, SectionHeader, TextField } from '@/components/ui';
 import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { safeNext, validateSignUp, type SignUpErrors, type SignUpValues } from '@/lib/auth-validation';
+import { MAJORS } from '@/lib/majors';
 import { ROLE_INFO, ROLE_ORDER } from '@/lib/roles';
 import { ApiError } from '@/services/api-client';
 import { setPostLoginRedirect, useSession } from '@/state/session-context';
@@ -24,6 +26,7 @@ export default function RegisterScreen() {
     studentId: '',
     fullName: '',
     faculty: '',
+    major: '',
     password: '',
     confirm: '',
     roles: ['student'],
@@ -57,7 +60,7 @@ export default function RegisterScreen() {
     try {
       setPostLoginRedirect(safeNext(params.next));
       const { confirm: _confirm, ...input } = values;
-      await signUp({ ...input, fullName: input.fullName.trim(), faculty: input.faculty.trim() });
+      await signUp({ ...input, fullName: input.fullName.trim(), faculty: input.faculty.trim(), major: (student && input.major) || undefined });
     } catch (e) {
       setPostLoginRedirect(null);
       if (e instanceof ApiError) setErrors(e.fields as SignUpErrors);
@@ -122,14 +125,30 @@ export default function RegisterScreen() {
             placeholder={staff && !student ? 'เช่น 1000000009' : 'เช่น 6601234567'}
           />
           <TextField label="ชื่อ-นามสกุล" value={values.fullName} onChangeText={set('fullName')} error={errors.fullName} autoComplete="name" />
-          <TextField
-            label={staff ? (student ? 'คณะ / หน่วยงาน' : 'หน่วยงาน') : 'คณะ'}
-            value={values.faculty}
-            onChangeText={set('faculty')}
-            error={errors.faculty}
-            placeholder={unitHint}
-            hint={student ? 'ใช้เติมฟอร์มลงทะเบียนกิจกรรมให้อัตโนมัติ' : 'แสดงในโปรไฟล์และประกาศที่คุณส่ง'}
-          />
+          {/* เจ้าหน้าที่มีบทบาทเดียว (งานกิจกรรมนักศึกษา) จึงไม่ต้องกรอกหน่วยงาน */}
+          {student ? (
+            <>
+              <TextField
+                label="คณะ"
+                value={values.faculty}
+                onChangeText={set('faculty')}
+                error={errors.faculty}
+                placeholder={unitHint}
+                hint="ใช้เติมฟอร์มลงทะเบียนกิจกรรมให้อัตโนมัติ"
+              />
+              <SelectField
+                label="สาขาวิชา (ไม่บังคับ)"
+                value={values.major ?? ''}
+                options={MAJORS}
+                onChange={(major) => {
+                  setValues((v) => ({ ...v, major }));
+                  setErrors((e) => ({ ...e, major: undefined }));
+                }}
+                placeholder="แตะเพื่อเลือกสาขา"
+                error={errors.major}
+              />
+            </>
+          ) : null}
           <TextField
             label="รหัสผ่าน"
             value={values.password}

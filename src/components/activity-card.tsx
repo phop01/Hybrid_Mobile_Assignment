@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Image } from 'expo-image';
 import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -10,6 +9,7 @@ import { formatDateRange } from '@/lib/format';
 import { toAbsoluteUrl } from '@/services/api-config';
 import type { Activity } from '@/types/models';
 
+import { PosterImage } from './poster-image';
 import { StatusBadge, type DisplayStatus } from './status-badge';
 import { Text } from '@/components/app-text';
 
@@ -26,7 +26,7 @@ type ActivityCardProps = {
  * การ์ดกิจกรรม ใช้ซ้ำในหน้ากิจกรรม บันทึกไว้ และของฉัน
  * รับข้อมูลผ่าน props อย่างเดียว ไม่ดึงข้อมูลเอง จึงไม่ผูกกับว่าข้อมูลมาจาก API หรือ cache
  *
- * ห่อด้วย memo (สัปดาห์ 12): วัดแล้วกดดาวใบเดียว การ์ด render ซ้ำทั้งรายการ (10/10)
+ * ห่อด้วย memo (สัปดาห์ 12): วัดแล้วกดหัวใจใบเดียว การ์ด render ซ้ำทั้งรายการ (10/10)
  * หลังใส่ memo + ส่ง callback ที่ไม่เปลี่ยนทุก render เหลือ 1/10 (ดู __tests__/performance.test.tsx)
  */
 export const ActivityCard = memo(function ActivityCard({
@@ -63,26 +63,29 @@ export const ActivityCard = memo(function ActivityCard({
         accessibilityLabel={`${activity.title}, ${category.label}, ${formatDateRange(activity.startsAt, activity.endsAt)}, ${activity.location.name}, ${seatLabel}`}
         accessibilityHint="เปิดรายละเอียดกิจกรรม"
         style={({ pressed }) => pressed && { opacity: 0.85 }}>
-        {/* ส่วนรูป: รูปปก (ถ้ามี) หรือพื้นสีหมวด + ไอคอนใหญ่ · ป้ายหมวดและชั่วโมงลอยบนรูป (ตกแต่ง label ของการ์ดอ่านแทน) */}
+        {/* ส่วนรูป: รูปปกสัดส่วน 16:9 เท่าโปสเตอร์ (เห็นเต็มใบ ไม่มีป้ายทับตัวหนังสือบนโปสเตอร์) หรือพื้นสีหมวด + ไอคอนใหญ่ */}
         <View style={styles.media} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {activity.imageUrl ? (
-            <Image source={{ uri: toAbsoluteUrl(activity.imageUrl) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+            <PosterImage uri={toAbsoluteUrl(activity.imageUrl)} style={StyleSheet.absoluteFill} />
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.band, { backgroundColor: category.soft }]}>
               <Ionicons name={category.icon} size={84} color={category.color} style={{ opacity: 0.28 }} />
             </View>
           )}
-          <View style={styles.categoryChip}>
-            <Ionicons name={category.icon} size={14} color={category.color} />
-            <Text style={[styles.chipText, { color: category.color }]}>{category.label}</Text>
-          </View>
-          <View style={styles.hoursChip}>
-            <Ionicons name="hourglass-outline" size={13} color={Colors.highlight} />
-            <Text style={[styles.chipText, { color: Colors.onPrimary }]}>{activity.hours} ชม.</Text>
-          </View>
         </View>
 
         <View style={styles.body}>
+          {/* ป้ายหมวด · ชั่วโมง · สถานะของฉัน (ตกแต่ง label ของการ์ดอ่านแทน) */}
+          <View style={styles.chips} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <View style={[styles.chip, { backgroundColor: category.soft }]}>
+              <Ionicons name={category.icon} size={13} color={category.color} />
+              <Text style={[styles.chipText, { color: category.color }]}>{category.label}</Text>
+            </View>
+            <View style={[styles.chip, { backgroundColor: Colors.primarySoft }]}>
+              <Ionicons name="hourglass-outline" size={13} color={Colors.primary} />
+              <Text style={[styles.chipText, { color: Colors.primary }]}>{activity.hours} ชม.</Text>
+            </View>
+          </View>
           {status ? <StatusBadge status={status} /> : null}
           <Text style={styles.title}>{activity.title}</Text>
           <View style={styles.meta}>
@@ -106,7 +109,7 @@ export const ActivityCard = memo(function ActivityCard({
           </View>
         </View>
       </Pressable>
-      {/* ปุ่มดาวแยกจากปุ่มการ์ด (ปุ่มซ้อนปุ่มใช้ไม่ได้บนเว็บและ screen reader อ่านสับสน) */}
+      {/* ปุ่มหัวใจแยกจากปุ่มการ์ด (ปุ่มซ้อนปุ่มใช้ไม่ได้บนเว็บและ screen reader อ่านสับสน) */}
       <Pressable
         onPress={() => onToggleFavorite(activity.id)}
         hitSlop={8}
@@ -116,7 +119,7 @@ export const ActivityCard = memo(function ActivityCard({
         }
         accessibilityState={{ selected: isFavorite }}
         style={styles.star}>
-        <Ionicons name={isFavorite ? 'star' : 'star-outline'} size={22} color={isFavorite ? Colors.star : Colors.text} />
+        <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={22} color={isFavorite ? Colors.heart : Colors.text} />
       </Pressable>
     </View>
   );
@@ -132,31 +135,16 @@ const styles = StyleSheet.create({
   },
   // ไม่ใช้ opacity: ทำให้ข้อความสีเทาเหลือ contrast 2.9:1 อ่านยาก ใช้พื้นหลังต่างสีแทน (มีคำว่า "จบแล้ว" บอกอยู่แล้ว)
   ended: { backgroundColor: Colors.background },
-  media: { height: 170, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: Colors.border },
+  media: { width: '100%', aspectRatio: 16 / 9, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: Colors.border },
   band: { alignItems: 'flex-end', justifyContent: 'center', paddingRight: Spacing.xl },
-  categoryChip: {
-    position: 'absolute',
-    top: Spacing.md,
-    left: Spacing.md,
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: Radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-  },
-  hoursChip: {
-    position: 'absolute',
-    bottom: Spacing.md,
-    left: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+    gap: 4,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: Radius.pill,
-    backgroundColor: Colors.scrim,
   },
   chipText: { fontSize: 12, fontWeight: '700' },
   body: { padding: Spacing.md, paddingTop: Spacing.md, gap: 6 },

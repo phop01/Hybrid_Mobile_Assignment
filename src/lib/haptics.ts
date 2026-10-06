@@ -9,7 +9,7 @@ const run = (action: () => Promise<void>) => {
   action().catch(() => undefined);
 };
 
-/** แตะเลือก/สลับ เช่น ชิปหมวด ดาวบันทึก */
+/** แตะเลือก/สลับ เช่น ชิปหมวด หัวใจบันทึก */
 export const hapticSelect = () => run(() => Haptics.selectionAsync());
 /** ทำสำเร็จ เช่น ลงทะเบียน ส่งหลักฐาน */
 export const hapticSuccess = () => run(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));

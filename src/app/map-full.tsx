@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.6, color: Colors.highlight },
   title: { fontSize: 15, fontWeight: '800', color: Colors.onPrimary },
-  layers: { marginTop: Spacing.sm, alignSelf: 'flex-start' },
+  layers: { marginTop: Spacing.sm },
   bottom: { flex: 1, justifyContent: 'flex-end', gap: Spacing.sm },
   bottomButtons: { alignItems: 'flex-end' },
   note: {

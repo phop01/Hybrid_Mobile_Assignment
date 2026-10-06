@@ -20,7 +20,6 @@ const ICONS: Record<InboxKind, { icon: IconName; color: string; bg: string }> = 
   activity: { icon: 'megaphone', color: Colors.primary, bg: Colors.primarySoft },
   registration: { icon: 'ribbon', color: Colors.success, bg: Colors.successSoft },
   manage: { icon: 'document-text', color: Colors.accent, bg: Colors.accentSoft },
-  broadcast: { icon: 'alert-circle', color: Colors.warning, bg: Colors.warningSoft },
 };
 
 /**
@@ -88,7 +87,7 @@ function PushCard() {
   return (
     <View style={styles.webCard}>
       <Text style={styles.webTitle}>เปิดแจ้งเตือน</Text>
-      <Text style={styles.webText}>ให้เด้งทันทีเมื่อเจ้าหน้าที่รับเรื่อง ผลตรวจหลักฐานออก หรือมีประกาศ แม้ปิดแอปอยู่</Text>
+      <Text style={styles.webText}>ให้เด้งทันทีเมื่อผลตรวจหลักฐานออก หรือกิจกรรมที่ลงไว้มีการเปลี่ยนแปลง</Text>
       <Button
         title="เปิดแจ้งเตือน"
         icon="notifications"
@@ -118,7 +117,7 @@ export default function InboxScreen() {
       <LoginPrompt
         icon="notifications-outline"
         title="การแจ้งเตือนของคุณ"
-        message="เข้าสู่ระบบเพื่อรับแจ้งเมื่อมีคนรับเรื่องที่คุณแจ้ง ผลตรวจหลักฐานกิจกรรม หรือประกาศจากเจ้าหน้าที่"
+        message="เข้าสู่ระบบเพื่อรับแจ้งผลตรวจหลักฐานกิจกรรม และข่าวจากกิจกรรมที่ลงทะเบียนไว้"
         next="/inbox"
       />
     );
@@ -168,7 +167,7 @@ export default function InboxScreen() {
           kind="empty"
           icon="notifications-off-outline"
           title="ยังไม่มีแจ้งเตือน"
-          message="เมื่อมีคนรับเรื่องที่คุณแจ้ง ผลตรวจหลักฐานกิจกรรม หรือเจ้าหน้าที่ประกาศ จะเด้งมาที่นี่"
+          message="เมื่อเจ้าหน้าที่ตรวจหลักฐาน หรือกิจกรรมที่ลงไว้มีการเปลี่ยนแปลง จะเด้งมาที่นี่"
         />
       }
     />

@@ -35,21 +35,18 @@ let r = await call('POST', '/tickets', s1, { kind: 'repair', category: 'electric
 check('tickets endpoint removed 404', r.status === 404, String(r.status));
 r = await call('GET', '/tickets', s1);
 check('tickets list removed 404', r.status === 404, String(r.status));
-const since2 = new Date().toISOString();
 r = await call('POST', '/me/presence', s2, { helper: true, latitude: 17.8095, longitude: 102.7505 });
 check('presence endpoint removed 404', r.status === 404);
 
-// ---- โปรไฟล์: ความสนใจ + รูป ----
-r = await call('PUT', '/me/profile', s1, { interests: ['sport', 'volunteer'] });
-check('set interests', r.status === 200 && r.body.interests.join(',') === 'sport,volunteer', JSON.stringify(r.body));
-r = await call('PUT', '/me/profile', s1, { interests: ['sport', 'sport'] });
-check('duplicate interests 400', r.status === 400 && r.body.fields?.interests);
-r = await call('PUT', '/me/profile', s1, { interests: ['cooking'] });
-check('unknown interest 400', r.status === 400);
+// ---- โปรไฟล์: สาขา + รูป ----
+r = await call('PUT', '/me/profile', s1, { major: 'นิติศาสตร์' });
+check('set major', r.status === 200 && r.body.major === 'นิติศาสตร์', JSON.stringify(r.body));
+r = await call('PUT', '/me/profile', s1, { major: 'สาขาที่ไม่มี' });
+check('unknown major 400', r.status === 400 && r.body.fields?.major);
 r = await call('PUT', '/me/profile', s1, { avatarBase64: Buffer.alloc(200, 7).toString('base64') });
 check('non-JPEG avatar 400', r.status === 400);
 r = await call('PUT', '/me/profile', s1, { avatarBase64: JPEG });
-check('set avatar keeps interests', r.status === 200 && /^\/uploads\/avatar-.+\.jpg\?exp=\d+&sig=[0-9a-f]{32}$/.test(r.body.avatarUrl ?? '') && r.body.interests.length === 2, JSON.stringify(r.body));
+check('set avatar keeps major', r.status === 200 && /^\/uploads\/avatar-.+\.jpg\?exp=\d+&sig=[0-9a-f]{32}$/.test(r.body.avatarUrl ?? '') && r.body.major === 'นิติศาสตร์', JSON.stringify(r.body));
 const avatarRes = await fetch(BASE + r.body.avatarUrl);
 check('avatar image served with signature', avatarRes.status === 200);
 check('avatar without signature 404', (await fetch(BASE + r.body.avatarUrl.split('?')[0])).status === 404);
@@ -60,33 +57,20 @@ check('old avatar file removed', (await fetch(BASE + oldAvatar)).status === 404)
 r = await call('PUT', '/me/profile', s1, { avatarBase64: null });
 check('remove avatar', r.status === 200 && r.body.avatarUrl === null);
 r = await call('GET', '/me', s1);
-check('/me includes profile', Array.isArray(r.body.interests) && r.body.avatarUrl === null);
-r = await call('PUT', '/me/profile', null, { interests: [] });
+check('/me includes profile', r.body.major === 'นิติศาสตร์' && r.body.avatarUrl === null);
+r = await call('PUT', '/me/profile', s1, { major: null });
+check('clear major', r.status === 200 && r.body.major === undefined);
+r = await call('PUT', '/me/profile', null, { major: null });
 check('profile needs login 401', r.status === 401);
 
-// ---- ประกาศ ----
-r = await call('POST', '/broadcasts', s1, { message: 'ทดสอบประกาศ', location: { name: 'x', latitude: 1, longitude: 1 }, hours: 2 });
-check('student broadcast 403', r.status === 403);
-const bLoc = { name: 'หน้าหอพัก', latitude: 17.806, longitude: 102.746 };
-r = await call('POST', '/broadcasts', org, { message: 'ปิดถนนหน้าหอพักชั่วคราว', location: bLoc, hours: 3 });
-check('broadcast without poster 201', r.status === 201 && r.body.imageUrl === null, JSON.stringify(r.body));
-r = await call('POST', '/broadcasts', org, { message: 'ตลาดนัดนักศึกษาเย็นนี้', location: bLoc, hours: 3, posterBase64: JPEG });
-check('broadcast with poster 201', r.status === 201 && /^\/uploads\/broadcast-.+\.jpg$/.test(r.body.imageUrl ?? ''), JSON.stringify(r.body));
-const posterRes = await fetch(BASE + r.body.imageUrl);
-check('poster image served', posterRes.status === 200 && posterRes.headers.get('content-type') === 'image/jpeg');
-r = await call('POST', '/broadcasts', org, { message: 'โปสเตอร์ไม่ใช่ JPEG', location: bLoc, hours: 3, posterBase64: Buffer.alloc(200, 7).toString('base64') });
-check('non-JPEG poster 400', r.status === 400);
+// ---- ประกาศทั่ววิทยาเขตถูกเอาออกแล้ว ----
+r = await call('GET', '/broadcasts', org);
+check('broadcasts removed 404', r.status === 404);
 const demoPoster = await fetch(BASE + '/posters/demo-hackathon.jpg');
 check('demo poster served', demoPoster.status === 200 && demoPoster.headers.get('content-type') === 'image/jpeg');
 r = await call('GET', '/activities', s1);
 const seeded = r.body.filter((a) => a.imageUrl?.startsWith('/posters/'));
 check('seed activities have poster covers', seeded.length === 8, `${seeded.length}`);
-r = await call('GET', `/me/inbox?since=${since2}`, s1);
-check('everyone got broadcast', r.body.some((n) => n.kind === 'broadcast'));
-r = await call('GET', '/broadcasts', s1);
-check('list broadcasts', r.status === 200 && r.body.length >= 1);
-r = await call('GET', '/broadcasts', null);
-check('broadcasts need login 401', r.status === 401);
 
 const start = new Date(Date.now() + 2 * 3600e3);
 r = await call('POST', '/activities', org, {
@@ -128,7 +112,7 @@ r = await call('POST', '/auth/register', null, { studentId: `8${String(Date.now(
 check('facilities role removed 400', r.status === 400 && r.body.fields?.roles, JSON.stringify(r.body));
 r = await call('POST', '/auth/register', null, { studentId: `8${String(Date.now()).slice(-9)}`, fullName: 'บุคลากร สองบทบาท', faculty: 'งานกิจการนักศึกษา', password: 'test12345', roles: ['activities', 'student'] });
 check('sign up with two roles 400', r.status === 400 && r.body.fields?.roles, JSON.stringify(r.body));
-r = await call('POST', '/auth/register', null, { studentId: `8${String(Date.now()).slice(-9)}`, fullName: 'บุคลากร งานกิจกรรม', faculty: 'งานกิจการนักศึกษา', password: 'test12345', roles: ['activities'] });
+r = await call('POST', '/auth/register', null, { studentId: `8${String(Date.now()).slice(-9)}`, fullName: 'บุคลากร งานกิจกรรม', password: 'test12345', roles: ['activities'] });
 check('sign up as activities staff', r.status === 201 && r.body.user?.roles?.join(',') === 'activities', JSON.stringify(r.body));
 r = await call('GET', '/organizer/activities', r.body.token);
 check('new staff account works as activities staff', r.status === 200);

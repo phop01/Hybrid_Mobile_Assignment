@@ -1,11 +1,11 @@
 // สัปดาห์ 12: วัดก่อนปรับ (measure before optimizing)
-// วัดว่ากดดาวที่การ์ดใบเดียว แล้วการ์ดในรายการ render ซ้ำกี่ใบ
+// วัดว่ากดหัวใจที่การ์ดใบเดียว แล้วการ์ดในรายการ render ซ้ำกี่ใบ
 // นับจาก formatDateRange ที่การ์ดเรียก 2 ครั้งต่อการ render หนึ่งครั้ง (ใน accessibilityLabel และข้อความวันที่)
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import ActivitiesScreen from '@/app/(tabs)/activities';
+import { ActivityBrowser } from '@/components/activity-browser';
 import { FavoritesProvider } from '@/state/favorites-context';
 
 import { makeActivity } from '../test-utils/fixtures';
@@ -43,11 +43,11 @@ const { formatDateRange } = jest.requireMock('@/lib/format') as { formatDateRang
 const CALLS_PER_CARD_RENDER = 2;
 
 describe('Activities list performance', () => {
-  it('re-renders only the card whose star was pressed', async () => {
+  it('re-renders only the card whose heart was pressed', async () => {
     await render(
       <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
         <FavoritesProvider>
-          <ActivitiesScreen />
+          <ActivityBrowser />
         </FavoritesProvider>
       </SafeAreaProvider>,
     );
@@ -57,7 +57,7 @@ describe('Activities list performance', () => {
     await fireEvent.press(screen.getByLabelText('บันทึก กิจกรรม 3 ไว้ดูทีหลัง'));
 
     const cardRenders = formatDateRange.mock.calls.length / CALLS_PER_CARD_RENDER;
-    console.log(`[perf] กดดาว 1 ใบ → การ์ด render ซ้ำ ${cardRenders} จาก ${CARD_COUNT} ใบ`);
+    console.log(`[perf] กดหัวใจ 1 ใบ → การ์ด render ซ้ำ ${cardRenders} จาก ${CARD_COUNT} ใบ`);
     expect(screen.getByLabelText('นำ กิจกรรม 3 ออกจากที่บันทึกไว้')).toBeTruthy();
     expect(cardRenders).toBe(1);
   });

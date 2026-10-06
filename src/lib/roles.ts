@@ -5,7 +5,7 @@ import type { AccountRole } from '@/types/models';
 
 export const ROLE_INFO: Record<AccountRole, { label: string; detail: string; icon: IconName; unitHint: string }> = {
   student: { label: 'นักศึกษา', detail: 'ลงทะเบียน · เช็กอิน · สะสมชั่วโมงกิจกรรม', icon: 'school', unitHint: 'เช่น คณะสหวิทยาการ' },
-  activities: { label: 'เจ้าหน้าที่กิจกรรม', detail: 'สร้างกิจกรรม · ตรวจหลักฐาน · ประกาศ', icon: 'clipboard', unitHint: 'เช่น งานกิจการนักศึกษา' },
+  activities: { label: 'เจ้าหน้าที่กิจกรรม', detail: 'สร้างกิจกรรม · ตรวจหลักฐาน · แจ้งผู้ลงทะเบียน', icon: 'clipboard', unitHint: 'เช่น งานกิจการนักศึกษา' },
 };
 
 export const ROLE_ORDER: AccountRole[] = ['student', 'activities'];

@@ -9,8 +9,8 @@ import { useAuthenticatedSession } from '@/state/session-context';
 
 /**
  * 5 แท็บ = เรื่องที่เปิดบ่อยที่สุด เข้าถึงได้ในแตะเดียว
- * นักศึกษา: วันนี้ · กิจกรรม · แผนที่ · แจ้งเตือน · ฉัน
- * เจ้าหน้าที่กิจกรรม: แท็บ "กิจกรรม" เปลี่ยนเป็น "จัดการ" (สร้างกิจกรรม/ตรวจหลักฐาน)
+ * นักศึกษา: วันนี้ (รวมรายการกิจกรรม) · บันทึกไว้ · แผนที่ · แจ้งเตือน · ฉัน
+ * เจ้าหน้าที่กิจกรรม: แท็บ "บันทึกไว้" เปลี่ยนเป็น "จัดการ" (สร้างกิจกรรม/ตรวจหลักฐาน)
  * หน้ารายละเอียด/ฟอร์มอยู่ใน Root Stack นอกแท็บ จึงมีปุ่มย้อนกลับอัตโนมัติ
  */
 export default function TabsLayout() {
@@ -57,13 +57,15 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="today" size={size} color={color} />,
         }}
       />
+      {/* เส้นทางเดิม: พาไปหน้า "วันนี้" ไม่แสดงในแถบ */}
+      <Tabs.Screen name="activities" options={{ href: null, headerShown: false }} />
       <Tabs.Screen
-        name="activities"
+        name="saved"
         options={{
           href: isOrganizer ? null : undefined,
-          title: 'กิจกรรม',
+          title: 'บันทึกไว้',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="heart" size={size} color={color} />,
         }}
       />
       <Tabs.Screen

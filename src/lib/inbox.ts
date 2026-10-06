@@ -38,7 +38,6 @@ export type InboxTarget =
 
 /** แตะแจ้งเตือน/รายการในกล่อง → หน้าที่เกี่ยวข้อง (null = ข้อมูลไม่ถูกต้อง ไม่ต้องไปไหน) */
 export function targetFor(kind: unknown, targetId: unknown): InboxTarget | null {
-  if (kind === 'broadcast') return { pathname: '/' };
   if (typeof targetId !== 'string' || !ID_PATTERN.test(targetId)) return null;
   const params = { id: targetId };
   switch (kind) {

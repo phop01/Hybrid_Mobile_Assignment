@@ -1,6 +1,6 @@
-// ทดสอบกล่องแจ้งเตือน + type guard ของประกาศ
+// ทดสอบกล่องแจ้งเตือน + type guard
 import { latestCreatedAt, mergeInbox, targetFor, unreadCount } from '@/lib/inbox';
-import { isBroadcast, isInboxItem } from '@/services/validators';
+import { isInboxItem } from '@/services/validators';
 import type { InboxItem } from '@/types/models';
 
 describe('inbox', () => {
@@ -26,23 +26,10 @@ describe('inbox', () => {
 });
 
 describe('validators', () => {
-  it('accepts well-formed broadcasts and inbox items, rejects broken payloads', () => {
-    // ประกาศ: โปสเตอร์ไม่บังคับ (ข้อมูลเก่าไม่มีช่องนี้ก็ต้องผ่าน) แต่ถ้ามีต้องเป็น string
-    const broadcast = {
-      id: 'b1',
-      message: 'ปิดถนนชั่วคราว',
-      location: { name: 'อครเก่า', latitude: 17.8, longitude: 102.7 },
-      byId: 'org1',
-      byName: 'อ.วิภา',
-      createdAt: '2026-09-30T01:00:00Z',
-      expiresAt: '2026-09-30T09:00:00Z',
-    };
-    expect(isBroadcast(broadcast)).toBe(true);
-    expect(isBroadcast({ ...broadcast, imageUrl: null })).toBe(true);
-    expect(isBroadcast({ ...broadcast, imageUrl: '/posters/x.jpg' })).toBe(true);
-    expect(isBroadcast({ ...broadcast, imageUrl: 42 })).toBe(false);
-    expect(isBroadcast({ ...broadcast, location: { name: 'x', latitude: 200, longitude: 0 } })).toBe(false);
-    expect(isInboxItem({ id: '1', kind: 'broadcast', targetId: 't', title: 'x', body: 'y', createdAt: 'z' })).toBe(true);
+  it('accepts well-formed inbox items, rejects broken payloads', () => {
+    expect(isInboxItem({ id: '1', kind: 'registration', targetId: 't', title: 'x', body: 'y', createdAt: 'z' })).toBe(true);
+    // ประกาศทั่ววิทยาเขตถูกเอาออกแล้ว
+    expect(isInboxItem({ id: '1', kind: 'broadcast', targetId: 't', title: 'x', body: 'y', createdAt: 'z' })).toBe(false);
     expect(isInboxItem({ id: '1', kind: 'ticket', targetId: 't', title: 'x', body: 'y', createdAt: 'z' })).toBe(false);
     expect(isInboxItem({ id: '1', kind: 'spam' })).toBe(false);
   });

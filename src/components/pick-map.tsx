@@ -93,6 +93,8 @@ export function PickMap({
             description={m.subtitle}
             // หมุดไม่เปลี่ยนหน้าตาหลังวาด ปิดการติดตามเพื่อไม่ให้วาดใหม่ทุกเฟรม (ประสิทธิภาพ สัปดาห์ 12)
             tracksViewChanges={false}
+            // อยู่เหนือป้ายชื่ออาคาร (zIndex -1) เสมอ
+            zIndex={10}
             opacity={selectedId && selectedId !== m.id ? 0.55 : 1}
             onPress={(e) => {
               e.stopPropagation();

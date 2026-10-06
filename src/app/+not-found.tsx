@@ -11,7 +11,7 @@ export default function NotFoundScreen() {
       title="ไม่พบหน้านี้"
       message="ลิงก์อาจไม่ถูกต้องหรือหน้านี้ถูกย้ายไปแล้ว"
       actionLabel="ไปหน้ากิจกรรม"
-      onAction={() => router.replace('/activities')}
+      onAction={() => router.replace('/')}
     />
   );
 }

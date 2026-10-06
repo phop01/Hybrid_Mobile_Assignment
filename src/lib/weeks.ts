@@ -12,8 +12,8 @@ export const WEEKS: WeekInfo[] = [
   {
     week: 2,
     topic: 'Components, Props, State และ Events',
-    where: 'ActivityCard, BroadcastCard, StatusBadge, ปุ่มบันทึกกิจกรรม, ปุ่มลงทะเบียน',
-    files: 'src/components/activity-card.tsx, broadcast-card.tsx',
+    where: 'ActivityCard, HeroCard, StatusBadge, ปุ่มบันทึกกิจกรรม, ปุ่มลงทะเบียน',
+    files: 'src/components/activity-card.tsx, hero-card.tsx',
   },
   {
     week: 3,
@@ -30,20 +30,20 @@ export const WEEKS: WeekInfo[] = [
   {
     week: 5,
     topic: 'Forms และ State Management',
-    where: 'ฟอร์มลงทะเบียนหลายขั้น (useReducer), ฟอร์มสร้างกิจกรรม/ประกาศ, Context แยกตามเรื่อง, ค้นหา/กรอง',
+    where: 'ฟอร์มลงทะเบียนหลายขั้น (useReducer), ฟอร์มสร้างกิจกรรม, Context แยกตามเรื่อง, ค้นหา/กรอง',
     files: 'src/state/registration-form-reducer.ts, src/state/*',
   },
   {
     week: 6,
     topic: 'REST API และ Networking',
     where: 'Node API ใน server/, type guard ทุก response, timeout + AbortController, Idempotency-Key, pull-to-refresh',
-    files: 'src/services/api-client.ts, broadcasts-api.ts, validators.ts',
+    files: 'src/services/api-client.ts, campus-api.ts, validators.ts',
   },
   {
     week: 7,
     topic: 'Storage และ Offline-first',
     where: 'cache รายการ + เวลาอัปเดตล่าสุด (AsyncStorage), คิวเช็กอินตอนออฟไลน์ (SQLite) ส่งเองเมื่อมีเน็ต',
-    files: 'src/storage/offline-db.ts, src/state/broadcasts-context.tsx',
+    files: 'src/storage/offline-db.ts, src/state/activities-context.tsx',
   },
   {
     week: 8,
@@ -54,13 +54,13 @@ export const WEEKS: WeekInfo[] = [
   {
     week: 9,
     topic: 'Camera, Image Picker และ Permissions',
-    where: 'รูปหลักฐานเช็กอิน/โปสเตอร์ประกาศ, เลือกจากคลัง, ย่อรูป 960px, ขอสิทธิ์ตอนใช้ + ปุ่มเปิดการตั้งค่า',
+    where: 'รูปหลักฐานเช็กอิน/รูปปกกิจกรรม/รูปโปรไฟล์, เลือกจากคลัง, ย่อรูป 960px, ขอสิทธิ์ตอนใช้ + ปุ่มเปิดการตั้งค่า',
     files: 'src/components/check-in-camera.tsx, src/services/photo.ts',
   },
   {
     week: 10,
     topic: 'Location และ Maps',
-    where: 'ปักหมุดสถานที่กิจกรรม/ประกาศ, บันทึกพิกัดตอนส่งหลักฐาน, แผนที่รวมกิจกรรมและประกาศ, นำทางด้วยแอปแผนที่ + ดูระยะทางในแอป (ตำแหน่งสด + ระยะ/เวลาเดิน)',
+    where: 'ปักหมุดสถานที่กิจกรรม, บันทึกพิกัดตอนส่งหลักฐาน, แผนที่กิจกรรมกรองตามหมวด, นำทางด้วยแอปแผนที่ + ดูระยะทางในแอป (ตำแหน่งสด + ระยะ/เวลาเดิน)',
     files: 'src/lib/geo.ts, src/components/pick-map.tsx, src/app/directions.tsx',
   },
   {
