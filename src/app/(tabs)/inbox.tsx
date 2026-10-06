@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { LoginPrompt } from '@/components/login-prompt';
+import { TopBar } from '@/components/top-bar';
 import { Banner, Button, StateView, type IconName } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useRefreshControl } from '@/hooks/use-refresh-control';
@@ -15,11 +16,11 @@ import { useAuthenticatedSession } from '@/state/session-context';
 import type { InboxItem, InboxKind } from '@/types/models';
 import { Text } from '@/components/app-text';
 
-const ICONS: Record<InboxKind, IconName> = {
-  activity: 'megaphone',
-  registration: 'ribbon',
-  manage: 'document-text',
-  broadcast: 'alert-circle',
+const ICONS: Record<InboxKind, { icon: IconName; color: string; bg: string }> = {
+  activity: { icon: 'megaphone', color: Colors.primary, bg: Colors.primarySoft },
+  registration: { icon: 'ribbon', color: Colors.success, bg: Colors.successSoft },
+  manage: { icon: 'document-text', color: Colors.accent, bg: Colors.accentSoft },
+  broadcast: { icon: 'alert-circle', color: Colors.warning, bg: Colors.warningSoft },
 };
 
 /**
@@ -136,7 +137,14 @@ export default function InboxScreen() {
       contentContainerStyle={styles.list}
       refreshControl={refreshControl}
       ListHeaderComponent={
-        Platform.OS === 'web' ? <WebNotificationCard /> : <PushCard />
+        <View style={{ gap: Spacing.md }}>
+          <TopBar
+            eyebrow="NOTIFICATIONS · แจ้งเตือน"
+            title="แจ้งเตือน"
+            subtitle={items.length > 0 ? `${items.length} รายการ · แตะเพื่อไปยังเรื่องนั้น` : 'เรื่องใหม่จากเจ้าหน้าที่และกิจกรรมของคุณ'}
+          />
+          {Platform.OS === 'web' ? <WebNotificationCard /> : <PushCard />}
+        </View>
       }
       renderItem={({ item }) => (
         <Pressable
@@ -144,8 +152,8 @@ export default function InboxScreen() {
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}
           accessibilityRole="button"
           accessibilityLabel={`${item.title}. ${item.body}. ${formatUpdatedAt(item.createdAt)}`}>
-          <View style={styles.icon}>
-            <Ionicons name={ICONS[item.kind]} size={20} color={Colors.primary} />
+          <View style={[styles.icon, { backgroundColor: ICONS[item.kind].bg }]}>
+            <Ionicons name={ICONS[item.kind].icon} size={20} color={ICONS[item.kind].color} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={styles.title}>{item.title}</Text>
@@ -177,15 +185,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.md,
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: Spacing.md,
+    padding: Spacing.lg,
   },
   icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',

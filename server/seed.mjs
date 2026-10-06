@@ -60,8 +60,10 @@ export function hoursBetween(startsAt, endsAt) {
 export const SEED_ORGANIZER_ID = 'org1';
 
 export function buildActivities() {
-  return seedActivities().map((a) => ({
+  // เวลาโพสต์ตัวอย่าง: กิจกรรมแรกในรายการเป็นอันที่โพสต์ล่าสุด ห่างกันทีละ 5 ชม.
+  return seedActivities().map((a, i) => ({
     ...a,
+    createdAt: new Date(Date.now() - (i + 1) * 5 * HOUR).toISOString(),
     organizerId: SEED_ORGANIZER_ID,
     hours: hoursBetween(a.startsAt, a.endsAt),
     // รูปปกตัวอย่างใน server/demo-posters (ชื่อไฟล์ = id กิจกรรม)

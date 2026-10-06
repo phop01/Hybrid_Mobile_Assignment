@@ -1,20 +1,20 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { RefreshControl } from 'react-native';
 
 import { EvidenceCard } from '@/components/evidence-card';
 import { ReminderControl } from '@/components/reminder-control';
 import { NavigateButtons } from '@/components/navigate-buttons';
 import { StatusBadge } from '@/components/status-badge';
-import { Banner, Button, Card, InfoRow, Screen, SectionTitle, StateView } from '@/components/ui';
-import { Colors, Spacing } from '@/constants/theme';
+import { HeroCard } from '@/components/hero-card';
+import { Banner, Button, Card, InfoGrid, InfoRow, Screen, SectionHeader, SectionTitle, StatPill, StateView } from '@/components/ui';
+import { Colors } from '@/constants/theme';
 import { firstParam } from '@/hooks/use-activity';
 import { useNow } from '@/hooks/use-now';
 import { formatDateRange } from '@/lib/format';
 import { confirmAction } from '@/lib/platform-actions';
 import { useActivities } from '@/state/activities-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
-import { Text } from '@/components/app-text';
 
 export default function RegistrationDetailScreen() {
   const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);
@@ -61,16 +61,24 @@ export default function RegistrationDetailScreen() {
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Colors.primary} />}>
-      <View style={{ gap: Spacing.sm }}>
+      <HeroCard
+        imageUrl={activity.imageUrl}
+        eyebrow="MY REGISTRATION · การลงทะเบียนของฉัน"
+        title={activity.title}
+        onPress={() => router.push({ pathname: '/activities/[id]', params: { id: activity.id } })}
+        actionLabel={`เปิดหน้ากิจกรรม ${activity.title}`}>
         <StatusBadge status={queued && registration.status === 'registered' ? 'queued' : registration.status} />
-        <Text style={styles.title} accessibilityRole="header">
-          {activity.title}
-        </Text>
-      </View>
+        <StatPill tone="dark" icon="hourglass" label={`${activity.hours} ชม.`} />
+      </HeroCard>
 
       <Card>
-        <InfoRow icon="time-outline">{formatDateRange(activity.startsAt, activity.endsAt)}</InfoRow>
-        <InfoRow icon="location-outline">{activity.location.name}</InfoRow>
+        <SectionHeader eyebrow="WHEN & WHERE" title="เวลาและสถานที่" />
+        <InfoGrid
+          items={[
+            { icon: 'time-outline', label: 'วันและเวลา', value: formatDateRange(activity.startsAt, activity.endsAt) },
+            { icon: 'location-outline', label: 'สถานที่', value: activity.location.name },
+          ]}
+        />
         <NavigateButtons place={activity.location} />
       </Card>
 
@@ -106,6 +114,3 @@ export default function RegistrationDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  title: { fontSize: 22, fontWeight: '800', color: Colors.text, lineHeight: 30 },
-});

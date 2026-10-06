@@ -1,5 +1,5 @@
-// ทดสอบฟีเจอร์เสริม: กิจกรรมใกล้ฉัน, เหรียญความสำเร็จ, แถบ 7 วัน, ข้อความแชร์/ลิงก์ปฏิทิน
-import { googleCalendarUrl, shareMessage } from '@/lib/activity-links';
+// ทดสอบฟีเจอร์เสริม: กิจกรรมใกล้ฉัน, เหรียญความสำเร็จ, แถบ 7 วัน, ข้อความแชร์
+import { shareMessage } from '@/lib/activity-links';
 import { summarizeAttendance } from '@/lib/attendance';
 import { computeBadges } from '@/lib/badges';
 import { nearestActivities } from '@/lib/nearby';
@@ -36,16 +36,22 @@ describe('computeBadges', () => {
     expect(earned({})).toEqual([]);
   });
 
-  it('earns badges from attendance and progress', () => {
-    expect(earned({ total: 1, byCategory: { academic: 1, volunteer: 0, sport: 0, culture: 0 }, progress: 0.1 })).toEqual(['first']);
-    expect(earned({ total: 4, byCategory: { academic: 1, volunteer: 1, sport: 1, culture: 1 }, progress: 0.5 })).toEqual([
+  it('earns badges from activities, hours and categories', () => {
+    expect(earned({ total: 1, hours: 3, byCategory: { academic: 1, volunteer: 0, sport: 0, culture: 0 } })).toEqual(['first']);
+    expect(earned({ total: 4, hours: 12, byCategory: { academic: 1, volunteer: 1, sport: 1, culture: 1 } })).toEqual([
       'first',
       'volunteer',
+      'h10',
       'all-round',
-      'p25',
-      'p50',
     ]);
-    expect(earned({ total: 9, byCategory: { academic: 3, volunteer: 3, sport: 2, culture: 1 }, progress: 1 })).toContain('p100');
+    expect(earned({ total: 9, hours: 31, byCategory: { academic: 3, volunteer: 3, sport: 2, culture: 1 } })).toEqual([
+      'first',
+      'volunteer',
+      'h10',
+      'regular',
+      'all-round',
+      'h30',
+    ]);
   });
 });
 
@@ -69,9 +75,4 @@ describe('activity links', () => {
     expect(message.endsWith('nktoday://activities/a1')).toBe(true);
   });
 
-  it('builds a Google Calendar link with UTC times', () => {
-    const url = new URL(googleCalendarUrl(makeActivity({ startsAt: '2026-10-01T03:15:00.000Z', endsAt: '2026-10-01T05:15:00.000Z' })));
-    expect(url.searchParams.get('action')).toBe('TEMPLATE');
-    expect(url.searchParams.get('dates')).toBe('20261001T031500Z/20261001T051500Z');
-  });
 });

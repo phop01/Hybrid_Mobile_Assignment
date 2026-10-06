@@ -65,7 +65,9 @@ export function pickMapHtml(props: {
   var pickable = ${props.pickable};
   var picked = ${safe(props.initialPicked)};
   var user = ${safe(props.user)};
-  var map = L.map('map');
+  var map = L.map('map', { zoomControl: false });
+  // ปุ่มซูมอยู่ซ้ายล่าง: มุมบนเป็นที่ของป้าย/ปุ่มที่หน้าแอปวางทับ
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
   addTiles(map);
   var bounds = [];
   markers.forEach(function (m) {

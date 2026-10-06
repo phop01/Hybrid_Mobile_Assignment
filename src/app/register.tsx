@@ -7,7 +7,8 @@ import { Link, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { Banner, Button, Card, Screen, SectionTitle, TextField } from '@/components/ui';
+import { HeroCard } from '@/components/hero-card';
+import { Banner, Button, Card, Screen, SectionHeader, TextField } from '@/components/ui';
 import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
 import { safeNext, validateSignUp, type SignUpErrors, type SignUpValues } from '@/lib/auth-validation';
 import { ROLE_INFO, ROLE_ORDER } from '@/lib/roles';
@@ -68,8 +69,14 @@ export default function RegisterScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen>
+        <HeroCard
+          tag="มข. วิทยาเขตหนองคาย"
+          eyebrow="JOIN KKUNK TODAY"
+          title={'สมัครสมาชิก'}
+          subtitle="ใช้รหัสนักศึกษาหรือรหัสบุคลากร ลงทะเบียนกิจกรรมและรับแจ้งเตือนได้ทันที"
+        />
         <Card>
-          <SectionTitle>สมัครสมาชิก</SectionTitle>
+          <SectionHeader eyebrow="SIGN UP" title="ข้อมูลบัญชี" />
           <View style={styles.types}>
             <Text style={styles.typesTitle}>บทบาทของคุณ (เลือก 1 บทบาท)</Text>
             <View style={styles.row}>

@@ -38,7 +38,7 @@ export function SearchBox({
 
 const styles = StyleSheet.create({
   box: {
-    minHeight: MinTouch + 4,
+    minHeight: MinTouch + 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   input: { flex: 1, fontSize: 16, color: Colors.text, minHeight: MinTouch },
   clear: { minWidth: 28, minHeight: 28, alignItems: 'center', justifyContent: 'center' },

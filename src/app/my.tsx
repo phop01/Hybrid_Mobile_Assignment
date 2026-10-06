@@ -6,8 +6,8 @@ import { ActivityCard } from '@/components/activity-card';
 import { LoginPrompt } from '@/components/login-prompt';
 import type { DisplayStatus } from '@/components/status-badge';
 import { WeekStrip } from '@/components/week-strip';
-import { Banner, OfflineBanner, StateView } from '@/components/ui';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Banner, OfflineBanner, StatPill, StateView } from '@/components/ui';
+import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { isEnded } from '@/lib/filter-activities';
 import { countByDay, dayKey } from '@/lib/week-strip';
 import { useActivities } from '@/state/activities-context';
@@ -73,7 +73,18 @@ export default function MyScreen() {
       stickySectionHeadersEnabled={false}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={Colors.primary} />}
       ListHeaderComponent={
-        <View style={{ gap: Spacing.sm }}>
+        <View style={{ gap: Spacing.md }}>
+          {/* สรุปตัวเลขด้านบน: กำลังจะถึง · เข้าร่วมแล้ว · รอตรวจ */}
+          <View style={styles.summary}>
+            <Text style={styles.eyebrow}>MY ACTIVITIES · ที่ลงทะเบียนไว้</Text>
+            <Text style={styles.summaryTitle}>
+              {upcoming.length} <Text style={styles.summaryUnit}>กิจกรรมที่กำลังจะถึง</Text>
+            </Text>
+            <View style={styles.pills}>
+              <StatPill tone="accent" icon="checkmark-circle" label={`เข้าร่วมแล้ว ${attended.length}`} />
+              <StatPill tone="dark" icon="hourglass" label={`รอตรวจ ${rows.filter((r) => r.status === 'pending_review').length}`} />
+            </View>
+          </View>
           <OfflineBanner since={offlineSince} />
           {upcoming.length > 0 ? (
             <WeekStrip counts={countByDay(upcoming.map((r) => r.activity))} selected={day} onSelect={setDay} />
@@ -121,5 +132,10 @@ export default function MyScreen() {
 
 const styles = StyleSheet.create({
   list: { padding: Spacing.lg, gap: Spacing.md, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.textMuted, marginTop: Spacing.sm },
+  sectionTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 0.4, color: Colors.textMuted, marginTop: Spacing.sm },
+  summary: { backgroundColor: Colors.ink, borderRadius: Radius.xxl, padding: Spacing.xl, gap: Spacing.sm },
+  eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.6, color: Colors.highlight },
+  summaryTitle: { fontSize: 40, fontWeight: '800', color: Colors.onPrimary },
+  summaryUnit: { fontSize: 16, fontWeight: '600', color: Colors.onPrimaryMuted },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
 });

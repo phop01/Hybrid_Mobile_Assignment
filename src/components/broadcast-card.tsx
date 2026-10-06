@@ -113,7 +113,7 @@ export function BroadcastList({ items }: { items: Broadcast[] }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xl,
     borderWidth: 1,
     borderColor: Colors.border,
     overflow: 'hidden',

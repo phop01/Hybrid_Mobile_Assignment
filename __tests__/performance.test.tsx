@@ -3,6 +3,7 @@
 // นับจาก formatDateRange ที่การ์ดเรียก 2 ครั้งต่อการ render หนึ่งครั้ง (ใน accessibilityLabel และข้อความวันที่)
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import ActivitiesScreen from '@/app/(tabs)/activities';
 import { FavoritesProvider } from '@/state/favorites-context';
@@ -44,9 +45,11 @@ const CALLS_PER_CARD_RENDER = 2;
 describe('Activities list performance', () => {
   it('re-renders only the card whose star was pressed', async () => {
     await render(
-      <FavoritesProvider>
-        <ActivitiesScreen />
-      </FavoritesProvider>,
+      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+        <FavoritesProvider>
+          <ActivitiesScreen />
+        </FavoritesProvider>
+      </SafeAreaProvider>,
     );
     await act(async () => {}); // รอโหลดรายการที่บันทึกไว้จากเครื่องเสร็จ
     formatDateRange.mockClear();

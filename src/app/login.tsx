@@ -2,7 +2,8 @@ import { Link, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
-import { Banner, Button, Card, Screen, SectionTitle, TextField } from '@/components/ui';
+import { HeroCard } from '@/components/hero-card';
+import { Banner, Button, Card, Screen, SectionHeader, TextField } from '@/components/ui';
 import { safeNext } from '@/lib/auth-validation';
 import { ROLE_INFO } from '@/lib/roles';
 import { Colors, Spacing } from '@/constants/theme';
@@ -49,10 +50,14 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen>
+        <HeroCard
+          tag="มข. วิทยาเขตหนองคาย"
+          eyebrow="WELCOME BACK"
+          title={'เข้าสู่ระบบ\nKKUNK Today'}
+          subtitle="นักศึกษาใช้รหัสนักศึกษา เจ้าหน้าที่ใช้รหัสบุคลากร"
+        />
         <Card>
-          <SectionTitle>เข้าสู่ระบบ KKUNK Today</SectionTitle>
-          <Text style={styles.muted}>มหาวิทยาลัยขอนแก่น วิทยาเขตหนองคาย</Text>
-          <Text style={styles.muted}>นักศึกษาใช้รหัสนักศึกษา ผู้จัดกิจกรรมใช้รหัสบุคลากร</Text>
+          <SectionHeader eyebrow="SIGN IN" title="ข้อมูลเข้าสู่ระบบ" />
           <TextField
             label="รหัสนักศึกษา / รหัสบุคลากร"
             value={studentId}
@@ -81,7 +86,7 @@ export default function LoginScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>บัญชีตัวอย่าง</SectionTitle>
+          <SectionHeader eyebrow="SAMPLE ACCOUNTS" title="บัญชีตัวอย่าง" />
           <Text style={styles.muted}>แตะเพื่อเติมรหัสให้ แล้วกด “เข้าสู่ระบบ”</Text>
           <View style={styles.samples}>
             {SAMPLE_ACCOUNTS.map((a) => (

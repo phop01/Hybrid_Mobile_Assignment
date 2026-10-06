@@ -3,7 +3,7 @@ export const Colors = {
   primary: '#0F5F8C',
   primaryDark: '#0A4668',
   primarySoft: '#E3F0F7',
-  background: '#F5F6FA',
+  background: '#F3F5F8',
   surface: '#FFFFFF',
   text: '#16182B',
   textMuted: '#5A5F73',
@@ -21,11 +21,16 @@ export const Colors = {
   // หัวข้อแบบ hero บนพื้น primary: ขาว 6.9:1, ข้อความรอง #D6E8F3 5.5:1
   onPrimary: '#FFFFFF',
   onPrimaryMuted: '#D6E8F3',
+  // ส่วนสีเข้ม (แถบแท็บลอย, ป้ายบนรูป) + สีเน้นสว่างบนพื้นเข้ม: #8FD8FF บน ink 10.9:1
+  ink: '#0B2436',
+  highlight: '#8FD8FF',
+  // ม่านบนรูปปกให้ข้อความขาวอ่านได้
+  scrim: 'rgba(8, 24, 38, 0.62)',
 } as const;
 
 export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 
-export const Radius = { sm: 8, md: 12, lg: 16, pill: 999 } as const;
+export const Radius = { sm: 8, md: 12, lg: 18, xl: 24, xxl: 30, pill: 999 } as const;
 
 /** ความกว้างสูงสุดของเนื้อหา อ่านง่ายบนจอคอม (แอปรันบนเว็บด้วย) */
 export const MaxContentWidth = 960;

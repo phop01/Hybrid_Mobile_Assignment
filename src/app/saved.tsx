@@ -5,8 +5,8 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { ActivityCard } from '@/components/activity-card';
 import { ActivityListSkeleton, FadeInView } from '@/components/motion';
 import { SearchBox } from '@/components/search-box';
-import { Banner, Button, ChipBar, StateView } from '@/components/ui';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Banner, Button, ChipBar, StatPill, StateView } from '@/components/ui';
+import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useDisplayStatus } from '@/hooks/use-display-status';
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
 import { filterActivities, isEnded, sortForBrowsing, type CategoryFilter } from '@/lib/filter-activities';
@@ -50,11 +50,14 @@ export default function SavedScreen() {
         allSaved.length > 0 ? (
           <View style={styles.header}>
             <View style={styles.summary}>
-              <Text style={styles.summaryNumber}>{allSaved.length}</Text>
-              <Text style={styles.summaryText}>
-                กิจกรรมที่บันทึกไว้ · ยังเปิดอยู่ {openCount}
-                {endedSaved.length > 0 ? ` · จบแล้ว ${endedSaved.length}` : ''}
+              <Text style={styles.eyebrow}>SAVED · บันทึกไว้</Text>
+              <Text style={styles.summaryNumber}>
+                {allSaved.length} <Text style={styles.summaryText}>กิจกรรมที่บันทึกไว้</Text>
               </Text>
+              <View style={styles.pills}>
+                <StatPill tone="accent" icon="calendar" label={`ยังเปิดอยู่ ${openCount}`} />
+                {endedSaved.length > 0 ? <StatPill tone="dark" icon="time" label={`จบแล้ว ${endedSaved.length}`} /> : null}
+              </View>
             </View>
             <SearchBox value={query} onChangeText={setQuery} placeholder="ค้นหาในที่บันทึกไว้" label="ค้นหากิจกรรมที่บันทึกไว้" />
             <ChipBar options={CATEGORY_FILTERS} value={category} onChange={setCategory} />
@@ -113,8 +116,10 @@ export default function SavedScreen() {
 
 const styles = StyleSheet.create({
   header: { gap: Spacing.md },
-  summary: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  summaryNumber: { fontSize: 40, fontWeight: '800', color: Colors.primary },
-  summaryText: { flex: 1, fontSize: 14, color: Colors.textMuted, lineHeight: 20 },
+  summary: { backgroundColor: Colors.ink, borderRadius: Radius.xxl, padding: Spacing.xl, gap: Spacing.sm },
+  eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.6, color: Colors.highlight },
+  summaryNumber: { fontSize: 40, fontWeight: '800', color: Colors.onPrimary },
+  summaryText: { fontSize: 16, fontWeight: '600', color: Colors.onPrimaryMuted },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   list: { padding: Spacing.lg, gap: Spacing.md, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
 });

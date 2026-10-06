@@ -14,7 +14,6 @@ import { BroadcastsProvider } from '@/state/broadcasts-context';
 import { FavoritesProvider } from '@/state/favorites-context';
 import { InboxProvider } from '@/state/inbox-context';
 import { MyRegistrationsProvider } from '@/state/my-registrations-context';
-import { TextScaleProvider } from '@/state/text-scale-context';
 import { isActivitiesStaff } from '@/lib/roles';
 import { consumePostLoginRedirect, SessionProvider, useSession } from '@/state/session-context';
 
@@ -25,7 +24,6 @@ export const unstable_settings = { anchor: '(tabs)' };
 
 export default function RootLayout() {
   return (
-    <TextScaleProvider>
     <SessionProvider>
       <InboxProvider>
         <ActivitiesProvider>
@@ -45,7 +43,6 @@ export default function RootLayout() {
         </ActivitiesProvider>
       </InboxProvider>
     </SessionProvider>
-    </TextScaleProvider>
   );
 }
 
@@ -81,7 +78,10 @@ function RootNavigator() {
       screenOptions={{
         headerBackTitle: 'กลับ',
         headerTintColor: Colors.primary,
-        headerTitleStyle: { color: Colors.text },
+        headerTitleStyle: { color: Colors.text, fontWeight: '800' },
+        // หัวหน้าเรียบ สีเดียวกับพื้น ไม่มีเส้นใต้ (เข้ากับหน้าแบบการ์ดโค้ง)
+        headerStyle: { backgroundColor: Colors.background },
+        headerShadowVisible: false,
         contentStyle: { backgroundColor: Colors.background },
       }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -89,6 +89,7 @@ function RootNavigator() {
       <Stack.Screen name="about" options={{ title: 'เนื้อหาสัปดาห์ 1–14 ในแอป' }} />
       <Stack.Screen name="saved" options={{ title: 'กิจกรรมที่บันทึกไว้' }} />
       <Stack.Screen name="directions" options={{ title: 'เส้นทาง' }} />
+      <Stack.Screen name="map-full" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
 
       {/* login มีเฉพาะตอนยังไม่เข้าระบบ */}
       <Stack.Protected guard={!isAuthenticated}>
@@ -102,6 +103,7 @@ function RootNavigator() {
         <Stack.Screen name="registrations/[id]" options={{ title: 'การลงทะเบียนของฉัน' }} />
         <Stack.Screen name="check-in/[registrationId]" options={{ title: 'เช็กอิน' }} />
         <Stack.Screen name="my" options={{ title: 'กิจกรรมที่ลงทะเบียน' }} />
+        <Stack.Screen name="hours" options={{ title: 'ชั่วโมงกิจกรรม' }} />
       </Stack.Protected>
 
       {/* ฝั่งผู้จัดกิจกรรม: เฉพาะเจ้าหน้าที่งานกิจกรรม (server ตรวจซ้ำทุก request) */}

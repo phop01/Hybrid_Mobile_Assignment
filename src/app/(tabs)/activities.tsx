@@ -1,13 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ActivityCard } from '@/components/activity-card';
 import { useAppWidth } from '@/components/phone-frame';
 import { ActivityListSkeleton, FadeInView } from '@/components/motion';
 import { SearchBox } from '@/components/search-box';
+import { TopBar } from '@/components/top-bar';
 import { Banner, Chip, ChipBar, OfflineBanner, StateView } from '@/components/ui';
-import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useDisplayStatus } from '@/hooks/use-display-status';
 import { CATEGORIES, CATEGORY_ORDER } from '@/lib/categories';
 import { browseActivities, isEnded, type AvailabilityFilter, type CategoryFilter, type SortMode } from '@/lib/filter-activities';
@@ -64,26 +65,26 @@ export default function ActivitiesScreen() {
 
   const header = (
     <View style={styles.header}>
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle} accessibilityRole="header">
-          {session ? `สวัสดี ${session.user.fullName.split(' ')[0]}` : 'กิจกรรมในมหาวิทยาลัย'}
-        </Text>
-        <Text style={styles.heroText}>มี {upcoming} กิจกรรมที่กำลังจะมาถึง เลือกเข้าร่วมเพื่อสะสมชั่วโมง</Text>
-        <SearchBox value={query} onChangeText={setQuery} placeholder="ค้นหาชื่อกิจกรรมหรือสถานที่" label="ค้นหากิจกรรม" />
-      </View>
+      <TopBar
+        eyebrow="ACTIVITIES · กิจกรรม"
+        title={session ? `${session.user.fullName.split(' ')[0]} อยากไปไหนดี?` : 'กิจกรรมในมหาวิทยาลัย'}
+        subtitle={`มี ${upcoming} กิจกรรมที่กำลังจะมาถึง เข้าร่วมเพื่อสะสมชั่วโมง`}
+      />
+      <SearchBox value={query} onChangeText={setQuery} placeholder="ค้นหาชื่อกิจกรรมหรือสถานที่" label="ค้นหากิจกรรม" />
       <ChipBar options={CATEGORY_FILTERS} value={category} onChange={setCategory} />
-      <ChipBar options={AVAILABILITY_FILTERS} value={availability} onChange={setAvailability} />
-      <View style={styles.sortRow}>
-        <Text style={styles.count} accessibilityLiveRegion="polite">
-          {filtering ? `พบ ${visible.length} กิจกรรม` : `ทั้งหมด ${visible.length} กิจกรรม`}
-        </Text>
-        <View style={styles.sortChips}>
-          <Text style={styles.sortLabel}>เรียง</Text>
-          {SORTS.map((o) => (
-            <Chip key={o.key} label={o.label} selected={sort === o.key} onPress={() => setSort(o.key)} />
-          ))}
-        </View>
-      </View>
+      {/* ช่วงเวลา + การเรียง อยู่แถวเดียวเลื่อนแนวนอน ให้รายการขึ้นมาเร็ว */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+        {AVAILABILITY_FILTERS.map((o) => (
+          <Chip key={o.key} label={o.label} selected={availability === o.key} onPress={() => setAvailability(o.key)} />
+        ))}
+        <View style={styles.divider} />
+        {SORTS.map((o) => (
+          <Chip key={o.key} label={o.label} selected={sort === o.key} onPress={() => setSort(o.key)} />
+        ))}
+      </ScrollView>
+      <Text style={styles.count} accessibilityLiveRegion="polite">
+        {filtering ? `พบ ${visible.length} กิจกรรม` : `ทั้งหมด ${visible.length} กิจกรรม`} · เรียง{SORTS.find((o) => o.key === sort)?.label}
+      </Text>
       <OfflineBanner since={offlineSince} note="ที่นั่งคงเหลืออาจไม่ตรงกับปัจจุบัน" />
       {error && status === 'ready' ? <Banner tone="danger">{error}</Banner> : null}
     </View>
@@ -148,12 +149,8 @@ export default function ActivitiesScreen() {
 const styles = StyleSheet.create({
   list: { padding: Spacing.lg, gap: Spacing.md, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
   header: { gap: Spacing.md, marginBottom: Spacing.xs },
-  hero: { backgroundColor: Colors.primary, borderRadius: Radius.lg, padding: Spacing.lg, gap: Spacing.sm },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: Colors.onPrimary },
-  heroText: { fontSize: 14, color: Colors.onPrimaryMuted, lineHeight: 20, marginBottom: Spacing.xs },
-  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: Spacing.sm },
-  sortChips: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  sortLabel: { fontSize: 13, color: Colors.textMuted },
+  filterRow: { gap: Spacing.sm, alignItems: 'center', paddingVertical: 2 },
+  divider: { width: 1, height: 26, backgroundColor: Colors.border, marginHorizontal: 2 },
   count: { fontSize: 13, color: Colors.textMuted, fontWeight: '600' },
   row: { gap: Spacing.md },
   cell: { flex: 1 },

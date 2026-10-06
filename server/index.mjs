@@ -642,6 +642,7 @@ async function handle(req, res) {
     assertValid(validateActivityBody(body));
     const id = randomUUID();
     const activity = {
+      createdAt: new Date().toISOString(),
       id,
       title: body.title.trim(),
       description: body.description.trim(),

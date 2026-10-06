@@ -8,7 +8,8 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 
 import { AnnouncementComposer, AnnouncementList } from '@/components/announcements';
 import { StatusBadge } from '@/components/status-badge';
-import { Banner, Button, Card, Chip, ChipBar, InfoRow, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
+import { HeroCard } from '@/components/hero-card';
+import { Banner, Button, Card, Chip, ChipBar, InfoGrid, Screen, SectionTitle, StatPill, StateView, TextField } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { firstParam } from '@/hooks/use-activity';
 import { useNow } from '@/hooks/use-now';
@@ -59,26 +60,24 @@ export default function OrganizerActivityScreen() {
   return (
     <Screen refreshControl={<RefreshControl refreshing={loading && attendees.length > 0} onRefresh={reload} tintColor={Colors.primary} />}>
       {activity ? (
-        <Card>
-          <Text style={styles.title} accessibilityRole="header">
-            {activity.title}
-          </Text>
-          <InfoRow icon="time-outline">
-            {formatDateRange(activity.startsAt, activity.endsAt)} · {activity.hours} ชม.
-          </InfoRow>
-          <InfoRow icon="location-outline">
-            {activity.location.name} (รัศมี {activity.location.radiusM} ม.)
-          </InfoRow>
-          <InfoRow icon="people-outline">
-            ลงทะเบียน {counts.all}/{activity.capacity} · เข้าร่วมแล้ว {counts.checked_in} · รอตรวจ {counts.pending_review}
-          </InfoRow>
-          <Button
-            title="ดูหน้ากิจกรรมแบบที่นักศึกษาเห็น"
-            variant="ghost"
-            icon="eye-outline"
+        <>
+          <HeroCard
+            imageUrl={activity.imageUrl}
+            eyebrow="MANAGE · จัดการกิจกรรม"
+            title={activity.title}
+            subtitle={`${formatDateRange(activity.startsAt, activity.endsAt)} · ${activity.hours} ชม.`}
             onPress={() => router.push({ pathname: '/activities/[id]', params: { id: activity.id } })}
-          />
-        </Card>
+            actionLabel="ดูหน้ากิจกรรมแบบที่นักศึกษาเห็น">
+            <StatPill tone="accent" icon="people" label={`ลงทะเบียน ${counts.all}/${activity.capacity}`} />
+            <StatPill tone="dark" icon="checkmark-circle" label={`เข้าร่วม ${counts.checked_in}`} />
+            <StatPill tone="dark" icon="hourglass" label={`รอตรวจ ${counts.pending_review}`} />
+          </HeroCard>
+          <Card>
+            <InfoGrid
+              items={[{ icon: 'location-outline', label: 'สถานที่', value: `${activity.location.name} (รัศมี ${activity.location.radiusM} ม.)` }]}
+            />
+          </Card>
+        </>
       ) : null}
 
       {error ? <Banner tone="danger">{error}</Banner> : null}

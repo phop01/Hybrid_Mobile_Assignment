@@ -37,6 +37,15 @@ export function sortForBrowsing(activities: Activity[], now = Date.now()): Activ
   });
 }
 
+/** ใหม่ล่าสุดก่อน (ตามเวลาที่โพสต์) · ข้อมูลเก่าที่ไม่มีเวลาโพสต์ไปอยู่ท้าย เรียงตามวันจัดที่ใกล้ก่อน */
+export function newestFirst(activities: Activity[]): Activity[] {
+  return [...activities].sort((a, b) => {
+    if (a.createdAt && b.createdAt) return b.createdAt.localeCompare(a.createdAt);
+    if (a.createdAt || b.createdAt) return a.createdAt ? -1 : 1;
+    return a.startsAt.localeCompare(b.startsAt);
+  });
+}
+
 export type AvailabilityFilter = 'all' | 'open' | 'week';
 export type SortMode = 'date' | 'seats';
 

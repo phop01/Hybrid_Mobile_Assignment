@@ -1,175 +1,251 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import { ActivityCard } from '@/components/activity-card';
-import { BroadcastCard } from '@/components/broadcast-card';
-import { PickMap, type MapMarker } from '@/components/pick-map';
-import { Button, ChipBar, OfflineBanner, StateView } from '@/components/ui';
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useDisplayStatus } from '@/hooks/use-display-status';
-import { CATEGORIES } from '@/lib/categories';
-import { isEnded } from '@/lib/filter-activities';
-import { formatDistance } from '@/lib/format';
-import type { Coordinates } from '@/lib/geo';
-import { nearestActivities } from '@/lib/nearby';
-import { getCurrentCoordinates } from '@/services/location';
-import { useActivities } from '@/state/activities-context';
-import { useBroadcasts } from '@/state/broadcasts-context';
-import { useFavorites } from '@/state/favorites-context';
 import { Text } from '@/components/app-text';
-
-type Layer = 'all' | 'activity' | 'broadcast';
-
-const LAYERS: { key: Layer; label: string }[] = [
-  { key: 'all', label: 'ทั้งหมด' },
-  { key: 'activity', label: 'กิจกรรม' },
-  { key: 'broadcast', label: 'ประกาศ' },
-];
-
-const BROADCAST_COLOR = '#A15C07';
+import { MapSelectionCard } from '@/components/map-selection-card';
+import { PickMap } from '@/components/pick-map';
+import { TopBar } from '@/components/top-bar';
+import { Card, ChipBar, OfflineBanner, Screen, SectionHeader, StateView } from '@/components/ui';
+import { Colors, Radius, Spacing } from '@/constants/theme';
+import { BROADCAST_COLOR, MAP_LAYERS, useCampusMarkers, type MapLayer } from '@/hooks/use-campus-markers';
+import { useLocateMe } from '@/hooks/use-locate-me';
+import { CATEGORIES } from '@/lib/categories';
+import { formatDistance } from '@/lib/format';
+import { nearestActivities } from '@/lib/nearby';
+import { useActivities } from '@/state/activities-context';
 
 /**
  * แผนที่รวมทุกเรื่องในวิทยาเขต: กิจกรรมที่ยังไม่จบ และประกาศ
- * แตะหมุด → การ์ดด้านล่าง → แตะการ์ดเพื่อดูรายละเอียด
- * ตำแหน่งของฉัน: ขอสิทธิ์เฉพาะตอนกดปุ่ม "ตำแหน่งของฉัน" (ไม่ติดตามเบื้องหลัง) แล้วแสดงกิจกรรมที่ใกล้ที่สุด
+ * การ์ดแผนที่ในหน้า + ปุ่ม "ขยายแผนที่" เปิดแบบเต็มจอ · แตะหมุดหรือรายการ → การ์ดรายละเอียดใต้แผนที่
+ * ตำแหน่งของฉัน: ขอสิทธิ์เฉพาะตอนกดปุ่ม แล้วแสดงกิจกรรมที่ใกล้ที่สุด
  */
 export default function MapScreen() {
   const { activities, status, error, offlineSince, refresh } = useActivities();
-  const { broadcasts } = useBroadcasts();
-  const { isFavorite, toggleFavorite } = useFavorites();
-  const statusOf = useDisplayStatus();
-  const [layer, setLayer] = useState<Layer>('all');
+  const [layer, setLayer] = useState<MapLayer>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [me, setMe] = useState<Coordinates | null>(null);
-  const [locating, setLocating] = useState(false);
-  const [locationNote, setLocationNote] = useState<string | null>(null);
-
-  const locateMe = async () => {
-    setLocating(true);
-    setLocationNote(null);
-    const result = await getCurrentCoordinates();
-    setLocating(false);
-    if (result.status === 'ok') setMe(result.coords);
-    else if (result.status === 'denied') {
-      setLocationNote(result.canAskAgain ? 'ต้องอนุญาตตำแหน่งก่อนจึงจะแสดงตำแหน่งของคุณได้' : 'ปิดสิทธิ์ตำแหน่งไว้ เปิดได้ที่การตั้งค่าของเครื่อง');
-    } else setLocationNote('หาตำแหน่งไม่เจอ ลองออกไปที่โล่งแล้วกดใหม่');
-  };
+  // แตะ/ลากแผนที่อยู่ → ปิดการเลื่อนหน้า (บน iPhone ScrollView แย่งนิ้ว)
+  const [mapTouch, setMapTouch] = useState(false);
+  const { me, locating, note, locate } = useLocateMe();
+  const { markers, selection } = useCampusMarkers(layer, selectedId);
 
   const nearby = useMemo(() => (me ? nearestActivities(activities, me, 3) : []), [activities, me]);
-
-  // useMemo จำเป็นที่นี่: แผนที่บนเว็บสร้างใหม่ทั้งแผ่นเมื่อรายการหมุดเปลี่ยน ต้องไม่เปลี่ยนทุก render
-  const markers = useMemo((): MapMarker[] => {
-    const show = (l: Layer) => layer === 'all' || layer === l;
-    const list: MapMarker[] = [];
-    if (show('activity')) {
-      for (const a of activities.filter((x) => !isEnded(x))) {
-        list.push({ id: `a:${a.id}`, ...a.location, color: CATEGORIES[a.category].color, title: a.title, subtitle: a.location.name });
-      }
-    }
-    if (show('broadcast')) {
-      for (const b of broadcasts) {
-        list.push({ id: `b:${b.id}`, ...b.location, color: BROADCAST_COLOR, title: 'ประกาศ', subtitle: b.message });
-      }
-    }
-    return list;
-  }, [activities, broadcasts, layer]);
-
   const onSelect = useCallback((id: string | null) => setSelectedId(id), []);
-  const [type, rawId] = selectedId ? [selectedId.slice(0, 1), selectedId.slice(2)] : [null, null];
-  const activity = type === 'a' ? activities.find((a) => a.id === rawId) : undefined;
-  const broadcast = type === 'b' ? broadcasts.find((b) => b.id === rawId) : undefined;
 
   if (status === 'loading') return <StateView kind="loading" message="กำลังโหลดแผนที่…" />;
   if (status === 'error' && activities.length === 0) {
     return <StateView kind="error" title="โหลดข้อมูลไม่สำเร็จ" message={error ?? undefined} actionLabel="ลองใหม่" onAction={refresh} />;
   }
 
-  return (
-    <View style={styles.screen}>
-      <View style={styles.top}>
-        <ChipBar
-          options={LAYERS}
-          value={layer}
-          onChange={(key) => {
-            setLayer(key);
-            setSelectedId(null);
-          }}
-        />
-        <OfflineBanner since={offlineSince} />
-        <Button
-          title={me ? 'อัปเดตตำแหน่งของฉัน' : 'ตำแหน่งของฉัน'}
-          icon="locate"
-          variant="secondary"
-          loading={locating}
-          onPress={locateMe}
-        />
-        {locationNote ? <Text style={styles.hint}>{locationNote}</Text> : null}
-      </View>
+  const activityCount = markers.filter((m) => m.id.startsWith('a:')).length;
+  const broadcastCount = markers.length - activityCount;
+  const openFull = () => router.push({ pathname: '/map-full', params: { layer, ...(selectedId ? { selected: selectedId } : {}) } });
 
-      <View style={styles.map}>
+  return (
+    <Screen scrollEnabled={!mapTouch}>
+      <TopBar
+        eyebrow="CAMPUS MAP · แผนที่"
+        title="แผนที่วิทยาเขต"
+        subtitle={`กิจกรรม ${activityCount} จุด · ประกาศ ${broadcastCount} จุด`}
+      />
+      <ChipBar
+        options={MAP_LAYERS}
+        value={layer}
+        onChange={(key) => {
+          setLayer(key);
+          setSelectedId(null);
+        }}
+      />
+      <OfflineBanner since={offlineSince} />
+
+      {/* การ์ดแผนที่: ป้ายจุดที่เลือกมุมบน · ปุ่มตำแหน่งของฉัน + ขยายแผนที่มุมล่าง */}
+      <View style={styles.mapCard}>
         {markers.length > 0 ? (
           <PickMap
             markers={markers}
             selectedId={selectedId}
             onSelectMarker={onSelect}
             user={me}
+            onInteractingChange={setMapTouch}
             accessibilityLabel={`แผนที่วิทยาเขต ${markers.length} จุด`}
           />
         ) : (
           <StateView kind="empty" icon="map-outline" title="ไม่มีเรื่องในหมวดนี้บนแผนที่" />
         )}
+        <View pointerEvents="none" style={styles.mapLabel}>
+          <Text style={styles.mapLabelEyebrow}>{selection ? 'SELECTED' : 'KKU NONG KHAI'}</Text>
+          <Text style={styles.mapLabelName} numberOfLines={1}>
+            {selection?.kind === 'activity'
+              ? selection.activity.title
+              : selection?.kind === 'broadcast'
+                ? 'ประกาศ'
+                : 'มข. วิทยาเขตหนองคาย'}
+          </Text>
+        </View>
+        <View style={styles.mapButtons}>
+          <Pressable
+            onPress={locate}
+            disabled={locating}
+            accessibilityRole="button"
+            accessibilityLabel={me ? 'อัปเดตตำแหน่งของฉัน' : 'แสดงตำแหน่งของฉัน'}
+            style={({ pressed }) => [styles.roundButton, pressed && { opacity: 0.85 }]}>
+            {locating ? <ActivityIndicator color={Colors.primary} /> : <Ionicons name="locate" size={22} color={Colors.primary} />}
+          </Pressable>
+          <Pressable
+            onPress={openFull}
+            accessibilityRole="button"
+            accessibilityLabel="เปิดแผนที่แบบเต็มหน้าจอ"
+            style={({ pressed }) => [styles.expand, pressed && { opacity: 0.85 }]}>
+            <Ionicons name="expand" size={18} color={Colors.ink} />
+            <Text style={styles.expandText}>ขยายแผนที่</Text>
+          </Pressable>
+        </View>
       </View>
+      {note ? <Text style={styles.hint}>{note}</Text> : null}
 
-      <View style={styles.bottom}>
-        {activity ? (
-          <ActivityCard
-            activity={activity}
-            isFavorite={isFavorite(activity.id)}
-            status={statusOf(activity.id)}
-            onOpen={(id) => router.push({ pathname: '/activities/[id]', params: { id } })}
-            onToggleFavorite={toggleFavorite}
-          />
-        ) : broadcast ? (
-          <BroadcastCard broadcast={broadcast} compact />
-        ) : nearby.length > 0 ? (
-          <View style={{ gap: Spacing.xs }}>
-            <Text style={styles.nearTitle}>กิจกรรมใกล้คุณ</Text>
-            {nearby.map(({ activity: a, meters, walkMinutes }) => (
-              <Pressable
-                key={a.id}
-                style={styles.nearRow}
-                accessibilityRole="button"
-                accessibilityLabel={`${a.title} ห่าง ${formatDistance(meters)} เดินประมาณ ${walkMinutes} นาที`}
-                onPress={() => setSelectedId(`a:${a.id}`)}>
-                <View style={[styles.nearDot, { backgroundColor: CATEGORIES[a.category].color }]} />
-                <Text style={styles.nearText} numberOfLines={1}>
-                  {a.title}
-                </Text>
-                <Text style={styles.nearDistance}>
-                  {formatDistance(meters)} · เดิน {walkMinutes} นาที
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : (
-          // แผนที่ใช้กับ screen reader ได้ยาก จึงบอกทางเลือกที่เป็นรายการไว้ด้วย
-          <Text style={styles.hint}>แตะหมุดเพื่อดูรายละเอียด · {markers.length} จุด · ดูแบบรายการได้ที่แท็บกิจกรรม</Text>
-        )}
+      {selection ? <MapSelectionCard selection={selection} /> : null}
+
+      {nearby.length > 0 ? (
+        <Card>
+          <SectionHeader eyebrow="NEAR YOU" title="กิจกรรมใกล้คุณ" />
+          {nearby.map(({ activity: a, meters, walkMinutes }) => (
+            <PlaceRow
+              key={a.id}
+              color={CATEGORIES[a.category].color}
+              icon={CATEGORIES[a.category].icon}
+              title={a.title}
+              sub={`${formatDistance(meters)} · เดิน ${walkMinutes} นาที`}
+              selected={selectedId === `a:${a.id}`}
+              onPress={() => setSelectedId(`a:${a.id}`)}
+            />
+          ))}
+        </Card>
+      ) : null}
+
+      {markers.length > 0 ? (
+        <Card>
+          <SectionHeader eyebrow="ON THE MAP" title={`จุดบนแผนที่ ${markers.length} จุด`} />
+          {/* แผนที่ใช้กับ screen reader ได้ยาก จึงมีรายการเดียวกันให้แตะเลือกได้ */}
+          {markers.map((m) => {
+            const isActivity = m.id.startsWith('a:');
+            const a = isActivity ? activities.find((x) => x.id === m.id.slice(2)) : undefined;
+            return (
+              <PlaceRow
+                key={m.id}
+                color={isActivity ? m.color : BROADCAST_COLOR}
+                icon={a ? CATEGORIES[a.category].icon : 'megaphone'}
+                title={isActivity ? m.title : m.subtitle ?? 'ประกาศ'}
+                sub={isActivity ? m.subtitle ?? '' : 'ประกาศ'}
+                selected={selectedId === m.id}
+                onPress={() => setSelectedId(selectedId === m.id ? null : m.id)}
+              />
+            );
+          })}
+        </Card>
+      ) : null}
+    </Screen>
+  );
+}
+
+function PlaceRow({
+  color,
+  icon,
+  title,
+  sub,
+  selected,
+  onPress,
+}: {
+  color: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  title: string;
+  sub: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${title} ${sub}`}
+      style={({ pressed }) => [styles.row, selected && styles.rowSelected, pressed && { opacity: 0.85 }]}>
+      <View style={[styles.rowIcon, { backgroundColor: color }]}>
+        <Ionicons name={icon} size={16} color="#FFFFFF" />
       </View>
-    </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        <Text style={styles.rowSub} numberOfLines={1}>
+          {sub}
+        </Text>
+      </View>
+      {selected ? <Ionicons name="checkmark-circle" size={20} color={Colors.primary} /> : null}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.background },
-  top: { padding: Spacing.md, gap: Spacing.sm, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
-  map: { flex: 1, overflow: 'hidden', borderTopWidth: 1, borderBottomWidth: 1, borderColor: Colors.border },
-  bottom: { padding: Spacing.md, width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
-  nearTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
-  nearRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, minHeight: 44 },
-  nearDot: { width: 10, height: 10, borderRadius: 5 },
-  nearText: { flex: 1, fontSize: 14, color: Colors.text },
-  nearDistance: { fontSize: 13, color: Colors.textMuted },
-  hint: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
+  mapCard: {
+    height: 340,
+    borderRadius: Radius.xxl,
+    overflow: 'hidden',
+    backgroundColor: Colors.border,
+  },
+  mapLabel: {
+    position: 'absolute',
+    top: Spacing.md,
+    left: Spacing.md,
+    right: Spacing.md,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(11,36,54,0.88)',
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  mapLabelEyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.6, color: Colors.highlight },
+  mapLabelName: { fontSize: 15, fontWeight: '800', color: Colors.onPrimary },
+  mapButtons: {
+    position: 'absolute',
+    bottom: Spacing.md,
+    right: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  roundButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  expand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 46,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.highlight,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  expandText: { fontSize: 14, fontWeight: '800', color: Colors.ink },
+  hint: { fontSize: 13, color: Colors.textMuted, textAlign: 'center', lineHeight: 19 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, minHeight: 52, paddingHorizontal: Spacing.sm, borderRadius: Radius.lg },
+  rowSelected: { backgroundColor: Colors.primarySoft },
+  rowIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  rowTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
+  rowSub: { fontSize: 12, color: Colors.textMuted },
 });

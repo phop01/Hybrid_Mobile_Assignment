@@ -213,6 +213,106 @@ export function StateView(props: StateViewProps) {
   );
 }
 
+/**
+ * หัวส่วนแบบ 2 ชั้น: คำเล็กตัวห่างด้านบน (บอกว่าเป็นส่วนอะไร) + หัวข้อหลัก · มีปุ่ม "ดูทั้งหมด" ด้านขวาได้
+ */
+export function SectionHeader({
+  eyebrow,
+  title,
+  actionLabel,
+  onAction,
+  light,
+}: {
+  eyebrow?: string;
+  title: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  light?: boolean;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={{ flex: 1, gap: 2 }}>
+        {eyebrow ? <Text style={[styles.eyebrow, light && { color: Colors.highlight }]}>{eyebrow}</Text> : null}
+        <Text style={[styles.sectionTitle, light && { color: Colors.onPrimary }]} accessibilityRole="header">
+          {title}
+        </Text>
+      </View>
+      {actionLabel && onAction ? (
+        <Pressable onPress={onAction} accessibilityRole="button" accessibilityLabel={actionLabel} hitSlop={8} style={styles.sectionAction}>
+          <Text style={styles.sectionActionText}>{actionLabel}</Text>
+          <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/** ป้ายตัวเลขสรุปสั้น ๆ เช่น "3 กิจกรรม" · dark = บนพื้นเข้ม/รูป */
+export function StatPill({ icon, label, tone = 'light' }: { icon: IconName; label: string; tone?: 'light' | 'dark' | 'accent' }) {
+  const t =
+    tone === 'dark'
+      ? { bg: 'rgba(255,255,255,0.16)', fg: Colors.onPrimary }
+      : tone === 'accent'
+        ? { bg: Colors.highlight, fg: Colors.ink }
+        : { bg: Colors.primarySoft, fg: Colors.primaryDark };
+  return (
+    <View style={[styles.pill, { backgroundColor: t.bg }]}>
+      <Ionicons name={icon} size={14} color={t.fg} />
+      <Text style={[styles.pillText, { color: t.fg }]} maxFontSizeMultiplier={1.3}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/** ปุ่มวงกลมพื้นขาว ใช้วางบนรูป (กลับ / บันทึก / แชร์) */
+export function CircleButton({
+  icon,
+  label,
+  onPress,
+  color = Colors.text,
+  tone = 'light',
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  color?: string;
+  tone?: 'light' | 'accent';
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.circle,
+        tone === 'accent' && { backgroundColor: Colors.highlight },
+        pressed && { opacity: 0.8 },
+      ]}>
+      <Ionicons name={icon} size={22} color={color} />
+    </Pressable>
+  );
+}
+
+/** ตารางข้อมูล "หัวข้อ: ค่า" อ่านเร็ว (เวลา สถานที่ ชั่วโมง ที่นั่ง) */
+export function InfoGrid({ items }: { items: { icon: IconName; label: string; value: string; color?: string }[] }) {
+  return (
+    <View style={styles.grid}>
+      {items.map((it) => (
+        <View key={it.label} style={styles.gridItem}>
+          <View style={styles.gridIcon}>
+            <Ionicons name={it.icon} size={18} color={Colors.primary} />
+          </View>
+          <View style={{ flex: 1, gap: 1 }}>
+            <Text style={styles.gridLabel}>{it.label}</Text>
+            <Text style={[styles.gridValue, it.color ? { color: it.color } : null]}>{it.value}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function InfoRow({ icon, children }: { icon: IconName; children: ReactNode }) {
   return (
     <View style={styles.infoRow}>
@@ -234,17 +334,17 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.lg,
+    borderRadius: Radius.xl,
+    padding: Spacing.lg + 2,
     gap: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
+  sectionTitle: { fontSize: 19, fontWeight: '800', color: Colors.text },
   button: {
-    minHeight: MinTouch + 4,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.lg,
+    minHeight: MinTouch + 6,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.xl,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -253,7 +353,7 @@ const styles = StyleSheet.create({
   buttonText: { fontSize: 16, fontWeight: '600', textAlign: 'center', flexShrink: 1 },
   chip: {
     minHeight: MinTouch, // เดิม 36 ต่ำกว่าพื้นที่แตะขั้นต่ำ 44
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     borderRadius: Radius.pill,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -267,8 +367,8 @@ const styles = StyleSheet.create({
     minHeight: MinTouch + 4,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     fontSize: 16,
     color: Colors.text,
@@ -277,11 +377,45 @@ const styles = StyleSheet.create({
   fieldError: { color: Colors.danger, fontSize: 13 },
   fieldHint: { color: Colors.textMuted, fontSize: 13 },
   chipBar: { gap: Spacing.sm, paddingVertical: 2 },
-  banner: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.md, alignItems: 'flex-start' },
+  banner: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md, borderRadius: Radius.lg, alignItems: 'flex-start' },
   bannerText: { flex: 1, fontSize: 14, lineHeight: 20 },
   state: { alignItems: 'center', justifyContent: 'center', padding: Spacing.xxl, gap: Spacing.sm },
   stateTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, textAlign: 'center' },
   stateMessage: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', lineHeight: 20 },
   infoRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm },
+  eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.6, color: Colors.textMuted },
+  sectionAction: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MinTouch - 12 },
+  sectionActionText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: Radius.pill,
+  },
+  pillText: { fontSize: 12, fontWeight: '700' },
+  circle: {
+    width: MinTouch + 2,
+    height: MinTouch + 2,
+    borderRadius: (MinTouch + 2) / 2,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  grid: { gap: Spacing.md },
+  gridItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  gridIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridLabel: { fontSize: 12, color: Colors.textMuted },
+  gridValue: { fontSize: 15, fontWeight: '600', color: Colors.text, lineHeight: 21 },
   infoText: { flex: 1, fontSize: 15, color: Colors.text, lineHeight: 22 },
 });

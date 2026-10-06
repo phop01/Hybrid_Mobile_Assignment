@@ -62,63 +62,46 @@ export const ActivityCard = memo(function ActivityCard({
         accessibilityRole="button"
         accessibilityLabel={`${activity.title}, ${category.label}, ${formatDateRange(activity.startsAt, activity.endsAt)}, ${activity.location.name}, ${seatLabel}`}
         accessibilityHint="เปิดรายละเอียดกิจกรรม"
-        style={({ pressed }) => [styles.main, pressed && { opacity: 0.85 }]}>
-        <View style={[styles.stripe, { backgroundColor: category.color }]} />
-        <View style={styles.content}>
-          {/* รูปปกที่ผู้จัดเลือกจากคลัง (ถ้ามี) เป็นภาพประกอบ screen reader อ่านข้อมูลจาก label ของการ์ดแทน */}
+        style={({ pressed }) => pressed && { opacity: 0.85 }}>
+        {/* ส่วนรูป: รูปปก (ถ้ามี) หรือพื้นสีหมวด + ไอคอนใหญ่ · ป้ายหมวดและชั่วโมงลอยบนรูป (ตกแต่ง label ของการ์ดอ่านแทน) */}
+        <View style={styles.media} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {activity.imageUrl ? (
-            <Image
-              source={{ uri: toAbsoluteUrl(activity.imageUrl) }}
-              style={styles.cover}
-              contentFit="cover"
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            />
+            <Image source={{ uri: toAbsoluteUrl(activity.imageUrl) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
           ) : (
-            // ไม่มีรูปปก → แถบสีประเภท + ไอคอนใหญ่ ให้แต่ละประเภทแยกกันด้วยตาได้ทันที (ตกแต่ง ไม่ต้องอ่าน)
-            <View
-              style={[styles.band, { backgroundColor: category.soft }]}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants">
-              <Ionicons name={category.icon} size={56} color={category.color} style={styles.bandIcon} />
+            <View style={[StyleSheet.absoluteFill, styles.band, { backgroundColor: category.soft }]}>
+              <Ionicons name={category.icon} size={84} color={category.color} style={{ opacity: 0.28 }} />
             </View>
           )}
-          <View style={styles.body}>
-            <View style={styles.topRow}>
-              <View style={[styles.category, { backgroundColor: category.color }]}>
-                <Ionicons name={category.icon} size={14} color={Colors.onPrimary} />
-                <Text style={[styles.categoryText, { color: Colors.onPrimary }]}>{category.label}</Text>
-              </View>
-              <View style={[styles.category, { backgroundColor: Colors.accentSoft }]}>
-                <Ionicons name="hourglass-outline" size={13} color={Colors.accent} />
-                <Text style={[styles.categoryText, { color: Colors.accent }]}>{activity.hours} ชม.</Text>
-              </View>
-              {status ? <StatusBadge status={status} /> : null}
-            </View>
+          <View style={styles.categoryChip}>
+            <Ionicons name={category.icon} size={14} color={category.color} />
+            <Text style={[styles.chipText, { color: category.color }]}>{category.label}</Text>
+          </View>
+          <View style={styles.hoursChip}>
+            <Ionicons name="hourglass-outline" size={13} color={Colors.highlight} />
+            <Text style={[styles.chipText, { color: Colors.onPrimary }]}>{activity.hours} ชม.</Text>
+          </View>
+        </View>
 
-            <Text style={styles.title}>{activity.title}</Text>
-
+        <View style={styles.body}>
+          {status ? <StatusBadge status={status} /> : null}
+          <Text style={styles.title}>{activity.title}</Text>
+          <View style={styles.meta}>
+            <Ionicons name="time-outline" size={16} color={Colors.textMuted} />
+            <Text style={styles.metaText}>{formatDateRange(activity.startsAt, activity.endsAt)}</Text>
+          </View>
+          <View style={styles.meta}>
+            <Ionicons name="location-outline" size={16} color={Colors.textMuted} />
+            <Text style={styles.metaText}>{activity.location.name}</Text>
+          </View>
+          <View style={styles.footer}>
+            <Text style={[styles.seats, { color: seatColor }]}>{seatLabel}</Text>
             <View style={styles.meta}>
-              <Ionicons name="time-outline" size={16} color={Colors.textMuted} />
-              <Text style={styles.metaText}>{formatDateRange(activity.startsAt, activity.endsAt)}</Text>
-            </View>
-            <View style={styles.meta}>
-              <Ionicons name="location-outline" size={16} color={Colors.textMuted} />
-              <Text style={styles.metaText}>{activity.location.name}</Text>
-            </View>
-
-            <View style={styles.footer}>
-              <Text style={[styles.seats, { color: seatColor }]}>{seatLabel}</Text>
-              <View style={styles.meta}>
-                <Ionicons
-                  name={activity.checkInMethod === 'paper' ? 'document-text-outline' : 'phone-portrait-outline'}
-                  size={14}
-                  color={Colors.textMuted}
-                />
-                <Text style={styles.method}>
-                  {activity.checkInMethod === 'paper' ? 'ใบเซ็นชื่อ' : 'ถ่ายรูปที่งาน'}
-                </Text>
-              </View>
+              <Ionicons
+                name={activity.checkInMethod === 'paper' ? 'document-text-outline' : 'phone-portrait-outline'}
+                size={14}
+                color={Colors.textMuted}
+              />
+              <Text style={styles.method}>{activity.checkInMethod === 'paper' ? 'ใบเซ็นชื่อ' : 'ถ่ายรูปที่งาน'}</Text>
             </View>
           </View>
         </View>
@@ -133,11 +116,7 @@ export const ActivityCard = memo(function ActivityCard({
         }
         accessibilityState={{ selected: isFavorite }}
         style={styles.star}>
-        <Ionicons
-          name={isFavorite ? 'star' : 'star-outline'}
-          size={24}
-          color={isFavorite ? Colors.star : Colors.textMuted}
-        />
+        <Ionicons name={isFavorite ? 'star' : 'star-outline'} size={22} color={isFavorite ? Colors.star : Colors.text} />
       </Pressable>
     </View>
   );
@@ -146,40 +125,53 @@ export const ActivityCard = memo(function ActivityCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    borderRadius: Radius.xxl,
     borderWidth: 1,
     borderColor: Colors.border,
-    overflow: 'hidden',
+    padding: 6,
   },
-  main: { flex: 1, flexDirection: 'row' },
   // ไม่ใช้ opacity: ทำให้ข้อความสีเทาเหลือ contrast 2.9:1 อ่านยาก ใช้พื้นหลังต่างสีแทน (มีคำว่า "จบแล้ว" บอกอยู่แล้ว)
   ended: { backgroundColor: Colors.background },
-  stripe: { width: 6 },
-  content: { flex: 1 },
-  cover: { width: '100%', aspectRatio: 16 / 9, backgroundColor: Colors.border },
-  band: { height: 56, overflow: 'hidden' },
-  bandIcon: { position: 'absolute', right: MinTouch + Spacing.lg, top: 4, opacity: 0.35 },
-  body: { flex: 1, padding: Spacing.lg, gap: Spacing.sm },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap', paddingRight: MinTouch },
-  category: {
+  media: { height: 170, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: Colors.border },
+  band: { alignItems: 'flex-end', justifyContent: 'center', paddingRight: Spacing.xl },
+  categoryChip: {
+    position: 'absolute',
+    top: Spacing.md,
+    left: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     borderRadius: Radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.95)',
   },
-  categoryText: { fontSize: 12, fontWeight: '700' },
+  hoursChip: {
+    position: 'absolute',
+    bottom: Spacing.md,
+    left: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.scrim,
+  },
+  chipText: { fontSize: 12, fontWeight: '700' },
+  body: { padding: Spacing.md, paddingTop: Spacing.md, gap: 6 },
   star: {
     position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
+    top: 6 + Spacing.sm,
+    right: 6 + Spacing.sm,
     width: MinTouch,
     height: MinTouch,
+    borderRadius: MinTouch / 2,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: 17, fontWeight: '700', color: Colors.text, lineHeight: 24 },
+  title: { fontSize: 18, fontWeight: '800', color: Colors.text, lineHeight: 25 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaText: { flex: 1, fontSize: 14, color: Colors.textMuted },
   footer: {

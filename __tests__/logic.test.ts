@@ -1,5 +1,5 @@
 import { summarizeAttendance } from '@/lib/attendance';
-import { browseActivities, filterActivities, sortForBrowsing } from '@/lib/filter-activities';
+import { browseActivities, filterActivities, newestFirst, sortForBrowsing } from '@/lib/filter-activities';
 import { regionFor } from '@/lib/geo';
 import { hasErrors, validateRegistration } from '@/lib/validate-registration';
 import { favoritesReducer, initialFavorites } from '@/state/favorites-reducer';
@@ -35,6 +35,13 @@ describe('filterActivities', () => {
     const ended = makeActivity({ id: 'old', startsAt: '2026-09-01T09:00:00+07:00', endsAt: '2026-09-01T10:00:00+07:00' });
     const upcoming = makeActivity({ id: 'new' });
     expect(sortForBrowsing([ended, upcoming], NOW).map((a) => a.id)).toEqual(['new', 'old']);
+  });
+
+  it('lists newest posted first, activities without a post time last', () => {
+    const older = makeActivity({ id: 'older', createdAt: '2026-10-01T08:00:00Z' });
+    const latest = makeActivity({ id: 'latest', createdAt: '2026-10-05T08:00:00Z' });
+    const legacy = makeActivity({ id: 'legacy' });
+    expect(newestFirst([legacy, older, latest]).map((a) => a.id)).toEqual(['latest', 'older', 'legacy']);
   });
 });
 

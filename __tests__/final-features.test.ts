@@ -2,7 +2,7 @@
 // ชั่วโมงกิจกรรม, ฟอร์มสร้างกิจกรรมของผู้จัด, ฟอร์มสมัครสมาชิก, redirect ปลอดภัยหลัง login
 
 import { activityHours, atTime, buildActivityInput, emptyActivityForm } from '@/lib/activity-form';
-import { REQUIRED_HOURS, summarizeAttendance } from '@/lib/attendance';
+import { summarizeAttendance } from '@/lib/attendance';
 import { safeNext, validateSignUp } from '@/lib/auth-validation';
 import { availableReminderLeads, countdownProblem, formatCountdown, reminderTime } from '@/lib/check-in-rules';
 import { isAnnouncement, isOrganizerActivity, isUser } from '@/services/validators';
@@ -30,13 +30,13 @@ describe('ชั่วโมงกิจกรรม (summarizeAttendance)', () 
     expect(summary.hours).toBe(7);
     expect(summary.hoursByCategory).toEqual({ academic: 3, volunteer: 4, sport: 0, culture: 0 });
     expect(summary.pendingHours).toBe(2.5);
-    expect(summary.progress).toBeCloseTo(7 / REQUIRED_HOURS);
+    expect(summary.total).toBe(2);
   });
 
-  it('caps progress at 100%', () => {
+  it('has no hour cap: keeps adding every checked-in activity', () => {
     const many = Array.from({ length: 30 }, (_, i) => makeActivity({ id: `x${i}`, hours: 4 }));
     const regs = many.map((a, i) => makeRegistration({ id: String(i), activityId: a.id, status: 'checked_in' }));
-    expect(summarizeAttendance(regs, many).progress).toBe(1);
+    expect(summarizeAttendance(regs, many).hours).toBe(120);
   });
 });
 

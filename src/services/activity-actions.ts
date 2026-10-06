@@ -1,9 +1,9 @@
-// แชร์กิจกรรม และเพิ่มลงปฏิทิน (สัปดาห์ 11: Platform APIs + Deep Linking)
+// แชร์กิจกรรม (สัปดาห์ 11: Platform APIs + Deep Linking)
 
 import * as Linking from 'expo-linking';
-import { Platform, Share } from 'react-native';
+import { Share } from 'react-native';
 
-import { googleCalendarUrl, shareMessage } from '@/lib/activity-links';
+import { shareMessage } from '@/lib/activity-links';
 import type { Activity } from '@/types/models';
 
 export type ActionResult = 'done' | 'copied' | 'cancelled' | 'failed';
@@ -26,32 +26,5 @@ export async function shareActivity(activity: Activity): Promise<ActionResult> {
     } catch {
       return 'failed';
     }
-  }
-}
-
-/**
- * เพิ่มกิจกรรมลงปฏิทินของเครื่อง
- * มือถือ: เปิดฟอร์มเพิ่มกิจกรรมของระบบให้ผู้ใช้กดบันทึกเอง (ไม่ต้องให้แอปขอสิทธิ์อ่าน/เขียนปฏิทินทั้งหมด)
- * เว็บ: เปิดหน้า Google Calendar
- */
-export async function addToCalendar(activity: Activity): Promise<ActionResult> {
-  if (Platform.OS === 'web') {
-    window.open(googleCalendarUrl(activity), '_blank', 'noopener');
-    return 'done';
-  }
-  try {
-    // ใช้ API แบบ legacy เพราะทำงานได้ใน Expo Go (API ใหม่ต้องใช้ development build)
-    const Calendar = await import('expo-calendar/legacy');
-    const result = await Calendar.createEventInCalendarAsync({
-      title: activity.title,
-      startDate: new Date(activity.startsAt),
-      endDate: new Date(activity.endsAt),
-      location: activity.location.name,
-      notes: `${activity.description}\n\nได้ ${activity.hours} ชั่วโมงกิจกรรม · KKUNK Today`,
-      alarms: [{ relativeOffset: -60 }],
-    });
-    return result.action === 'canceled' ? 'cancelled' : 'done';
-  } catch {
-    return 'failed';
   }
 }
