@@ -1,5 +1,5 @@
 // ทดสอบกล่องแจ้งเตือน + type guard
-import { latestCreatedAt, mergeInbox, targetFor, unreadCount } from '@/lib/inbox';
+import { isUnread, latestCreatedAt, mergeInbox, targetFor, unreadCount } from '@/lib/inbox';
 import { isInboxItem } from '@/services/validators';
 import type { InboxItem } from '@/types/models';
 
@@ -13,6 +13,14 @@ describe('inbox', () => {
     expect(items.map((i) => i.id)).toEqual(['c', 'b', 'a']);
     expect(latestCreatedAt(items, '')).toBe('2026-09-30T03:00:00Z');
     expect(unreadCount(items, '2026-09-30T01:30:00Z')).toBe(2);
+  });
+
+  it('keeps items unread until tapped or marked all read', () => {
+    const items = [item('a', '2026-09-30T01:00:00Z'), item('b', '2026-09-30T02:00:00Z'), item('c', '2026-09-30T03:00:00Z')];
+    expect(unreadCount(items, null)).toBe(3);
+    expect(unreadCount(items, null, ['b'])).toBe(2);
+    expect(isUnread(items[1], null, ['b'])).toBe(false);
+    expect(unreadCount(items, '2026-09-30T02:00:00Z', ['c'])).toBe(0);
   });
 
   it('routes a tap to the right screen and rejects bad ids', () => {

@@ -194,6 +194,17 @@ r = await call('POST', `/activities/${toCancel}/registrations`, s1, { fullName: 
 check('cannot register for cancelled activity 409', r.status === 409, String(r.status));
 r = await call('GET', '/me/inbox?since=', s3);
 check('registrants notified of cancellation', (r.body.items ?? r.body).some((i) => i.title === 'กิจกรรมถูกยกเลิก'));
+// ---- มีหลักฐานแล้วยกเลิกไม่ได้ ต้องจบกิจกรรมแทน ----
+r = await call('POST', `/activities/${openActivity.id}/cancel`, org, { note: 'วิทยากรติดภารกิจ' });
+check('cannot cancel activity with evidence 409', r.status === 409 && r.body.code === 'has_evidence', JSON.stringify(r.body));
+r = await call('POST', `/activities/${openActivity.id}/end`, s1);
+check('student cannot end activity 403', r.status === 403, String(r.status));
+r = await call('POST', `/activities/${openActivity.id}/end`, org);
+check('staff ends activity early', r.status === 200 && Date.parse(r.body.endsAt) <= Date.now() && !r.body.cancelledAt, JSON.stringify(r.body));
+r = await call('GET', `/registrations/${myReg}`, s1);
+check('evidence kept after ending early', r.body.status === 'checked_in', JSON.stringify(r.body));
+r = await call('POST', `/activities/${openActivity.id}/end`, org);
+check('end twice 409', r.status === 409, String(r.status));
 
 r = await call('POST', '/auth/logout', s2);
 r = await call('GET', '/me', s2);

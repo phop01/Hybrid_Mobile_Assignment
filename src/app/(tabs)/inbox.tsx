@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { LoginPrompt } from '@/components/login-prompt';
@@ -24,7 +24,7 @@ const ICONS: Record<InboxKind, { icon: IconName; color: string; bg: string }> = 
 
 /**
  * ประวัติแจ้งเตือนทั้งหมด (แจ้งเตือนของระบบหายไปเมื่อปัดทิ้ง แต่ที่นี่ย้อนดูได้)
- * เปิดหน้านี้ = อ่านแล้ว ตัวเลขบนแท็บหายไป
+ * แต่ละรายการนับเป็น "ยังไม่อ่าน" (มีจุด + เลขบนแท็บ) จนกว่าจะแตะดู หรือกด "อ่านทั้งหมด" มุมขวาบน
  */
 /**
  * เว็บ (คอม): เปิดแจ้งเตือนของเบราว์เซอร์ ให้เด้งมุมจอแม้ดูแท็บอื่นอยู่ เช่น แท็บของเจ้าหน้าที่
@@ -42,7 +42,9 @@ function WebNotificationCard() {
   if (status === 'denied') {
     return (
       <Banner tone="warning" icon="notifications-off">
-        {'เบราว์เซอร์บล็อกแจ้งเตือนของเว็บนี้ไว้ เปิดได้ที่ไอคอนหน้าช่อง URL → การแจ้งเตือน → อนุญาต แล้วรีเฟรชหน้า\nระหว่างนี้แจ้งเตือนใหม่จะแสดงเป็นแถบด้านบนของแอป'}
+        {
+          'เบราว์เซอร์บล็อกแจ้งเตือนของเว็บนี้ไว้ เปิดได้ที่ไอคอนหน้าช่อง URL → การแจ้งเตือน → อนุญาต แล้วรีเฟรชหน้า\nระหว่างนี้แจ้งเตือนใหม่จะแสดงเป็นแถบด้านบนของแอป'
+        }
       </Banner>
     );
   }
@@ -52,7 +54,9 @@ function WebNotificationCard() {
   return (
     <View style={styles.webCard}>
       <Text style={styles.webTitle}>ให้คอมเครื่องนี้เด้งแจ้งเตือน</Text>
-      <Text style={styles.webText}>ตอนนี้แจ้งเตือนใหม่แสดงเป็นแถบในแอปเท่านั้น เปิดแจ้งเตือนเพื่อให้เด้งมุมจอแม้กำลังดูแท็บหรือโปรแกรมอื่น</Text>
+      <Text style={styles.webText}>
+        ตอนนี้แจ้งเตือนใหม่แสดงเป็นแถบในแอปเท่านั้น เปิดแจ้งเตือนเพื่อให้เด้งมุมจอแม้กำลังดูแท็บหรือโปรแกรมอื่น
+      </Text>
       <Button title="เปิดแจ้งเตือนบนคอมนี้" icon="notifications" onPress={() => enableWebNotifications().then(setStatus)} />
     </View>
   );
@@ -103,14 +107,8 @@ function PushCard() {
 
 export default function InboxScreen() {
   const session = useAuthenticatedSession();
-  const { items, markAllRead, refresh } = useInbox();
+  const { items, unread, markAllRead, markRead, isUnread, refresh } = useInbox();
   const refreshControl = useRefreshControl(refresh);
-
-  useFocusEffect(
-    useCallback(() => {
-      markAllRead();
-    }, [markAllRead]),
-  );
 
   if (!session) {
     return (
@@ -124,6 +122,7 @@ export default function InboxScreen() {
   }
 
   const open = (item: InboxItem) => {
+    markRead(item.id);
     const target = targetFor(item.kind, item.targetId);
     if (target) router.push(target as never);
   };
@@ -140,28 +139,50 @@ export default function InboxScreen() {
           <TopBar
             eyebrow="NOTIFICATIONS · แจ้งเตือน"
             title="แจ้งเตือน"
-            subtitle={items.length > 0 ? `${items.length} รายการ · แตะเพื่อไปยังเรื่องนั้น` : 'เรื่องใหม่จากเจ้าหน้าที่และกิจกรรมของคุณ'}
+            subtitle={
+              items.length === 0
+                ? 'เรื่องใหม่จากเจ้าหน้าที่และกิจกรรมของคุณ'
+                : unread > 0
+                  ? `ยังไม่อ่าน ${unread} จาก ${items.length} รายการ`
+                  : `${items.length} รายการ · อ่านครบแล้ว`
+            }
+            right={
+              unread > 0 ? (
+                <Pressable
+                  onPress={markAllRead}
+                  accessibilityRole="button"
+                  accessibilityLabel="อ่านทั้งหมด"
+                  hitSlop={8}
+                  style={({ pressed }) => [styles.readAll, pressed && { opacity: 0.8 }]}>
+                  <Ionicons name="checkmark-done" size={18} color={Colors.highlight} />
+                  <Text style={styles.readAllText}>อ่านทั้งหมด</Text>
+                </Pressable>
+              ) : undefined
+            }
           />
           {Platform.OS === 'web' ? <WebNotificationCard /> : <PushCard />}
         </View>
       }
-      renderItem={({ item }) => (
-        <Pressable
-          onPress={() => open(item)}
-          style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}
-          accessibilityRole="button"
-          accessibilityLabel={`${item.title}. ${item.body}. ${formatUpdatedAt(item.createdAt)}`}>
-          <View style={[styles.icon, { backgroundColor: ICONS[item.kind].bg }]}>
-            <Ionicons name={ICONS[item.kind].icon} size={20} color={ICONS[item.kind].color} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.body}>{item.body}</Text>
-            <Text style={styles.time}>{formatUpdatedAt(item.createdAt)}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-        </Pressable>
-      )}
+      renderItem={({ item }) => {
+        const fresh = isUnread(item);
+        return (
+          <Pressable
+            onPress={() => open(item)}
+            style={({ pressed }) => [styles.row, fresh && styles.rowUnread, pressed && { opacity: 0.85 }]}
+            accessibilityRole="button"
+            accessibilityLabel={`${fresh ? 'ยังไม่อ่าน. ' : ''}${item.title}. ${item.body}. ${formatUpdatedAt(item.createdAt)}`}>
+            <View style={[styles.icon, { backgroundColor: ICONS[item.kind].bg }]}>
+              <Ionicons name={ICONS[item.kind].icon} size={20} color={ICONS[item.kind].color} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[styles.title, fresh && { fontWeight: '800' }]}>{item.title}</Text>
+              <Text style={styles.body}>{item.body}</Text>
+              <Text style={styles.time}>{formatUpdatedAt(item.createdAt)}</Text>
+            </View>
+            {fresh ? <View style={styles.dot} /> : <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />}
+          </Pressable>
+        );
+      }}
       ListEmptyComponent={
         <StateView
           kind="empty"
@@ -197,6 +218,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  rowUnread: { backgroundColor: Colors.primarySoft, borderColor: Colors.primary },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.danger },
+  readAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: Colors.ink,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 14,
+    minHeight: 42,
+  },
+  readAllText: { color: Colors.highlight, fontWeight: '700', fontSize: 14 },
   title: { fontSize: 15, fontWeight: '700', color: Colors.text },
   body: { fontSize: 14, color: Colors.text, lineHeight: 20 },
   time: { fontSize: 12, color: Colors.textMuted },

@@ -1,5 +1,6 @@
 // ผู้จัดดูรายชื่อผู้เข้าร่วม ตรวจหลักฐานการเข้าร่วม (ผ่าน / ไม่ผ่านพร้อมเหตุผล) ทุกกิจกรรม
 // ไม่รับการลงทะเบียนรายคน และยกเลิกทั้งกิจกรรมได้ (ทุกอย่างต้องมีเหตุผล และอีกฝั่งได้แจ้งเตือน)
+// ยกเลิกได้เฉพาะก่อนเริ่มและยังไม่มีใครส่งหลักฐาน · หลังจากนั้นเป็น "จบกิจกรรมตอนนี้" (หลักฐาน/ชั่วโมงไม่หาย)
 
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -31,7 +32,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'rejected', label: 'ไม่รับ' },
   { key: 'cancelled', label: 'ยกเลิก' },
 ];
-const REJECT_REASONS = ['ไม่พบตัวคุณในรูป', 'รูปไม่เกี่ยวกับกิจกรรมนี้', 'ไม่พบชื่อในใบเซ็นชื่อ', 'รูปไม่ชัด'];
+const REJECT_REASONS = ['ไม่พบตัวคุณในรูป', 'รูปไม่เกี่ยวกับกิจกรรมนี้', 'รูปไม่ชัด'];
 const REGISTRATION_REJECT_REASONS = ['คุณสมบัติไม่ตรงกับกิจกรรม', 'ข้อมูลลงทะเบียนไม่ถูกต้อง', 'ที่นั่งสำหรับกลุ่มนี้เต็มแล้ว'];
 const CANCEL_REASONS = ['สภาพอากาศไม่เอื้ออำนวย', 'วิทยากรติดภารกิจ', 'ผู้ลงทะเบียนไม่ถึงจำนวนขั้นต่ำ'];
 
@@ -39,10 +40,12 @@ export default function OrganizerActivityScreen() {
   const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);
   const { getById } = useActivities();
   const activity = id ? getById(id) : undefined;
-  const { data: attendees, loading, error, reload, review, reject, cancelActivity } = useAttendees(id);
+  const { data: attendees, loading, error, reload, review, reject, cancelActivity, endActivity } = useAttendees(id);
   const { refresh: refreshActivities } = useActivities();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const [endError, setEndError] = useState<string | null>(null);
   const now = useNow();
   const [filter, setFilter] = useState<Filter>('all');
   const announcements = useActivityAnnouncements(id);
@@ -98,7 +101,7 @@ export default function OrganizerActivityScreen() {
       {pending.length > 0 ? (
         <>
           <SectionTitle>หลักฐานรอตรวจ ({pending.length})</SectionTitle>
-          <Text style={styles.muted}>ดูรูปแล้วกดผ่าน/ไม่ผ่าน (แบบใบเซ็นชื่อ: เทียบกับกระดาษ) ผ่านแล้วนักศึกษาได้ชั่วโมงทันทีและได้รับแจ้งเตือน</Text>
+          <Text style={styles.muted}>ดูรูปแล้วกดผ่าน/ไม่ผ่าน ผ่านแล้วนักศึกษาได้ชั่วโมงทันทีและได้รับแจ้งเตือน</Text>
           {pending.map((r) => (
             <ReviewCard key={r.id} registration={r} onReview={review} />
           ))}
@@ -160,7 +163,37 @@ export default function OrganizerActivityScreen() {
         </Card>
       )}
 
-      {activity && !activity.cancelledAt && new Date(activity.endsAt).getTime() > now ? (
+      {activity && !activity.cancelledAt && new Date(activity.endsAt).getTime() > now &&
+      (new Date(activity.startsAt).getTime() <= now || counts.pending_review + counts.checked_in > 0) ? (
+        <Card>
+          <SectionTitle>จบกิจกรรม</SectionTitle>
+          <Text style={styles.muted}>
+            กิจกรรมเริ่มแล้วหรือมีคนส่งหลักฐานแล้ว จึงยกเลิกไม่ได้ จบกิจกรรมตอนนี้ได้ หลักฐานและชั่วโมงที่ตรวจแล้วยังอยู่ครบ
+            คนที่ยังไม่ส่งหลักฐานจะได้แจ้งเตือนให้ส่ง
+          </Text>
+          {endError ? <Banner tone="danger">{endError}</Banner> : null}
+          <Button
+            title="จบกิจกรรมตอนนี้"
+            variant="danger"
+            icon="stop-circle-outline"
+            loading={ending}
+            onPress={async () => {
+              const ok = await confirmAction('จบกิจกรรม', `จบ “${activity.title}” ตอนนี้ใช่ไหม? ลงทะเบียนเพิ่มไม่ได้อีก`, 'จบกิจกรรม');
+              if (!ok) return;
+              setEnding(true);
+              setEndError(null);
+              try {
+                await endActivity();
+                await refreshActivities();
+              } catch (e) {
+                setEndError(e instanceof Error ? e.message : 'จบกิจกรรมไม่สำเร็จ');
+              } finally {
+                setEnding(false);
+              }
+            }}
+          />
+        </Card>
+      ) : activity && !activity.cancelledAt && new Date(activity.endsAt).getTime() > now ? (
         <Card>
           <SectionTitle>ยกเลิกกิจกรรม</SectionTitle>
           <Text style={styles.muted}>ทุกคนที่ลงทะเบียนจะได้แจ้งเตือนพร้อมเหตุผล และลงทะเบียนเพิ่มไม่ได้อีก</Text>

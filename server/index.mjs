@@ -224,9 +224,15 @@ function publicActivity(activity) {
   return {
     imageUrl: null,
     ...rest,
+    checkInMethod: 'app', // ข้อมูลเก่าที่เคยเป็นใบเซ็นชื่อ
     organizerName: organizer?.fullName ?? 'ผู้จัดกิจกรรม',
     registeredCount: baseRegistered + activeRegistrations(activity.id).length,
   };
+}
+
+/** มีนักศึกษาส่งหลักฐานแล้ว (รอตรวจหรือผ่านแล้ว) */
+function hasEvidence(activityId) {
+  return db.registrations.some((r) => r.activityId === activityId && (r.status === 'pending_review' || r.status === 'checked_in'));
 }
 
 /** สรุปตัวเลขสำหรับผู้จัด: ลงทะเบียน เข้าร่วมแล้ว รอตรวจ */
@@ -371,7 +377,8 @@ function validateActivityBody(body) {
     errors.location = 'กรุณาปักหมุดสถานที่บนแผนที่';
   }
   if (!Number.isInteger(loc.radiusM) || loc.radiusM < 30 || loc.radiusM > 1000) errors.radiusM = 'รัศมีเช็กอินต้องอยู่ระหว่าง 30–1000 เมตร';
-  if (!['app', 'paper'].includes(body.checkInMethod)) errors.checkInMethod = 'วิธีเช็กชื่อไม่ถูกต้อง';
+  // ส่งหลักฐานได้วิธีเดียว: ถ่ายรูปที่งาน (ใบเซ็นชื่อกระดาษถูกเอาออก)
+  if (body.checkInMethod !== undefined && body.checkInMethod !== 'app') errors.checkInMethod = 'วิธีส่งหลักฐานไม่ถูกต้อง';
   if (!Number.isInteger(body.capacity) || body.capacity < 1 || body.capacity > 2000) errors.capacity = 'จำนวนรับต้องเป็น 1–2000 คน';
   return errors;
 }
@@ -659,7 +666,7 @@ async function handle(req, res) {
         longitude: body.location.longitude,
         radiusM: body.location.radiusM,
       },
-      checkInMethod: body.checkInMethod,
+      checkInMethod: 'app',
       capacity: body.capacity,
       baseRegistered: 0,
       organizerId: organizer.id,
@@ -914,7 +921,7 @@ async function handle(req, res) {
     return send(res, 200, publicRegistration(registration));
   }
 
-  // POST /registrations/:id/review (ผู้จัดตรวจหลักฐานใบเซ็นชื่อ)
+  // POST /registrations/:id/review (ผู้จัดตรวจหลักฐาน)
   if (method === 'POST' && parts[0] === 'registrations' && parts[2] === 'review' && parts.length === 3) {
     const organizer = requireStaff(requireUser(req), 'activities');
     const registration = db.registrations.find((r) => r.id === parts[1]);
@@ -976,11 +983,18 @@ async function handle(req, res) {
   }
 
   // POST /activities/:id/cancel (เจ้าหน้าที่ยกเลิกทั้งกิจกรรม แจ้งทุกคนที่ลงทะเบียน)
+  // ยกเลิกได้เฉพาะก่อนเริ่มและยังไม่มีใครส่งหลักฐาน · หลังจากนั้นใช้ "จบกิจกรรม" (/end) แทน ชั่วโมงของนักศึกษาจะได้ไม่หาย
   if (method === 'POST' && parts[0] === 'activities' && parts[2] === 'cancel' && parts.length === 3) {
     const organizer = requireStaff(requireUser(req), 'activities');
     const activity = findOwnActivity(organizer, parts[1]);
     if (activity.cancelledAt) throw new HttpError(409, 'activity_cancelled', 'กิจกรรมนี้ถูกยกเลิกไปแล้ว');
     if (new Date(activity.endsAt).getTime() < Date.now()) throw new HttpError(409, 'activity_ended', 'กิจกรรมนี้จบไปแล้ว');
+    if (hasEvidence(activity.id)) {
+      throw new HttpError(409, 'has_evidence', 'มีนักศึกษาส่งหลักฐานแล้ว ยกเลิกไม่ได้ ใช้ "จบกิจกรรมตอนนี้" แทน');
+    }
+    if (new Date(activity.startsAt).getTime() <= Date.now()) {
+      throw new HttpError(409, 'activity_started', 'กิจกรรมเริ่มไปแล้ว ยกเลิกไม่ได้ ใช้ "จบกิจกรรมตอนนี้" แทน');
+    }
     const note = reasonText((await readJson(req)).note);
     if (!note) throw new HttpError(400, 'validation_failed', 'กรุณาระบุเหตุผล', { note: 'กรุณาระบุเหตุผล' });
     activity.cancelledAt = new Date().toISOString();
@@ -997,6 +1011,25 @@ async function handle(req, res) {
     notify(
       [...affected, ...checkedIn].map((r) => r.userId),
       { kind: 'activity', targetId: activity.id, title: 'กิจกรรมถูกยกเลิก', body: `${activity.title}: ${note}` },
+    );
+    persist();
+    return send(res, 200, publicActivity(activity));
+  }
+
+  // POST /activities/:id/end (เจ้าหน้าที่จบกิจกรรมก่อนเวลา) · หลักฐาน/ชั่วโมงเดิมอยู่ครบ คนที่ยังไม่ส่งหลักฐานส่งต่อได้
+  if (method === 'POST' && parts[0] === 'activities' && parts[2] === 'end' && parts.length === 3) {
+    const organizer = requireStaff(requireUser(req), 'activities');
+    const activity = findOwnActivity(organizer, parts[1]);
+    if (activity.cancelledAt) throw new HttpError(409, 'activity_cancelled', 'กิจกรรมนี้ถูกยกเลิกไปแล้ว');
+    const now = new Date();
+    if (new Date(activity.endsAt).getTime() <= now.getTime()) throw new HttpError(409, 'activity_ended', 'กิจกรรมนี้จบไปแล้ว');
+    activity.endsAt = now.toISOString();
+    if (new Date(activity.startsAt).getTime() > now.getTime()) activity.startsAt = activity.endsAt;
+    activity.endedEarlyAt = activity.endsAt;
+    const waiting = db.registrations.filter((r) => r.activityId === activity.id && r.status === 'registered');
+    notify(
+      waiting.map((r) => r.userId),
+      { kind: 'activity', targetId: activity.id, title: 'กิจกรรมจบแล้ว', body: `${activity.title}: ส่งหลักฐานการเข้าร่วมเพื่อรับชั่วโมงได้` },
     );
     persist();
     return send(res, 200, publicActivity(activity));

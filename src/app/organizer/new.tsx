@@ -217,16 +217,8 @@ export default function NewActivityScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>หลักฐานการเข้าร่วมและจำนวนรับ</SectionTitle>
-          <View style={styles.row}>
-            <Chip label="ถ่ายรูปที่งาน" selected={values.checkInMethod === 'app'} onPress={() => set('checkInMethod', 'app')} />
-            <Chip label="ใบเซ็นชื่อกระดาษ" selected={values.checkInMethod === 'paper'} onPress={() => set('checkInMethod', 'paper')} />
-          </View>
-          <Text style={styles.muted}>
-            {values.checkInMethod === 'app'
-              ? 'นักศึกษาถ่ายรูปที่งานส่งมา คุณตรวจในแอปก่อนนับชั่วโมง'
-              : 'นักศึกษาถ่ายรูปใบเซ็นชื่อส่งมา คุณตรวจในแอปก่อนนับชั่วโมง'}
-          </Text>
+          <SectionTitle>จำนวนรับ</SectionTitle>
+          <Text style={styles.muted}>นักศึกษาถ่ายรูปที่งานส่งเป็นหลักฐาน คุณตรวจในแอปก่อนนับชั่วโมง</Text>
           <TextField
             label="จำนวนรับ (คน) *"
             value={values.capacity}

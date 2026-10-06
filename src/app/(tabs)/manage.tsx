@@ -118,7 +118,7 @@ function ManageCard({ activity }: { activity: OrganizerActivity }) {
         </View>
         <Text style={styles.muted}>
           {formatDateRange(activity.startsAt, activity.endsAt)} · {activity.hours} ชม. ·{' '}
-          {activity.cancelledAt ? 'ยกเลิกแล้ว' : activity.checkInMethod === 'paper' ? 'ใบเซ็นชื่อ' : 'ถ่ายรูปที่งาน'}
+          {activity.cancelledAt ? 'ยกเลิกแล้ว' : 'ถ่ายรูปที่งาน'}
         </Text>
         <View style={styles.stats}>
           <Stat label="ลงทะเบียน" value={`${stats.registered}/${activity.capacity}`} tone="primary" />

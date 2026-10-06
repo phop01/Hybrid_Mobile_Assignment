@@ -3,8 +3,8 @@
 
 export type Category = 'academic' | 'volunteer' | 'sport' | 'culture';
 
-/** วิธีที่ผู้จัดใช้เช็กชื่อ: เช็กอินในแอป หรือใบเซ็นชื่อกระดาษ */
-export type CheckInMethod = 'app' | 'paper';
+/** วิธีส่งหลักฐาน: ถ่ายรูปที่งานในแอป (ใบเซ็นชื่อกระดาษถูกเอาออกแล้ว) */
+export type CheckInMethod = 'app';
 
 export type Venue = {
   name: string;
@@ -34,6 +34,8 @@ export type Activity = {
   /** เจ้าหน้าที่ยกเลิกกิจกรรม (ไม่มี = ยังจัดตามปกติ) */
   cancelledAt?: string | null;
   cancelReason?: string | null;
+  /** เจ้าหน้าที่จบกิจกรรมก่อนเวลา (endsAt ถูกเลื่อนมาเป็นเวลานี้) */
+  endedEarlyAt?: string | null;
   /** เวลาที่ผู้จัดโพสต์กิจกรรม (ข้อมูลเก่าอาจไม่มี) ใช้เรียง "ใหม่ล่าสุด" */
   createdAt?: string;
 };

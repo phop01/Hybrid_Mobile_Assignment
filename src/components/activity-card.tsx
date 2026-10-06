@@ -99,12 +99,8 @@ export const ActivityCard = memo(function ActivityCard({
           <View style={styles.footer}>
             <Text style={[styles.seats, { color: seatColor }]}>{seatLabel}</Text>
             <View style={styles.meta}>
-              <Ionicons
-                name={activity.checkInMethod === 'paper' ? 'document-text-outline' : 'phone-portrait-outline'}
-                size={14}
-                color={Colors.textMuted}
-              />
-              <Text style={styles.method}>{activity.checkInMethod === 'paper' ? 'ใบเซ็นชื่อ' : 'ถ่ายรูปที่งาน'}</Text>
+              <Ionicons name="phone-portrait-outline" size={14} color={Colors.textMuted} />
+              <Text style={styles.method}>ถ่ายรูปที่งาน</Text>
             </View>
           </View>
         </View>

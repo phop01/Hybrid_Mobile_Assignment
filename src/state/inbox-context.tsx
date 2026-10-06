@@ -5,7 +5,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 
-import { latestCreatedAt, mergeInbox, unreadCount } from '@/lib/inbox';
+import { isUnread, latestCreatedAt, mergeInbox, unreadCount } from '@/lib/inbox';
 import { registerForPush, type PushResult } from '@/services/push';
 import { ensureNotificationPermission, presentInboxItem } from '@/services/reminders';
 import * as inboxApi from '@/services/inbox-api';
@@ -19,7 +19,8 @@ import { useAuthenticatedSession } from './session-context';
 /** ถี่พอให้ "อีกฝั่งกด → อีกเครื่องเด้ง" ภายในไม่กี่วินาที และ poll เฉพาะตอนแอปเปิดอยู่ */
 const POLL_MS = 8000;
 
-type Stored = { userId: string; items: InboxItem[]; since: string; readUntil: string | null };
+/** readUntil = เวลาที่กด "อ่านทั้งหมด" ล่าสุด · readIds = รายการที่แตะดูแล้วทีละอัน */
+type Stored = { userId: string; items: InboxItem[]; since: string; readUntil: string | null; readIds?: string[] };
 const isStored = (v: unknown): v is Stored | null =>
   v === null ||
   (typeof v === 'object' &&
@@ -37,6 +38,9 @@ type InboxValue = {
   /** ฟังเมื่อมีแจ้งเตือนใหม่ ให้ส่วนอื่นโหลดข้อมูลใหม่ตาม (เช่น รายการเรื่องแจ้ง) คืนฟังก์ชันเลิกฟัง */
   subscribe: (listener: (fresh: InboxItem[]) => void) => () => void;
   markAllRead: () => void;
+  /** แตะดูรายการนี้แล้ว (ตัวเลขบนแท็บลดลง 1) */
+  markRead: (id: string) => void;
+  isUnread: (item: InboxItem) => boolean;
   refresh: () => Promise<void>;
   /** เครื่องนี้รับ push ได้ไหม (เด้งแม้ปิดแอป) · 'checking' = กำลังตรวจ */
   push: PushResult | 'checking';
@@ -51,6 +55,8 @@ const EMPTY: InboxValue = {
   dismissLatest: () => undefined,
   subscribe: () => () => undefined,
   markAllRead: () => undefined,
+  markRead: () => undefined,
+  isUnread: () => false,
   refresh: async () => undefined,
   push: 'unavailable',
   enablePush: async () => undefined,
@@ -72,6 +78,7 @@ export function InboxProvider({ children }: { children: ReactNode }) {
 function UserInbox({ token, userId, children }: { token: string; userId: string; children: ReactNode }) {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [readUntil, setReadUntil] = useState<string | null>(null);
+  const [readIds, setReadIds] = useState<string[]>([]);
   const [latest, setLatest] = useState<InboxItem | null>(null);
   const [push, setPush] = useState<PushResult | 'checking'>('checking');
   const listeners = useRef(new Set<(fresh: InboxItem[]) => void>());
@@ -111,15 +118,19 @@ function UserInbox({ token, userId, children }: { token: string; userId: string;
       const firstRun = !current;
       const incoming = await inboxApi.getInbox(token, current?.since ?? '');
       const { items: merged, fresh } = mergeInbox(current?.items ?? [], incoming);
+      // ครั้งแรก (เช่น เพิ่งเข้าสู่ระบบ/สลับบัญชี) ของเก่าก็นับเป็นยังไม่อ่าน จนกว่าจะแตะดูหรือกด "อ่านทั้งหมด"
+      const known = new Set(merged.map((i) => i.id));
       const next: Stored = {
         userId,
         items: merged,
         since: latestCreatedAt(merged, current?.since ?? new Date(0).toISOString()),
-        readUntil: firstRun ? latestCreatedAt(merged, new Date(0).toISOString()) : (current?.readUntil ?? null),
+        readUntil: current?.readUntil ?? null,
+        readIds: (current?.readIds ?? []).filter((id) => known.has(id)),
       };
       save(next);
       setItems(merged);
       setReadUntil(next.readUntil);
+      setReadIds(next.readIds ?? []);
       if (!firstRun && fresh.length > 0) {
         for (const item of fresh) await presentInboxItem(item).catch(() => undefined);
         setLatest(fresh[fresh.length - 1]);
@@ -142,6 +153,7 @@ function UserInbox({ token, userId, children }: { token: string; userId: string;
           stored.current = value;
           setItems(value.items);
           setReadUntil(value.readUntil);
+          setReadIds(value.readIds ?? []);
         }
       })
       .finally(() => {
@@ -162,9 +174,21 @@ function UserInbox({ token, userId, children }: { token: string; userId: string;
     const current = stored.current;
     if (!current) return;
     const until = latestCreatedAt(current.items, current.readUntil ?? new Date(0).toISOString());
-    save({ ...current, readUntil: until });
+    save({ ...current, readUntil: until, readIds: [] });
     setReadUntil(until);
+    setReadIds([]);
   }, [save]);
+
+  const markRead = useCallback(
+    (id: string) => {
+      const current = stored.current;
+      if (!current || current.readIds?.includes(id)) return;
+      const ids = [...(current.readIds ?? []), id];
+      save({ ...current, readIds: ids });
+      setReadIds(ids);
+    },
+    [save],
+  );
 
   const subscribe = useCallback((listener: (fresh: InboxItem[]) => void) => {
     listeners.current.add(listener);
@@ -175,11 +199,13 @@ function UserInbox({ token, userId, children }: { token: string; userId: string;
 
   const value: InboxValue = {
     items,
-    unread: unreadCount(items, readUntil),
+    unread: unreadCount(items, readUntil, readIds),
     latest,
     dismissLatest: () => setLatest(null),
     subscribe,
     markAllRead,
+    markRead,
+    isUnread: (item) => isUnread(item, readUntil, readIds),
     refresh: check,
     push,
     enablePush,

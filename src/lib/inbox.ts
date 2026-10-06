@@ -22,9 +22,14 @@ export function latestCreatedAt(items: InboxItem[], fallback: string): string {
   return items.reduce((max, i) => (i.createdAt > max ? i.createdAt : max), fallback);
 }
 
-export function unreadCount(items: InboxItem[], readUntil: string | null): number {
-  if (!readUntil) return items.length;
-  return items.filter((i) => i.createdAt > readUntil).length;
+/** ยังไม่อ่าน = ยังไม่เคยแตะดู และใหม่กว่าตอนกด "อ่านทั้งหมด" ครั้งล่าสุด */
+export function isUnread(item: InboxItem, readUntil: string | null, readIds: readonly string[] = []): boolean {
+  if (readIds.includes(item.id)) return false;
+  return !readUntil || item.createdAt > readUntil;
+}
+
+export function unreadCount(items: InboxItem[], readUntil: string | null, readIds: readonly string[] = []): number {
+  return items.filter((i) => isUnread(i, readUntil, readIds)).length;
 }
 
 // id ใน payload แจ้งเตือนมาจากภายนอก ตรวจรูปแบบก่อนใช้เป็น route param

@@ -46,7 +46,6 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isPaper = activity.checkInMethod === 'paper';
   const queued = queuedIds.includes(registration.id);
   const decision = canCheckIn(registration);
   const canSubmit = decision.ok && !queued;
@@ -164,9 +163,7 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
       <SectionTitle>หลักฐานการเข้าร่วม</SectionTitle>
       {canSubmit ? (
         <Text style={styles.muted}>
-          {isPaper
-            ? 'เซ็นชื่อกับเจ้าหน้าที่ แล้วถ่ายรูปใบเซ็นชื่อ (หรือบรรยากาศงาน) ส่งเป็นหลักฐาน เจ้าหน้าที่จะตรวจแล้วนับชั่วโมง'
-            : 'ถ่ายรูปตัวเองที่งานส่งเป็นหลักฐาน เจ้าหน้าที่จะตรวจแล้วนับชั่วโมง'}
+          ถ่ายรูปตัวเองที่งานส่งเป็นหลักฐาน เจ้าหน้าที่จะตรวจแล้วนับชั่วโมง
         </Text>
       ) : null}
 
@@ -294,8 +291,8 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
       <Modal visible={camera !== null} animationType="slide" onRequestClose={() => setCamera(null)}>
         {camera !== null ? (
           <CheckInCamera
-            initialFacing={isPaper ? 'back' : 'front'}
-            hint={isPaper ? 'ถ่ายให้เห็นชื่อและลายเซ็นของคุณในใบเซ็นชื่อชัด ๆ' : 'ถ่ายตัวคุณให้เห็นบรรยากาศงานด้านหลัง'}
+            initialFacing="front"
+            hint="ถ่ายตัวคุณให้เห็นบรรยากาศงานด้านหลัง"
             onCapture={onCaptured}
             onClose={() => setCamera(null)}
           />

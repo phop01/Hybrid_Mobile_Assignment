@@ -102,7 +102,15 @@ export function useAttendees(activityId: string | undefined) {
     [token, activityId, live],
   );
 
-  return { ...live, review, reject, cancelActivity };
+  /** จบกิจกรรมก่อนเวลา แล้วโหลดรายชื่อใหม่ */
+  const endActivity = useCallback(async () => {
+    if (!token || !activityId) throw new Error('กรุณาเข้าสู่ระบบ');
+    const updated = await api.endActivity(token, activityId);
+    await live.reload();
+    return updated;
+  }, [token, activityId, live]);
+
+  return { ...live, review, reject, cancelActivity, endActivity };
 }
 
 /**

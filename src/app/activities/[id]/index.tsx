@@ -192,12 +192,9 @@ export default function ActivityDetailScreen() {
                 },
                 { icon: 'person-outline', label: 'ผู้จัด', value: activity.organizerName },
                 {
-                  icon: activity.checkInMethod === 'paper' ? 'document-text-outline' : 'camera-outline',
+                  icon: 'camera-outline',
                   label: 'หลักฐานการเข้าร่วม',
-                  value:
-                    activity.checkInMethod === 'paper'
-                      ? 'ถ่ายรูปใบเซ็นชื่อส่งในแอป เจ้าหน้าที่ตรวจก่อนนับชั่วโมง'
-                      : 'ถ่ายรูปที่งานส่งในแอป เจ้าหน้าที่ตรวจก่อนนับชั่วโมง',
+                  value: 'ถ่ายรูปที่งานส่งในแอป เจ้าหน้าที่ตรวจก่อนนับชั่วโมง',
                 },
               ]}
             />

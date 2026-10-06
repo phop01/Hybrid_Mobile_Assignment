@@ -7,7 +7,7 @@ const MAX_WIDTH = 960;
 
 /**
  * ย่อรูปก่อนส่ง: รูปจากกล้องมือถือมักมีขนาดหลาย MB ส่งช้า โดยเฉพาะตอนเน็ตในงานไม่ดี
- * กว้าง 960px ยังอ่านชื่อและลายเซ็นในใบเซ็นชื่อได้ชัด
+ * กว้าง 960px ยังเห็นตัวคนและบรรยากาศงานชัด
  */
 export async function preparePhotoForUpload(uri: string): Promise<{ uri: string; base64: string }> {
   let base64: string | undefined;

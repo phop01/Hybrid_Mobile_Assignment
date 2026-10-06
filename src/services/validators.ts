@@ -31,7 +31,7 @@ export function isActivity(v: unknown): v is Activity {
     !Number.isNaN(Date.parse(v.startsAt)) &&
     isStr(v.endsAt) &&
     !Number.isNaN(Date.parse(v.endsAt)) &&
-    (v.checkInMethod === 'app' || v.checkInMethod === 'paper') &&
+    v.checkInMethod === 'app' &&
     isNum(v.capacity) &&
     isNum(v.registeredCount) &&
     isStr(loc.name) &&

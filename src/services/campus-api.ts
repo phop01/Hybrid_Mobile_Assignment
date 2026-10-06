@@ -183,6 +183,12 @@ export async function cancelActivity(token: string, activityId: string, note: st
   return parseOne(payload, isActivity, 'กิจกรรม');
 }
 
+/** ผู้จัดจบกิจกรรมก่อนเวลา (ใช้แทนยกเลิกเมื่อเริ่มแล้วหรือมีคนส่งหลักฐานแล้ว) */
+export async function endActivity(token: string, activityId: string): Promise<Activity> {
+  const payload = await apiRequest(`/activities/${encodeURIComponent(activityId)}/end`, { method: 'POST', token });
+  return parseOne(payload, isActivity, 'กิจกรรม');
+}
+
 /** ผู้จัดส่งประกาศถึงทุกคนที่ลงทะเบียนกิจกรรมนี้ */
 export async function sendAnnouncement(token: string, activityId: string, message: string): Promise<Announcement> {
   const payload = await apiRequest(`/activities/${encodeURIComponent(activityId)}/announcements`, {
