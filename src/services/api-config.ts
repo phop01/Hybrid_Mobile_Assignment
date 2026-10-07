@@ -14,21 +14,14 @@ export function resolveApiUrl(): string {
   if (explicit) return explicit.replace(/\/$/, '');
 
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    if (isTunnelHost(window.location.hostname)) return `${window.location.origin}/api`;
     return `${window.location.protocol}//${window.location.hostname}:${API_PORT}`;
   }
 
   const hostUri = Constants.expoConfig?.hostUri;
   const host = hostUri?.split(':')[0];
-  // tunnel (npm run present) เปิดออกเน็ตแค่พอร์ต Metro → เรียก API ผ่าน /api ที่ metro.config.js ส่งต่อให้
-  if (host && isTunnelHost(host)) return `https://${host}/api`;
   if (host) return `http://${host}:${API_PORT}`;
 
   return `http://localhost:${API_PORT}`;
-}
-
-function isTunnelHost(host: string): boolean {
-  return host.endsWith('.exp.direct');
 }
 
 export const API_URL = resolveApiUrl();

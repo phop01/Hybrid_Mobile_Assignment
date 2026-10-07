@@ -433,7 +433,7 @@ const loginFailures = new Map(); // loginId → { count, lockedUntil }
 
 // ---------- token ผู้ดูแล (ล้างข้อมูลตอน server เปิดอยู่) ----------
 // สุ่มใหม่ทุกครั้งที่เปิด server เขียนลงไฟล์ใน server/.data ให้ scripts/reset-live.mjs อ่าน
-// ไม่เชื่อ IP ของผู้เรียก เพราะคำขอที่ผ่าน tunnel ก็มาจาก localhost เหมือนกัน
+// ไม่เชื่อ IP ของผู้เรียก (ปลอมได้ง่าย) ใช้ token แทน
 
 const ADMIN_TOKEN = randomBytes(24).toString('hex');
 

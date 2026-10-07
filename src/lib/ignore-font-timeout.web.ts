@@ -1,4 +1,4 @@
-// เว็บ: expo-font ใช้ fontfaceobserver รอฟอนต์ไอคอนโหลดเสร็จภายใน 12 วิ ถ้าเน็ตช้า (เช่น ผ่าน tunnel)
+// เว็บ: expo-font ใช้ fontfaceobserver รอฟอนต์ไอคอนโหลดเสร็จภายใน 12 วิ ถ้าเน็ตช้า
 // จะ reject ด้วย "12000ms timeout exceeded" · expo-font ตั้งใจกลืน error นี้ แต่ try/catch ของมัน
 // จับ promise ที่ reject ทีหลังไม่ได้ → หลุดเป็นจอแดง ทั้งที่ฟอนต์ยังแสดงได้เองเมื่อโหลดเสร็จ
 // แก้ที่ต้นทาง: ห่อ loadAsync ของตัวโหลดฟอนต์ (อ็อบเจกต์เดียวกับที่ expo-font เรียก อยู่ใน globalThis.expo.modules)
