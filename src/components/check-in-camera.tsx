@@ -104,10 +104,8 @@ export function CheckInCamera({
         </Pressable>
         <Pressable
           style={styles.roundBtn}
-          onPress={() => {
-            setReady(false);
-            setFacing((f) => (f === 'back' ? 'front' : 'back'));
-          }}
+          // ไม่รีเซ็ต ready: บน iPhone สลับกล้องแล้ว onCameraReady ไม่เรียกซ้ำ ปุ่มถ่ายจะกดไม่ได้ค้าง
+          onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
           accessibilityRole="button"
           accessibilityLabel="สลับกล้องหน้าหลัง">
           <Ionicons name="camera-reverse" size={28} color="#fff" />

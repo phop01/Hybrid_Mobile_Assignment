@@ -22,7 +22,7 @@ const COUNTDOWN = -2;
 
 /**
  * ตั้ง/เปลี่ยน/ยกเลิกแจ้งเตือนกิจกรรม: เลือกเวลาสำเร็จรูป, "กำหนดเอง" (วัน/ชม./นาที ก่อนงานเริ่ม)
- * หรือ "นับถอยหลังจากตอนนี้" (ชม./นาที/วินาที นับจากตอนกด ใช้ได้จนงานจบ เช่น ระหว่างงานให้เตือนไปส่งหลักฐาน)
+ * หรือ "นับถอยหลังจากตอนนี้" (วัน/ชม./นาที/วินาที นับจากตอนกด ใช้ได้จนงานจบ เช่น ระหว่างงานให้เตือนไปส่งหลักฐาน)
  * ขอสิทธิ์แจ้งเตือนตอนกดปุ่มนี้เท่านั้น ไม่ขอตอนเปิดแอป
  * (ประกาศด่วนจากผู้จัด เช่น "เริ่มกิจกรรมแล้ว" เด้งให้เองโดยไม่ต้องตั้ง)
  */
@@ -48,7 +48,7 @@ export function ReminderControl({
   // ค่าเริ่มของ "กำหนดเอง": 2 ชม. ก่อนงาน
   const [custom, setCustom] = useState({ days: 0, hours: 2, minutes: 0 });
   // ค่าเริ่มของ "นับถอยหลังจากตอนนี้": 5 วินาที (ขั้นต่ำ)
-  const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 5 });
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 5 });
 
   useEffect(() => {
     loadReminderMap().then((map) => setScheduled(map[registrationId] ?? null));
@@ -69,7 +69,7 @@ export function ReminderControl({
   const eventStarted = new Date(activity.startsAt).getTime() <= now;
   const eventEnded = new Date(activity.endsAt).getTime() <= now;
   const customMinutes = custom.days * 24 * 60 + custom.hours * 60 + custom.minutes;
-  const countdownSeconds = countdown.hours * 3600 + countdown.minutes * 60 + countdown.seconds;
+  const countdownSeconds = countdown.days * 86400 + countdown.hours * 3600 + countdown.minutes * 60 + countdown.seconds;
   // ยังไม่ได้เลือก → ใช้ตัวเลือกสำเร็จรูปที่ใกล้งานที่สุดที่ยังทัน · ไม่มีเหลือแล้ว → กำหนดเอง · งานเริ่มแล้ว → นับถอยหลัง
   const selected = eventStarted ? COUNTDOWN : (lead ?? leads[leads.length - 1]?.minutes ?? CUSTOM);
   const isCountdown = selected === COUNTDOWN;
@@ -161,6 +161,7 @@ export function ReminderControl({
           {isCountdown ? (
             <View style={styles.custom}>
               <WheelGroup>
+                <WheelPicker label="วัน" unit="วัน" values={range(0, 7)} value={countdown.days} onChange={(days) => setCountdown((c) => ({ ...c, days }))} />
                 <WheelPicker label="ชั่วโมง" unit="ชม." values={range(0, 23)} value={countdown.hours} onChange={(hours) => setCountdown((c) => ({ ...c, hours }))} />
                 <WheelPicker label="นาที" unit="นาที" values={range(0, 59)} value={countdown.minutes} onChange={(minutes) => setCountdown((c) => ({ ...c, minutes }))} />
                 <WheelPicker label="วินาที" unit="วิ." values={range(0, 59)} value={countdown.seconds} onChange={(seconds) => setCountdown((c) => ({ ...c, seconds }))} />

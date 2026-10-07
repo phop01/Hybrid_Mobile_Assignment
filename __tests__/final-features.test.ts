@@ -106,6 +106,7 @@ describe('สมัครสมาชิกและความปลอดภ�
     expect(countdownProblem(activity, 180 * 60, now)).toBe('เวลานี้เลยเวลาจบงานแล้ว ลองลดเวลาลง');
     expect(formatCountdown(90)).toBe('1 นาที 30 วินาที');
     expect(formatCountdown(3605)).toBe('1 ชม. 5 วินาที');
+    expect(formatCountdown(2 * 86400 + 3600 + 60)).toBe('2 วัน 1 ชม. 1 นาที');
   });
 
   it('signs up with exactly one role', () => {

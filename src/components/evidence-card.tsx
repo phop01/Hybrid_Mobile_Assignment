@@ -291,8 +291,8 @@ export function EvidenceCard({ registration, activity }: { registration: Registr
       <Modal visible={camera !== null} animationType="slide" onRequestClose={() => setCamera(null)}>
         {camera !== null ? (
           <CheckInCamera
-            initialFacing="front"
-            hint="ถ่ายตัวคุณให้เห็นบรรยากาศงานด้านหลัง"
+            initialFacing="back"
+            hint="ถ่ายบรรยากาศงานที่คุณเข้าร่วม"
             onCapture={onCaptured}
             onClose={() => setCamera(null)}
           />

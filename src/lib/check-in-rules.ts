@@ -73,11 +73,12 @@ export function countdownProblem(activity: Activity, seconds: number, now = Date
   return null;
 }
 
-/** วินาทีเป็นข้อความสั้น ๆ: 90 → "1 นาที 30 วินาที", 3600 → "1 ชม." */
+/** วินาทีเป็นข้อความสั้น ๆ: 90 → "1 นาที 30 วินาที", 3600 → "1 ชม.", 90000 → "1 วัน 1 ชม." */
 export function formatCountdown(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = seconds % 60;
-  const parts = [hours ? `${hours} ชม.` : '', mins ? `${mins} นาที` : '', secs ? `${secs} วินาที` : ''].filter(Boolean);
+  const parts = [days ? `${days} วัน` : '', hours ? `${hours} ชม.` : '', mins ? `${mins} นาที` : '', secs ? `${secs} วินาที` : ''].filter(Boolean);
   return parts.length ? parts.join(' ') : '0 วินาที';
 }

@@ -2,11 +2,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useReducer, useRef } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, type TextInput } from 'react-native';
 
-import { ReminderControl } from '@/components/reminder-control';
 import { Banner, Button, Card, Screen, SectionTitle, StateView, TextField } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { firstParam, useActivity } from '@/hooks/use-activity';
-import { useNow } from '@/hooks/use-now';
 import { formatDateRange } from '@/lib/format';
 import { newIdempotencyKey } from '@/lib/platform-actions';
 import { hasErrors, validateRegistration } from '@/lib/validate-registration';
@@ -23,7 +21,6 @@ export default function RegisterScreen() {
   const activityState = useActivity(id);
   const session = useAuthenticatedSession();
   const { register, findActiveForActivity } = useMyRegistrations();
-  const now = useNow();
 
   // เติมชื่อ รหัส คณะ จากโปรไฟล์ ไม่ต้องพิมพ์ซ้ำทุกกิจกรรม
   const [state, dispatch] = useReducer(
@@ -47,8 +44,11 @@ export default function RegisterScreen() {
   }
   const { activity } = activityState;
 
+  // ลงทะเบียนสำเร็จแล้ว: กำลังพากลับหน้ารายละเอียด (ตั้งเตือนให้ไปเช็กอินได้ที่นั่น)
+  if (state.phase === 'done') return <StateView kind="loading" />;
+
   const existing = findActiveForActivity(activity.id);
-  if (existing && state.phase !== 'done') {
+  if (existing) {
     return (
       <StateView
         kind="empty"
@@ -76,6 +76,8 @@ export default function RegisterScreen() {
       const registration = await register(activity.id, state.values, idempotencyKey);
       dispatch({ type: 'success', registration });
       hapticSuccess();
+      // กลับไปหน้ารายละเอียดกิจกรรมเดิม (ไม่ซ้อนหน้าใหม่) พร้อมบอกว่าเพิ่งลงทะเบียน → แสดงข้อความสำเร็จ + การ์ดตั้งเตือน
+      router.dismissTo({ pathname: '/activities/[id]', params: { id: activity.id, registered: '1' } });
       // ขอสิทธิ์แจ้งเตือนตอนนี้ เพราะเพิ่งลงทะเบียน ผู้ใช้เข้าใจว่าจะได้รับประกาศของกิจกรรมนี้
       // เว็บ: เบราว์เซอร์ให้ขอสิทธิ์ได้เฉพาะตอนผู้ใช้กดปุ่ม จึงไปขอตอนกด "ตั้งแจ้งเตือน" แทน
       if (supportsNotifications && Platform.OS !== 'web') ensureNotificationPermission().catch(() => undefined);
@@ -88,24 +90,6 @@ export default function RegisterScreen() {
       }
     }
   };
-
-  if (state.phase === 'done' && state.result) {
-    const registrationId = state.result.id;
-    return (
-      <Screen>
-        <Banner tone="success">ลงทะเบียน “{activity.title}” สำเร็จ</Banner>
-        <Card>
-          <SectionTitle>เตือนให้ไปเช็กอิน</SectionTitle>
-          <ReminderControl registrationId={registrationId} activity={activity} now={now} preferCountdown />
-        </Card>
-        <Button
-          title="ดูการลงทะเบียนของฉัน"
-          icon="ticket-outline"
-          onPress={() => router.replace({ pathname: '/registrations/[id]', params: { id: registrationId } })}
-        />
-      </Screen>
-    );
-  }
 
   const submitting = state.phase === 'submitting';
 
