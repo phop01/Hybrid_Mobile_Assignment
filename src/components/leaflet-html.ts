@@ -145,7 +145,7 @@ export function pickMapHtml(props: {
   );
 }
 
-/** แผนที่สถานที่จัดงาน: หมุด + วงรัศมีเช็กอิน (+ ตำแหน่งผู้ใช้ถ้ามี) */
+/** แผนที่สถานที่จัดงาน: หมุด (+ ตำแหน่งผู้ใช้ถ้ามี) */
 export function activityMapHtml({ venue, title, user }: { venue: Venue; title: string; user?: Coordinates | null }): string {
   const userJs = user
     ? `L.circleMarker([${user.latitude}, ${user.longitude}], { radius: 8, color: '#157F3D', fillOpacity: 0.9 })
@@ -157,7 +157,6 @@ export function activityMapHtml({ venue, title, user }: { venue: Venue; title: s
     `
   var map = L.map('map').setView([${venue.latitude}, ${venue.longitude}], 16);
   addTiles(map);
-  L.circle([${venue.latitude}, ${venue.longitude}], { radius: ${venue.radiusM}, color: '${Colors.primary}', fillOpacity: 0.15 }).addTo(map);
   // JSON.stringify ทำให้เป็น string ของ JavaScript ที่ถูกต้องเสมอ (ชื่อที่มี \\ หรือขึ้นบรรทัดใหม่ไม่ทำให้แผนที่พัง)
   // escapeHtml กันชื่อถูกตีความเป็น HTML ใน popup และแทน "<" กันปิดแท็ก <script> ก่อนเวลา
   L.marker([${venue.latitude}, ${venue.longitude}]).addTo(map).bindPopup(${safe(`${escapeHtml(title)}<br>${escapeHtml(venue.name)}`)});

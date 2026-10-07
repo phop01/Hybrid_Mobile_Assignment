@@ -215,7 +215,6 @@ export default function ActivityDetailScreen() {
           <Card>
             <SectionHeader eyebrow="LOCATION" title="สถานที่จัดงาน" />
             <ActivityMap venue={activity.location} title={activity.title} />
-            <Text style={styles.muted}>วงกลมคือบริเวณจัดงาน (รัศมี {activity.location.radiusM} ม.)</Text>
             <NavigateButtons place={activity.location} />
           </Card>
         </View>

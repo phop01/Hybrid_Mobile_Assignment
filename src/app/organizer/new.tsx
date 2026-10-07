@@ -29,7 +29,6 @@ import { Text } from '@/components/app-text';
 import { HScroll } from '@/components/h-scroll';
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
-const RADII = [50, 100, 150, 300];
 
 export default function NewActivityScreen() {
   const session = useOrganizerSession();
@@ -208,12 +207,6 @@ export default function NewActivityScreen() {
           ) : (
             <Text style={styles.muted}>แตะแผนที่หรือลากหมุดไปที่สถานที่จัดงาน</Text>
           )}
-          <Text style={styles.label}>บริเวณจัดงาน (รัศมีบนแผนที่)</Text>
-          <View style={styles.row}>
-            {RADII.map((r) => (
-              <Chip key={r} label={`${r} ม.`} selected={values.radiusM === r} onPress={() => set('radiusM', r)} />
-            ))}
-          </View>
         </Card>
 
         <Card>

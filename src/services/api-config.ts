@@ -35,5 +35,6 @@ export const API_URL = resolveApiUrl();
 
 /** รูปหลักฐานเก็บที่ server เป็น path สัมพัทธ์ ต้องต่อกับ API_URL ก่อนแสดง */
 export function toAbsoluteUrl(path: string): string {
-  return /^https?:\/\//.test(path) ? path : `${API_URL}${path}`;
+  // มี scheme อยู่แล้ว (http/https หรือไฟล์ในเครื่อง file:/blob:/data: ตอนพรีวิวรูป) → ใช้ตามนั้น
+  return /^[a-z][a-z0-9+.-]*:/i.test(path) ? path : `${API_URL}${path}`;
 }

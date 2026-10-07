@@ -10,7 +10,7 @@ import { activityMapHtml } from './leaflet-html';
 export function ActivityMap(props: ActivityMapProps) {
   const { venue, height = 220 } = props;
   return (
-    <View style={[styles.wrap, { height }]} accessibilityLabel={`แผนที่ ${venue.name} บริเวณจัดงาน ${venue.radiusM} เมตร`}>
+    <View style={[styles.wrap, { height }]} accessibilityLabel={`แผนที่ ${venue.name}`}>
       <iframe
         title={`แผนที่ ${venue.name}`}
         srcDoc={activityMapHtml(props)}

@@ -67,13 +67,16 @@ function buildDb(saved) {
   const customActivities = Array.isArray(saved.customActivities) ? saved.customActivities : [];
   // บัญชีที่สมัครเองในแอป (บัญชีตัวอย่างสร้างใหม่ทุกครั้ง ไม่ต้องเก็บ)
   const registeredUsers = Array.isArray(saved.users) ? saved.users : [];
+  const profiles = saved.profiles && typeof saved.profiles === 'object' && !Array.isArray(saved.profiles) ? saved.profiles : {};
+  // ชื่อที่แก้ทีหลังเก็บใน profiles: ใส่กลับให้บัญชีตัวอย่างที่ถูกสร้างใหม่ด้วย
+  const withProfileName = (user) => (profiles[user.id]?.fullName ? { ...user, fullName: profiles[user.id].fullName } : user);
   return {
     // กิจกรรมตัวอย่างสร้างใหม่ทุกครั้งที่เปิด server เพื่อให้เวลาเป็นปัจจุบันเสมอ
     activities: [...buildActivities(), ...customActivities],
     customActivities,
     users: [
-      ...SEED_USERS.map(({ password, ...user }) => ({ ...user, passwordHash: hashPassword(password) })),
-      ...registeredUsers.filter((u) => !SEED_USERS.some((d) => d.studentId === u.studentId)),
+      ...SEED_USERS.map(({ password, ...user }) => withProfileName({ ...user, passwordHash: hashPassword(password) })),
+      ...registeredUsers.filter((u) => !SEED_USERS.some((d) => d.studentId === u.studentId)).map(withProfileName),
     ],
     registeredUsers,
     registrations: Array.isArray(saved.registrations) ? saved.registrations : [],
@@ -81,7 +84,7 @@ function buildDb(saved) {
     // ประกาศที่ผู้จัดส่งถึงผู้ลงทะเบียน แอปนักศึกษาดึงไปแสดงเป็นแจ้งเตือนในเครื่อง
     announcements: Array.isArray(saved.announcements) ? saved.announcements : [],
     // รูปโปรไฟล์ + ความสนใจ แยกจากตัวบัญชี เพื่อให้บัญชีตัวอย่างที่สร้างใหม่ทุกครั้งยังเก็บค่าที่ผู้ใช้ตั้งไว้
-    profiles: saved.profiles && typeof saved.profiles === 'object' && !Array.isArray(saved.profiles) ? saved.profiles : {},
+    profiles,
     // กล่องแจ้งเตือนของทุกคน: server ตัดสินว่าใครควรรู้เรื่องอะไร แอปแค่ดึงของตัวเองไปเด้ง
     notifications: Array.isArray(saved.notifications) ? saved.notifications : [],
     // Expo push token ของเครื่องที่ login อยู่ (ผูกกับ session: logout แล้วลบ ไม่เด้งหาคนที่ออกไปแล้ว)
@@ -597,13 +600,21 @@ async function handle(req, res) {
     return send(res, 200, publicUser(effectiveUser(db.users.find((u) => u.id === user.id), body.role)));
   }
 
-  // PUT /me/profile { major?: string | null, avatarBase64?: string | null }
-  // สาขาต้องอยู่ในรายการของคณะ (null = ไม่ระบุ) · รูปเป็น JPEG ไม่เกิน 3 MB · avatarBase64: null = ลบรูป
+  // PUT /me/profile { fullName?: string, major?: string | null, avatarBase64?: string | null }
+  // ชื่อ 4–80 ตัว · สาขาต้องอยู่ในรายการของคณะ (null = ไม่ระบุ) · รูปเป็น JPEG ไม่เกิน 3 MB · avatarBase64: null = ลบรูป
+  // รหัสนักศึกษาแก้ไม่ได้ (ใช้เข้าสู่ระบบ)
   if (method === 'PUT' && url.pathname === '/me/profile') {
     const user = requireUser(req);
     const body = await readJson(req);
     // ความสนใจ (interests) เลิกใช้แล้ว: ไม่เก็บต่อ
     const { interests, ...profile } = db.profiles[user.id] ?? { avatarUrl: null };
+    if (body.fullName !== undefined) {
+      if (typeof body.fullName !== 'string' || body.fullName.trim().length < 4 || body.fullName.length > 80) {
+        throw new HttpError(400, 'validation_failed', 'ข้อมูลไม่ถูกต้อง', { fullName: 'กรุณากรอกชื่อ-นามสกุล' });
+      }
+      profile.fullName = body.fullName.trim();
+      db.users.find((u) => u.id === user.id).fullName = profile.fullName;
+    }
     if (body.major !== undefined) {
       if (body.major !== null && !MAJORS.includes(body.major)) {
         throw new HttpError(400, 'validation_failed', 'ข้อมูลไม่ถูกต้อง', { major: 'เลือกสาขาจากรายการ' });

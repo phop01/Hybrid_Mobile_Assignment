@@ -77,7 +77,7 @@ export default function OrganizerActivityScreen() {
           </HeroCard>
           <Card>
             <InfoGrid
-              items={[{ icon: 'location-outline', label: 'สถานที่', value: `${activity.location.name} (รัศมี ${activity.location.radiusM} ม.)` }]}
+              items={[{ icon: 'location-outline', label: 'สถานที่', value: activity.location.name }]}
             />
           </Card>
         </>

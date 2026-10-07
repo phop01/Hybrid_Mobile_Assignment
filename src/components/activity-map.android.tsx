@@ -22,13 +22,13 @@ export function ActivityMap({ venue, title, user, height = 220 }: ActivityMapPro
         user: userLat !== undefined && userLng !== undefined ? { latitude: userLat, longitude: userLng } : null,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- venue เป็น object ใหม่ทุก render ใช้ค่าที่แสดงจริงแทน
-    [venue.latitude, venue.longitude, venue.radiusM, venue.name, title, userLat, userLng],
+    [venue.latitude, venue.longitude, venue.name, title, userLat, userLng],
   );
   return (
     <LeafletWebView
       html={html}
       style={[styles.wrap, { height }]}
-      accessibilityLabel={`แผนที่ ${venue.name} บริเวณจัดงาน ${venue.radiusM} เมตร`}
+      accessibilityLabel={`แผนที่ ${venue.name}`}
     />
   );
 }

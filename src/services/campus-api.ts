@@ -54,9 +54,9 @@ export async function setActiveRole(token: string, role: AccountRole): Promise<U
   return parseOne(await apiRequest('/me/role', { method: 'POST', token, body: { role } }), isUser, 'ผู้ใช้');
 }
 
-export type ProfileInput = { major?: string | null; avatarBase64?: string | null };
+export type ProfileInput = { fullName?: string; major?: string | null; avatarBase64?: string | null };
 
-/** แก้โปรไฟล์: major = สาขา (null = ไม่ระบุ) · avatarBase64 = รูป JPEG (null = ลบรูป) ส่งเฉพาะช่องที่เปลี่ยน */
+/** แก้โปรไฟล์: fullName = ชื่อ-นามสกุล · major = สาขา (null = ไม่ระบุ) · avatarBase64 = รูป JPEG (null = ลบรูป) ส่งเฉพาะช่องที่เปลี่ยน */
 export async function updateProfile(
   token: string,
   input: ProfileInput,
