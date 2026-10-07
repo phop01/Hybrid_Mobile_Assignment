@@ -66,7 +66,7 @@ export function customLeadProblem(activity: Activity, minutes: number, now = Dat
   return null;
 }
 
-/** ตรวจ "นับถอยหลังจากตอนนี้" (หน่วยวินาที): อย่างน้อย 5 วินาที และต้องเตือนก่อนงานจบ คืนเหตุผลถ้าใช้ไม่ได้ / null ถ้าใช้ได้ */
+/** ตรวจ "เตือนฉันอีกที" (หน่วยวินาที): อย่างน้อย 5 วินาที และต้องเตือนก่อนงานจบ คืนเหตุผลถ้าใช้ไม่ได้ / null ถ้าใช้ได้ */
 export function countdownProblem(activity: Activity, seconds: number, now = Date.now()): string | null {
   if (!Number.isInteger(seconds) || seconds < 5) return 'ต้องนับถอยหลังอย่างน้อย 5 วินาที';
   if (now + seconds * 1000 >= new Date(activity.endsAt).getTime()) return 'เวลานี้เลยเวลาจบงานแล้ว ลองลดเวลาลง';

@@ -72,7 +72,7 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 }
 
 /**
- * ตั้งเตือนกิจกรรม ณ เวลา date: ผู้ใช้เลือก "ก่อนงานเริ่ม X" (คำนวณด้วย reminderTime) หรือ "นับถอยหลังจากตอนนี้"
+ * ตั้งเตือนกิจกรรม ณ เวลา date: ผู้ใช้เลือก "ก่อนงานเริ่ม X" (คำนวณด้วย reminderTime) หรือ "เตือนฉันอีกที"
  * แตะแจ้งเตือนแล้วไปหน้าเช็กอิน
  */
 export async function scheduleCheckInReminder(registrationId: string, activity: Activity, date: Date): Promise<ScheduledReminder> {

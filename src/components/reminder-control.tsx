@@ -19,10 +19,12 @@ import { Text } from '@/components/app-text';
 
 const CUSTOM = -1;
 const COUNTDOWN = -2;
+/** "เตือนฉันอีกที": เวลาสำเร็จรูป (วินาที) · ต้องการเวลาอื่นค่อยกด "กำหนดเอง" แล้วหมุนวงล้อ */
+const COUNTDOWN_PRESETS = [60, 5 * 60, 15 * 60, 30 * 60, 60 * 60];
 
 /**
  * ตั้ง/เปลี่ยน/ยกเลิกแจ้งเตือนกิจกรรม: เลือกเวลาสำเร็จรูป, "กำหนดเอง" (วัน/ชม./นาที ก่อนงานเริ่ม)
- * หรือ "นับถอยหลังจากตอนนี้" (วัน/ชม./นาที/วินาที นับจากตอนกด ใช้ได้จนงานจบ เช่น ระหว่างงานให้เตือนไปส่งหลักฐาน)
+ * หรือ "เตือนฉันอีกที" (อีก 1 นาที–1 ชม. หรือกำหนดเอง วัน/ชม./นาที/วินาที นับจากตอนกด ใช้ได้จนงานจบ เช่น ระหว่างงานให้เตือนไปส่งหลักฐาน)
  * ขอสิทธิ์แจ้งเตือนตอนกดปุ่มนี้เท่านั้น ไม่ขอตอนเปิดแอป
  * (ประกาศด่วนจากผู้จัด เช่น "เริ่มกิจกรรมแล้ว" เด้งให้เองโดยไม่ต้องตั้ง)
  */
@@ -35,7 +37,7 @@ export function ReminderControl({
   registrationId: string;
   activity: Activity;
   now: number;
-  /** เปิดมาเลือก "นับถอยหลังจากตอนนี้" ไว้ก่อน (หน้าลงทะเบียนสำเร็จ: เตือนให้ไปเช็กอิน) */
+  /** เปิดมาเลือก "เตือนฉันอีกที" ไว้ก่อน (เพิ่งลงทะเบียน: เตือนให้ไปเช็กอิน) */
   preferCountdown?: boolean;
 }) {
   const [scheduled, setScheduled] = useState<ScheduledReminder | null>(null);
@@ -47,7 +49,8 @@ export function ReminderControl({
   const [lead, setLead] = useState<number | null>(preferCountdown ? COUNTDOWN : null);
   // ค่าเริ่มของ "กำหนดเอง": 2 ชม. ก่อนงาน
   const [custom, setCustom] = useState({ days: 0, hours: 2, minutes: 0 });
-  // ค่าเริ่มของ "นับถอยหลังจากตอนนี้": 5 วินาที (ขั้นต่ำ)
+  // "เตือนฉันอีกที": เลือกเวลาสำเร็จรูป (วินาที) หรือ CUSTOM = หมุนวงล้อเอง (ค่าเริ่ม 5 วินาที ขั้นต่ำ)
+  const [countdownPick, setCountdownPick] = useState<number>(COUNTDOWN_PRESETS[0]);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 5 });
 
   useEffect(() => {
@@ -69,7 +72,10 @@ export function ReminderControl({
   const eventStarted = new Date(activity.startsAt).getTime() <= now;
   const eventEnded = new Date(activity.endsAt).getTime() <= now;
   const customMinutes = custom.days * 24 * 60 + custom.hours * 60 + custom.minutes;
-  const countdownSeconds = countdown.days * 86400 + countdown.hours * 3600 + countdown.minutes * 60 + countdown.seconds;
+  const wheelSeconds = countdown.days * 86400 + countdown.hours * 3600 + countdown.minutes * 60 + countdown.seconds;
+  // เวลาสำเร็จรูปที่ยังไม่เลยเวลาจบงาน
+  const countdownPresets = COUNTDOWN_PRESETS.filter((s) => countdownProblem(activity, s, now) === null);
+  const countdownSeconds = countdownPick === CUSTOM ? wheelSeconds : countdownPick;
   // ยังไม่ได้เลือก → ใช้ตัวเลือกสำเร็จรูปที่ใกล้งานที่สุดที่ยังทัน · ไม่มีเหลือแล้ว → กำหนดเอง · งานเริ่มแล้ว → นับถอยหลัง
   const selected = eventStarted ? COUNTDOWN : (lead ?? leads[leads.length - 1]?.minutes ?? CUSTOM);
   const isCountdown = selected === COUNTDOWN;
@@ -144,7 +150,7 @@ export function ReminderControl({
                 <Chip label="กำหนดเอง" selected={selected === CUSTOM} onPress={() => setLead(CUSTOM)} />
               </>
             )}
-            <Chip label="นับถอยหลังจากตอนนี้" selected={isCountdown} onPress={() => setLead(COUNTDOWN)} />
+            <Chip label="เตือนฉันอีกที" selected={isCountdown} onPress={() => setLead(COUNTDOWN)} />
           </View>
 
           {selected === CUSTOM ? (
@@ -159,6 +165,18 @@ export function ReminderControl({
           ) : null}
 
           {isCountdown ? (
+            <View style={styles.custom}>
+              <Text style={styles.customTitle}>อีกนานเท่าไร</Text>
+              <View style={styles.row}>
+                {countdownPresets.map((s) => (
+                  <Chip key={s} label={`อีก ${formatCountdown(s)}`} selected={countdownPick === s} onPress={() => setCountdownPick(s)} />
+                ))}
+                <Chip label="กำหนดเอง" selected={countdownPick === CUSTOM} onPress={() => setCountdownPick(CUSTOM)} />
+              </View>
+            </View>
+          ) : null}
+
+          {isCountdown && countdownPick === CUSTOM ? (
             <View style={styles.custom}>
               <WheelGroup>
                 <WheelPicker label="วัน" unit="วัน" values={range(0, 7)} value={countdown.days} onChange={(days) => setCountdown((c) => ({ ...c, days }))} />

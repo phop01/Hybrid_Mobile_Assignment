@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { RefreshControl } from 'react-native';
 
 import { EvidenceCard } from '@/components/evidence-card';
-import { ReminderControl } from '@/components/reminder-control';
 import { NavigateButtons } from '@/components/navigate-buttons';
 import { StatusBadge } from '@/components/status-badge';
 import { HeroCard } from '@/components/hero-card';
@@ -83,13 +82,6 @@ export default function RegistrationDetailScreen() {
       </Card>
 
       <EvidenceCard registration={registration} activity={activity} />
-
-      {registration.status === 'registered' && !queued && !ended ? (
-        <Card>
-          <SectionTitle>แจ้งเตือน</SectionTitle>
-          <ReminderControl registrationId={registration.id} activity={activity} now={now} />
-        </Card>
-      ) : null}
 
       <Card>
         <SectionTitle>ข้อมูลที่ลงทะเบียน</SectionTitle>
