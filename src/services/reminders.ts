@@ -86,7 +86,11 @@ export async function scheduleCheckInReminder(registrationId: string, activity: 
   // บอกเวลาที่เหลือจริงตามที่ผู้ใช้ตั้ง เช่น "อีก 2 ชม. 30 นาที ถึงเวลากิจกรรม" · เตือนระหว่างงาน = ชวนไปเช็กอิน
   const leadMinutes = Math.round((new Date(activity.startsAt).getTime() - date.getTime()) / 60000);
   const title =
-    leadMinutes > 0 ? `อีก ${formatLead(leadMinutes)} ถึงเวลากิจกรรม: ${activity.title}` : `ถึงเวลาเช็กอิน: ${activity.title}`;
+    leadMinutes > 0
+      ? `อีก ${formatLead(leadMinutes)} ถึงเวลากิจกรรม: ${activity.title}`
+      : leadMinutes === 0
+        ? `กิจกรรมเริ่มแล้ว: ${activity.title}`
+        : `ถึงเวลาเช็กอิน: ${activity.title}`;
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: { title, body: `ที่ ${activity.location.name} · แตะเพื่อดูรายละเอียดและเช็กอิน`, data },
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: CHANNEL_ID },

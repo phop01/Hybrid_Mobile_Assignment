@@ -8,12 +8,10 @@ import { ActivityMap } from '@/components/activity-map';
 import { AnnouncementList } from '@/components/announcements';
 import { NavigateButtons } from '@/components/navigate-buttons';
 import { PosterImage } from '@/components/poster-image';
-import { ReminderControl } from '@/components/reminder-control';
 import { StatusBadge } from '@/components/status-badge';
 import { Banner, Button, Card, CircleButton, InfoGrid, SectionHeader, StatPill, StateView } from '@/components/ui';
 import { Colors, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { firstParam, useActivity } from '@/hooks/use-activity';
-import { useNow } from '@/hooks/use-now';
 import { useActivityAnnouncements } from '@/hooks/use-organizer';
 import { CATEGORIES } from '@/lib/categories';
 import { isEnded, seatsLeft } from '@/lib/filter-activities';
@@ -26,16 +24,12 @@ import { useAuthenticatedSession } from '@/state/session-context';
 import { Text } from '@/components/app-text';
 
 export default function ActivityDetailScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[]; registered?: string }>();
-  const id = firstParam(params.id);
-  // มาจากฟอร์มลงทะเบียนที่เพิ่งส่งสำเร็จ
-  const justRegistered = params.registered === '1';
-  const now = useNow();
+  const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);
   const [reloadKey, setReloadKey] = useState(0);
   const state = useActivity(id, reloadKey);
   const session = useAuthenticatedSession();
   const { isFavorite, toggleFavorite } = useFavorites();
-  const { findActiveForActivity, queuedIds } = useMyRegistrations();
+  const { findActiveForActivity } = useMyRegistrations();
   const announcements = useActivityAnnouncements(id);
   const [notice, setNotice] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
@@ -182,24 +176,7 @@ export default function ActivityDetailScreen() {
           {notice ? <Banner tone="info">{notice}</Banner> : null}
           {stale ? <Banner tone="warning">ออฟไลน์ · แสดงข้อมูลที่เก็บไว้ ที่นั่งคงเหลืออาจไม่ตรงกับปัจจุบัน</Banner> : null}
 
-          {justRegistered && registration ? <Banner tone="success">ลงทะเบียน “{activity.title}” สำเร็จ</Banner> : null}
-
           {action}
-
-          {/* ลงทะเบียนแล้ว: ตั้งเตือนให้ไปเช็กอินจากหน้านี้ได้เลย (เพิ่งลงทะเบียน → เลือกนับถอยหลังไว้ก่อน) */}
-          {session?.user.role !== 'organizer' && registration?.status === 'registered' && !queuedIds.includes(registration.id) && !ended ? (
-            <Card>
-              <SectionHeader eyebrow="REMINDER" title="เตือนให้ไปเช็กอิน" />
-              {/* key: การ์ดอาจขึ้นก่อนพารามิเตอร์ registered มาถึง → สร้างใหม่ให้ค่าเริ่มเป็นนับถอยหลัง */}
-              <ReminderControl
-                key={justRegistered ? 'just-registered' : 'default'}
-                registrationId={registration.id}
-                activity={activity}
-                now={now}
-                preferCountdown={justRegistered}
-              />
-            </Card>
-          ) : null}
 
           <Card>
             <SectionHeader eyebrow="DETAILS" title="ข้อมูลกิจกรรม" />

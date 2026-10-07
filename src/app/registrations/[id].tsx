@@ -4,6 +4,7 @@ import { RefreshControl } from 'react-native';
 
 import { EvidenceCard } from '@/components/evidence-card';
 import { NavigateButtons } from '@/components/navigate-buttons';
+import { ReminderControl } from '@/components/reminder-control';
 import { StatusBadge } from '@/components/status-badge';
 import { HeroCard } from '@/components/hero-card';
 import { Banner, Button, Card, InfoGrid, InfoRow, Screen, SectionHeader, SectionTitle, StatPill, StateView } from '@/components/ui';
@@ -16,7 +17,10 @@ import { useActivities } from '@/state/activities-context';
 import { useMyRegistrations } from '@/state/my-registrations-context';
 
 export default function RegistrationDetailScreen() {
-  const id = firstParam(useLocalSearchParams<{ id?: string | string[] }>().id);
+  const params = useLocalSearchParams<{ id?: string | string[]; registered?: string }>();
+  const id = firstParam(params.id);
+  // มาจากฟอร์มลงทะเบียนที่เพิ่งส่งสำเร็จ
+  const justRegistered = params.registered === '1';
   const { findById, loading, refresh, cancel, queuedIds } = useMyRegistrations();
   const { getById, status: activitiesStatus } = useActivities();
   const [cancelling, setCancelling] = useState(false);
@@ -69,6 +73,16 @@ export default function RegistrationDetailScreen() {
         <StatusBadge status={queued && registration.status === 'registered' ? 'queued' : registration.status} />
         <StatPill tone="dark" icon="hourglass" label={`${activity.hours} ชม.`} />
       </HeroCard>
+
+      {justRegistered ? <Banner tone="success">ลงทะเบียน “{activity.title}” สำเร็จ</Banner> : null}
+
+      {/* เพิ่งลงทะเบียน → เลือก "เตือนฉันอีกที" ไว้ก่อน */}
+      {registration.status === 'registered' && !queued && !ended ? (
+        <Card>
+          <SectionHeader eyebrow="REMINDER" title="เตือนให้ไปเช็กอิน" />
+          <ReminderControl registrationId={registration.id} activity={activity} now={now} preferCountdown={justRegistered} />
+        </Card>
+      ) : null}
 
       <Card>
         <SectionHeader eyebrow="WHEN & WHERE" title="เวลาและสถานที่" />

@@ -44,7 +44,7 @@ export default function RegisterScreen() {
   }
   const { activity } = activityState;
 
-  // ลงทะเบียนสำเร็จแล้ว: กำลังพากลับหน้ารายละเอียด (ตั้งเตือนให้ไปเช็กอินได้ที่นั่น)
+  // ลงทะเบียนสำเร็จแล้ว: กำลังพาไปหน้าการลงทะเบียนของฉัน (ตั้งเตือนให้ไปเช็กอินได้ที่นั่น)
   if (state.phase === 'done') return <StateView kind="loading" />;
 
   const existing = findActiveForActivity(activity.id);
@@ -76,8 +76,8 @@ export default function RegisterScreen() {
       const registration = await register(activity.id, state.values, idempotencyKey);
       dispatch({ type: 'success', registration });
       hapticSuccess();
-      // กลับไปหน้ารายละเอียดกิจกรรมเดิม (ไม่ซ้อนหน้าใหม่) พร้อมบอกว่าเพิ่งลงทะเบียน → แสดงข้อความสำเร็จ + การ์ดตั้งเตือน
-      router.dismissTo({ pathname: '/activities/[id]', params: { id: activity.id, registered: '1' } });
+      // แทนที่ฟอร์มด้วยหน้าการลงทะเบียนของฉัน (กดกลับ = หน้ารายละเอียดกิจกรรม) → ข้อความสำเร็จ + การ์ดตั้งเตือน
+      router.replace({ pathname: '/registrations/[id]', params: { id: registration.id, registered: '1' } });
       // ขอสิทธิ์แจ้งเตือนตอนนี้ เพราะเพิ่งลงทะเบียน ผู้ใช้เข้าใจว่าจะได้รับประกาศของกิจกรรมนี้
       // เว็บ: เบราว์เซอร์ให้ขอสิทธิ์ได้เฉพาะตอนผู้ใช้กดปุ่ม จึงไปขอตอนกด "ตั้งแจ้งเตือน" แทน
       if (supportsNotifications && Platform.OS !== 'web') ensureNotificationPermission().catch(() => undefined);

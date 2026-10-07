@@ -76,8 +76,9 @@ export function ReminderControl({
   // เวลาสำเร็จรูปที่ยังไม่เลยเวลาจบงาน
   const countdownPresets = COUNTDOWN_PRESETS.filter((s) => countdownProblem(activity, s, now) === null);
   const countdownSeconds = countdownPick === CUSTOM ? wheelSeconds : countdownPick;
-  // ยังไม่ได้เลือก → ใช้ตัวเลือกสำเร็จรูปที่ใกล้งานที่สุดที่ยังทัน · ไม่มีเหลือแล้ว → กำหนดเอง · งานเริ่มแล้ว → นับถอยหลัง
-  const selected = eventStarted ? COUNTDOWN : (lead ?? leads[leads.length - 1]?.minutes ?? CUSTOM);
+  // ยังไม่ได้เลือก → ตัวเลือกล่วงหน้าที่ใกล้งานที่สุดที่ยังทัน (ไม่นับ "เมื่อเริ่มกิจกรรม") · ไม่มีเหลือแล้ว → กำหนดเอง · งานเริ่มแล้ว → เตือนฉันอีกที
+  const defaultLead = [...leads].reverse().find((l) => l.minutes > 0) ?? leads[leads.length - 1];
+  const selected = eventStarted ? COUNTDOWN : (lead ?? defaultLead?.minutes ?? CUSTOM);
   const isCountdown = selected === COUNTDOWN;
   const leadMinutes = selected === CUSTOM ? customMinutes : selected;
   const problem = isCountdown
@@ -121,7 +122,7 @@ export function ReminderControl({
         <>
           <Text style={styles.text}>
             จะแจ้งเตือน {formatDate(scheduled.at)} เวลา {formatTime(scheduled.at)} ·{' '}
-            {scheduledLead > 0 ? `ก่อนงาน ${formatLead(scheduledLead)}` : 'ระหว่างงาน'}
+            {scheduledLead > 0 ? `ก่อนงาน ${formatLead(scheduledLead)}` : scheduledLead === 0 ? 'ตอนเริ่มกิจกรรม' : 'ระหว่างงาน'}
           </Text>
           <View style={styles.row}>
             <View style={styles.flex}>
@@ -194,11 +195,17 @@ export function ReminderControl({
           ) : (
             <Text style={styles.preview}>
               จะเตือน {formatDate(at.toISOString())} เวลา {formatTime(at.toISOString())} ·{' '}
-              {isCountdown ? `อีก ${formatCountdown(countdownSeconds)} จากตอนนี้` : `ก่อนงาน ${formatLead(leadMinutes)}`}
+              {isCountdown ? `อีก ${formatCountdown(countdownSeconds)} จากตอนนี้` : leadMinutes === 0 ? 'ตอนเริ่มกิจกรรม' : `ก่อนงาน ${formatLead(leadMinutes)}`}
             </Text>
           )}
           <Button
-            title={isCountdown ? `ตั้งแจ้งเตือน (อีก ${formatCountdown(countdownSeconds)})` : `ตั้งแจ้งเตือน (ก่อน ${formatLead(leadMinutes)})`}
+            title={
+              isCountdown
+                ? `ตั้งแจ้งเตือน (อีก ${formatCountdown(countdownSeconds)})`
+                : leadMinutes === 0
+                  ? 'ตั้งแจ้งเตือน (เมื่อเริ่มกิจกรรม)'
+                  : `ตั้งแจ้งเตือน (ก่อน ${formatLead(leadMinutes)})`
+            }
             icon="notifications-outline"
             variant="secondary"
             loading={busy}

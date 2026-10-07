@@ -84,7 +84,7 @@ describe('reminder lead (ตั้งเวลาเตือนก่อนก�
 
   it('hides presets that are already in the past', () => {
     const minutes = availableReminderLeads(activity, NOW).map((l) => l.minutes);
-    expect(minutes).toEqual([180, 60, 30, 15]);
+    expect(minutes).toEqual([180, 60, 30, 15, 0]);
   });
 
   it('accepts a custom lead only if the reminder is still in the future', () => {

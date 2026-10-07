@@ -151,10 +151,10 @@ describe('แจ้งเตือนล่วงหน้าที่ผู้�
 
   it('ซ่อนตัวเลือกที่เลยเวลาไปแล้ว', () => {
     const early = new Date('2026-09-30T09:00:00+07:00').getTime();
-    expect(availableReminderLeads(activity, early).map((l) => l.minutes)).toEqual([1440, 180, 60, 30, 15]);
-    expect(availableReminderLeads(activity, new Date('2026-10-01T09:30:00+07:00').getTime()).map((l) => l.minutes)).toEqual([30, 15]);
-    // เหลือ 15 นาทีก่อนงาน: ทุกตัวเลือกเลยเวลาแล้ว (ยังกำหนดเองได้ เช่น 10 นาที)
-    expect(availableReminderLeads(activity, NOW)).toEqual([]);
+    expect(availableReminderLeads(activity, early).map((l) => l.minutes)).toEqual([1440, 180, 60, 30, 15, 0]);
+    expect(availableReminderLeads(activity, new Date('2026-10-01T09:30:00+07:00').getTime()).map((l) => l.minutes)).toEqual([30, 15, 0]);
+    // เหลือ 15 นาทีก่อนงาน: เหลือแค่ "เมื่อเริ่มกิจกรรม" (ยังกำหนดเองได้ เช่น 10 นาที)
+    expect(availableReminderLeads(activity, NOW).map((l) => l.minutes)).toEqual([0]);
   });
 });
 

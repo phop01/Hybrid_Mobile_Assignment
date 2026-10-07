@@ -35,6 +35,7 @@ export const REMINDER_LEADS = [
   { minutes: 60, label: 'ล่วงหน้า 1 ชม.' },
   { minutes: CHECK_IN_OPENS_BEFORE_MS / 60000, label: 'ล่วงหน้า 30 นาที' },
   { minutes: 15, label: 'ล่วงหน้า 15 นาที' },
+  { minutes: 0, label: 'เมื่อเริ่มกิจกรรม' },
 ] as const;
 
 /** กำหนดเองได้สูงสุด 7 วันก่อนงาน (แจ้งเตือนเกินนั้นลืมไปก่อนถึงงาน) */
