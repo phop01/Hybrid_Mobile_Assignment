@@ -7,6 +7,7 @@ import '@/lib/ignore-font-timeout';
 import { InboxToast } from '@/components/inbox-toast';
 import { PhoneFrame } from '@/components/phone-frame';
 import { Colors } from '@/constants/theme';
+import { useInboxSync } from '@/hooks/use-inbox-sync';
 import { useNotificationRouting } from '@/hooks/use-notification-routing';
 import { ActivitiesProvider } from '@/state/activities-context';
 import { FavoritesProvider } from '@/state/favorites-context';
@@ -50,6 +51,7 @@ function RootNavigator() {
   }, [ready]);
 
   useNotificationRouting(ready);
+  useInboxSync();
 
   // login สำเร็จ → พาไปหน้าที่ผู้ใช้ตั้งใจจะไป หลัง Stack.Protected ปิดหน้า login เสร็จ
   // (ถ้า push ก่อนหน้า login ถูกปิด Stack จะย้อนกลับไปหน้าก่อน login ทำให้ไม่ถึงหน้าที่ตั้งใจ)
