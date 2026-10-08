@@ -71,8 +71,16 @@ describe('favoritesReducer', () => {
 
   it('keeps items toggled before storage finished loading', () => {
     const early = favoritesReducer(initialFavorites, { type: 'toggle', id: 'new' });
-    const hydrated = favoritesReducer(early, { type: 'hydrate', ids: ['saved'] });
-    expect(hydrated).toEqual({ ids: ['saved', 'new'], hydrated: true });
+    const hydrated = favoritesReducer(early, { type: 'hydrate', owner: null, ids: ['saved'] });
+    expect(hydrated).toEqual({ ids: ['saved', 'new'], hydrated: true, owner: null });
+  });
+
+  it('keeps each account separate when switching', () => {
+    const a = favoritesReducer(favoritesReducer(initialFavorites, { type: 'switch', owner: 'u1' }), { type: 'hydrate', owner: 'u1', ids: ['x'] });
+    const b = favoritesReducer(a, { type: 'switch', owner: 'u2' });
+    expect(b).toEqual({ ids: [], hydrated: false, owner: 'u2' });
+    // ผลโหลดของบัญชีเก่าที่มาช้า ต้องไม่ปนเข้าบัญชีใหม่
+    expect(favoritesReducer(b, { type: 'hydrate', owner: 'u1', ids: ['x'] })).toBe(b);
   });
 });
 

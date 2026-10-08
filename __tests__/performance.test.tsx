@@ -30,6 +30,7 @@ jest.mock('@/state/activities-context', () => ({
 }));
 jest.mock('@/state/session-context', () => ({
   useAuthenticatedSession: () => ({ token: 't', user: { id: 'u1', fullName: 'ทดสอบ ระบบ', role: 'student' } }),
+  useSession: () => ({ session: { status: 'authenticated', token: 't', user: { id: 'u1', fullName: 'ทดสอบ ระบบ', role: 'student' } } }),
 }));
 jest.mock('@/state/my-registrations-context', () => ({
   useMyRegistrations: () => ({ findActiveForActivity: () => undefined, queuedIds: [] }),
