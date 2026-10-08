@@ -19,9 +19,11 @@ type Props = {
   unit: string;
   /** ชื่อเต็มสำหรับ screen reader เช่น "ชั่วโมง" */
   label: string;
+  /** แปลงตัวเลขเป็นข้อความที่แสดง เช่น 5 → "05" */
+  format?: (value: number) => string;
 };
 
-export function WheelPicker({ values, value, onChange, unit, label }: Props) {
+export function WheelPicker({ values, value, onChange, unit, label, format = String }: Props) {
   const scrollRef = useRef<ScrollViewHandle>(null);
   const [scrollY] = useState(() => new Animated.Value(0));
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,7 +84,7 @@ export function WheelPicker({ values, value, onChange, unit, label }: Props) {
           return (
             <Pressable key={v} onPress={() => step(i - index)} importantForAccessibility="no" accessibilityElementsHidden>
               <Animated.View style={[styles.item, { opacity, transform: [{ scale }] }]}>
-                <Text style={styles.number}>{v}</Text>
+                <Text style={styles.number}>{format(v)}</Text>
               </Animated.View>
             </Pressable>
           );

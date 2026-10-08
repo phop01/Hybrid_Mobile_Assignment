@@ -27,8 +27,31 @@ import { useActivities } from '@/state/activities-context';
 import { useOrganizerSession } from '@/state/session-context';
 import { Text } from '@/components/app-text';
 import { HScroll } from '@/components/h-scroll';
+import { WheelGroup, WheelPicker } from '@/components/wheel-picker';
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** วงล้อเลือกเวลา ชม. + นาที (ทีละ 5 นาที) เก็บค่าเป็น "HH:MM" ตามเดิม */
+function TimeWheel({ label, value, onChange, error }: { label: string; value: string; onChange: (hhmm: string) => void; error?: string }) {
+  const [h, m] = value.split(':').map(Number);
+  return (
+    <View style={styles.timeBlock}>
+      <Text style={styles.label}>{label}</Text>
+      <WheelGroup>
+        <WheelPicker label={`${label} ชั่วโมง`} unit="ชม." values={HOURS} value={h} format={pad2} onChange={(hh) => onChange(`${pad2(hh)}:${pad2(m)}`)} />
+        <WheelPicker label={`${label} นาที`} unit="นาที" values={MINUTES} value={m} format={pad2} onChange={(mm) => onChange(`${pad2(h)}:${pad2(mm)}`)} />
+      </WheelGroup>
+      {error ? (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
 
 export default function NewActivityScreen() {
   const session = useOrganizerSession();
@@ -164,14 +187,8 @@ export default function NewActivityScreen() {
               <Chip key={d} label={dayLabel(d)} selected={values.dayOffset === d} onPress={() => set('dayOffset', d)} />
             ))}
           </HScroll>
-          <View style={styles.row}>
-            <View style={styles.flex}>
-              <TextField label="เริ่ม (HH:MM)" value={values.startTime} onChangeText={(t) => set('startTime', t)} error={errors.startTime} maxLength={5} />
-            </View>
-            <View style={styles.flex}>
-              <TextField label="จบ (HH:MM)" value={values.endTime} onChangeText={(t) => set('endTime', t)} error={errors.endTime} maxLength={5} />
-            </View>
-          </View>
+          <TimeWheel label="เวลาเริ่ม" value={values.startTime} onChange={(t) => set('startTime', t)} error={errors.startTime} />
+          <TimeWheel label="เวลาจบ" value={values.endTime} onChange={(t) => set('endTime', t)} error={errors.endTime} />
           {previewHours !== null ? (
             <Banner tone="info" icon="time-outline">
               นักศึกษาที่เข้าร่วมจะได้ {previewHours} ชั่วโมงกิจกรรม เมื่อคุณตรวจหลักฐานผ่าน
@@ -235,6 +252,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '600', color: Colors.text },
   muted: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
   error: { fontSize: 13, color: Colors.danger },
+  timeBlock: { gap: 6 },
   multiline: { minHeight: 90, textAlignVertical: 'top' },
   cover: { width: '100%', aspectRatio: 16 / 9, borderRadius: Radius.md, backgroundColor: Colors.border },
 });
