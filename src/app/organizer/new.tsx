@@ -3,11 +3,12 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { PickMap } from '@/components/pick-map';
 import { Banner, Button, Card, Chip, Screen, SectionTitle, TextField } from '@/components/ui';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Colors, MinTouch, Radius, Spacing } from '@/constants/theme';
 import {
   activityHours,
   atTime,
@@ -35,15 +36,30 @@ const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 /** วงล้อเลือกเวลา ชม. + นาที (ทีละ 5 นาที) เก็บค่าเป็น "HH:MM" ตามเดิม */
-function TimeWheel({ label, value, onChange, error }: { label: string; value: string; onChange: (hhmm: string) => void; error?: string }) {
+function TimeWheel({ label, value, onChange }: { label: string; value: string; onChange: (hhmm: string) => void }) {
   const [h, m] = value.split(':').map(Number);
+  return (
+    <WheelGroup>
+      <WheelPicker label={`${label} ชั่วโมง`} unit="ชม." values={HOURS} value={h} format={pad2} onChange={(hh) => onChange(`${pad2(hh)}:${pad2(m)}`)} />
+      <WheelPicker label={`${label} นาที`} unit="นาที" values={MINUTES} value={m} format={pad2} onChange={(mm) => onChange(`${pad2(h)}:${pad2(mm)}`)} />
+    </WheelGroup>
+  );
+}
+
+/** ช่องเวลาหน้าตาเหมือนช่องกรอก แตะแล้วเปิด/ปิดวงล้อด้านล่าง */
+function TimeField({ label, value, open, onPress, error }: { label: string; value: string; open: boolean; onPress: () => void; error?: string }) {
   return (
     <View style={styles.timeBlock}>
       <Text style={styles.label}>{label}</Text>
-      <WheelGroup>
-        <WheelPicker label={`${label} ชั่วโมง`} unit="ชม." values={HOURS} value={h} format={pad2} onChange={(hh) => onChange(`${pad2(hh)}:${pad2(m)}`)} />
-        <WheelPicker label={`${label} นาที`} unit="นาที" values={MINUTES} value={m} format={pad2} onChange={(mm) => onChange(`${pad2(h)}:${pad2(mm)}`)} />
-      </WheelGroup>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label} ${value}`}
+        accessibilityState={{ expanded: open }}
+        style={[styles.timeInput, open && { borderColor: Colors.primary }, !!error && { borderColor: Colors.danger }]}>
+        <Text style={styles.timeValue}>{value}</Text>
+        <Ionicons name={open ? 'chevron-up' : 'time-outline'} size={18} color={Colors.textMuted} />
+      </Pressable>
       {error ? (
         <Text style={styles.error} accessibilityRole="alert">
           {error}
@@ -79,6 +95,8 @@ export default function NewActivityScreen() {
     }
   };
 
+  const [openTime, setOpenTime] = useState<'startTime' | 'endTime' | null>(null);
+  const toggleTime = (field: 'startTime' | 'endTime') => setOpenTime((cur) => (cur === field ? null : field));
   const set = <K extends keyof ActivityFormValues>(field: K, value: ActivityFormValues[K]) => {
     setValues((v) => ({ ...v, [field]: value }));
     setErrors((e) => ({ ...e, [field]: undefined, ...(field === 'latitude' ? { location: undefined } : {}) }));
@@ -187,8 +205,17 @@ export default function NewActivityScreen() {
               <Chip key={d} label={dayLabel(d)} selected={values.dayOffset === d} onPress={() => set('dayOffset', d)} />
             ))}
           </HScroll>
-          <TimeWheel label="เวลาเริ่ม" value={values.startTime} onChange={(t) => set('startTime', t)} error={errors.startTime} />
-          <TimeWheel label="เวลาจบ" value={values.endTime} onChange={(t) => set('endTime', t)} error={errors.endTime} />
+          <View style={styles.row}>
+            <View style={styles.flex}>
+              <TimeField label="เริ่ม" value={values.startTime} open={openTime === 'startTime'} onPress={() => toggleTime('startTime')} error={errors.startTime} />
+            </View>
+            <View style={styles.flex}>
+              <TimeField label="จบ" value={values.endTime} open={openTime === 'endTime'} onPress={() => toggleTime('endTime')} error={errors.endTime} />
+            </View>
+          </View>
+          {openTime ? (
+            <TimeWheel key={openTime} label={openTime === 'startTime' ? 'เวลาเริ่ม' : 'เวลาจบ'} value={values[openTime]} onChange={(t) => set(openTime, t)} />
+          ) : null}
           {previewHours !== null ? (
             <Banner tone="info" icon="time-outline">
               นักศึกษาที่เข้าร่วมจะได้ {previewHours} ชั่วโมงกิจกรรม เมื่อคุณตรวจหลักฐานผ่าน
@@ -253,6 +280,18 @@ const styles = StyleSheet.create({
   muted: { fontSize: 13, color: Colors.textMuted, lineHeight: 18 },
   error: { fontSize: 13, color: Colors.danger },
   timeBlock: { gap: 6 },
+  timeInput: {
+    minHeight: MinTouch + 4,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.surface,
+  },
+  timeValue: { fontSize: 16, color: Colors.text, fontVariant: ['tabular-nums'] },
   multiline: { minHeight: 90, textAlignVertical: 'top' },
   cover: { width: '100%', aspectRatio: 16 / 9, borderRadius: Radius.md, backgroundColor: Colors.border },
 });
