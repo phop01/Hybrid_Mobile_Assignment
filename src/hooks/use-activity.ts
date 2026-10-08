@@ -50,6 +50,8 @@ export function useActivity(id: string | undefined, reloadKey = 0): ActivityStat
     // ข้อมูลในรายการกลางใหม่กว่า (เช่น เพิ่งโหลดรายการใหม่) → ใช้ตัวนั้น
     const latest = getById(id);
     if (result.state.status === 'ready' && latest) return { ...result.state, activity: latest };
+    // เปิดแอปมาที่หน้านี้ตรง ๆ ตอนออฟไลน์: request ล้มก่อนโหลด cache เสร็จ → พอ cache มาแล้วใช้ตัวนั้น
+    if (result.state.status === 'error' && latest) return { status: 'ready', activity: latest, stale: true };
     return result.state;
   }
   const cached = getById(id);
